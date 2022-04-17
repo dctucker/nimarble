@@ -3,6 +3,20 @@ import nimgl/glfw
 import nimgl/opengl
 import glm
 
+import models
+import level1
+import contrib/heightmap
+
+const vert_source = readFile("src/shaders/player.vert")
+var verts = vert_source.cstring
+
+const frag_source = readFile("src/shaders/player.frag")
+var frags = frag_source.cstring
+
+const geom_source = readFile("src/shaders/player.geom")
+var geoms = "".cstring
+
+
 if os.getEnv("CI") != "": quit()
 
 type
@@ -45,59 +59,59 @@ proc newVBO[T](n: cint, data: var seq[T]): VBO =
   glBufferData GL_ARRAY_BUFFER, cint(T.sizeof * result.data.len), result.data[0].addr, GL_STATIC_DRAW
 
 
-proc statusShader(shader: uint32) =
+proc check(shader: Shader) =
   var status: int32
-  glGetShaderiv(shader, GL_COMPILE_STATUS, status.addr);
+  shader.id.glGetShaderiv GL_COMPILE_STATUS, status.addr
   if status != GL_TRUE.ord:
     var
       log_length: int32
       message = newSeq[char](1024)
-    glGetShaderInfoLog(shader, 1024, log_length.addr, message[0].addr);
+    shader.id.glGetShaderInfoLog 1024, log_length.addr, message[0].addr
     for m in message:
       stdout.write(m)
     stdout.write("\n")
 
-proc statusProgram(program: uint32) =
+proc check(program: Program) =
   var
     log_length: int32
     message = newSeq[char](1024)
     pLinked: int32
-  program.glGetProgramiv GL_LINK_STATUS, pLinked.addr
+  program.id.glGetProgramiv GL_LINK_STATUS, pLinked.addr
   if pLinked != GL_TRUE.ord:
-    program.glGetProgramInfoLog 1024, log_length.addr, message[0].addr
+    program.id.glGetProgramInfoLog 1024, log_length.addr, message[0].addr
     for m in message:
       stdout.write(m)
     stdout.write("\n")
 
-proc initShader(shader: var Shader, code: var cstring) =
-  shader.id.glShaderSource 1'i32, code.addr, nil
-  shader.id.glCompileShader
-  shader.id.statusShader
-
-proc newFragmentShader(code: var cstring): Shader =
-  result.id = glCreateShader GL_FRAGMENT_SHADER
-  result.initShader code
-
-proc newVertexShader(code: var cstring): Shader =
-  result.id = glCreateShader GL_VERTEX_SHADER
-  result.initShader code
+proc newShader(kind: GLEnum, code: var cstring): Shader =
+  result.id = glCreateShader kind
+  result.id.glShaderSource 1'i32, code.addr, nil
+  result.id.glCompileShader
+  result.check
 
 proc `=destroy`(o: var VAO) = glDeleteVertexArrays 1, o.id.addr
 proc `=destroy`(o: var VBO) = glDeleteBuffers 1, o.id.addr
 proc `=destroy`(shader: var Shader) = shader.id.glDeleteShader
 proc `=destroy`(program: var Program) = program.id.glDeleteProgram
 
-proc newProgram(frag_code, vert_code: var cstring): Program =
-  var fragment = newFragmentShader(frag_code)
-  var vertex = newVertexShader(vert_code)
+proc newProgram(frag_code, vert_code, geom_code: var cstring): Program =
+  var fragment, vertex, geometry: Shader
+  fragment = newShader(GL_FRAGMENT_SHADER, frag_code)
+  vertex = newShader(GL_VERTEX_SHADER, vert_code)
+  if geom_code.len > 2:
+    geometry = newShader(GL_GEOMETRY_SHADER, geom_code)
 
   result.id = glCreateProgram()
   result.id.glAttachShader fragment.id
   result.id.glAttachShader vertex.id
+  if geometry.id != 0:
+    result.id.glAttachShader geometry.id
   result.id.glLinkProgram
-  result.id.statusProgram
+  result.check
   result.id.glDetachShader fragment.id
   result.id.glDetachShader vertex.id
+  if geometry.id != 0:
+    result.id.glDetachShader geometry.id
 
 var width, height: int32
 proc display_size(): (int32, int32) =
@@ -117,15 +131,17 @@ proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mod
     discard
   else: discard
 
-var mouse_x, mouse_y, mouse_z: cdouble
+var mouse: Vec3f
 proc mouseProc(window: GLFWWindow, xpos, ypos: cdouble): void {.cdecl.} =
-  window.setCursorPos width.float * 0.5f, height.float * 0.5f
-  mouse_x =  (xpos / width.cdouble)  - 0.5
-  mouse_y = -(ypos / height.cdouble) + 0.5
+  let middle = vec2f(width.float * 0.5f, height.float * 0.5f)
+  window.setCursorPos middle.x, middle.y
+  mouse.x = -(middle.x - xpos)
+  mouse.y =  (middle.y - ypos)
+  #echo mouse.x, "\r" #, ",", mouse.y
 
 proc scrollProc(window: GLFWWindow, xoffset, yoffset: cdouble): void {.cdecl.} =
-  const wheel_ratio = 1.0 / 41.0
-  mouse_z = yoffset * wheel_ratio
+  #const wheel_ratio = 1.0 / 41.0
+  mouse.z = yoffset #* wheel_ratio
 
 proc setup_glfw(): GLFWWindow =
   doAssert glfwInit()
@@ -173,51 +189,12 @@ proc apply(vbo: VBO, n: GLuint) {.inline.} =
   glBindBuffer GL_ARRAY_BUFFER, vbo.id
   glVertexAttribPointer n, vbo.dimensions, EGL_FLOAT, false, 0, nil
 
-proc draw(vbo: VBO) {.inline.} =
-  glDrawArrays GL_TRIANGLES, 0, vbo.n_verts # Starting from vertex 0; 3 vertices total -> 1 triangle
+proc draw(vbo: VBO, kind: GLEnum = GL_TRIANGLES) {.inline.} =
+  glDrawArrays kind, 0, vbo.n_verts
 
 proc cleanup(w: GLFWWindow) =
   w.destroyWindow
   glfwTerminate()
-
-var cube = @[
-  -1.0f, -1.0f, -1.0f, # triangle 1 : begin
-  -1.0f, -1.0f, +1.0f,
-  -1.0f, +1.0f, +1.0f, # triangle 1 : end
-  +1.0f, +1.0f, -1.0f, # triangle 2 : begin
-  -1.0f, -1.0f, -1.0f,
-  -1.0f, +1.0f, -1.0f, # triangle 2 : end
-  +1.0f, -1.0f, +1.0f,
-  -1.0f, -1.0f, -1.0f,
-  +1.0f, -1.0f, -1.0f,
-  +1.0f, +1.0f, -1.0f,
-  +1.0f, -1.0f, -1.0f,
-  -1.0f, -1.0f, -1.0f,
-  -1.0f, -1.0f, -1.0f,
-  -1.0f, +1.0f, +1.0f,
-  -1.0f, +1.0f, -1.0f,
-  +1.0f, -1.0f, +1.0f,
-  -1.0f, -1.0f, +1.0f,
-  -1.0f, -1.0f, -1.0f,
-  -1.0f, +1.0f, +1.0f,
-  -1.0f, -1.0f, +1.0f,
-  +1.0f, -1.0f, +1.0f,
-  +1.0f, +1.0f, +1.0f,
-  +1.0f, -1.0f, -1.0f,
-  +1.0f, +1.0f, -1.0f,
-  +1.0f, -1.0f, -1.0f,
-  +1.0f, +1.0f, +1.0f,
-  +1.0f, -1.0f, +1.0f,
-  +1.0f, +1.0f, +1.0f,
-  +1.0f, +1.0f, -1.0f,
-  -1.0f, +1.0f, -1.0f,
-  +1.0f, +1.0f, +1.0f,
-  -1.0f, +1.0f, -1.0f,
-  -1.0f, +1.0f, +1.0f,
-  +1.0f, +1.0f, +1.0f,
-  -1.0f, +1.0f, +1.0f,
-  +1.0f, -1.0f, +1.0f,
-]
 
 proc setup_colors(): seq[cfloat] =
   result = newSeq[cfloat](36*3)
@@ -227,34 +204,15 @@ proc setup_colors(): seq[cfloat] =
     result[3*i+1] = 1.0f * phase
     result[3*i+2] = 0.5f * (1.0-phase)
 
-var verts: cstring = """
-  #version 330 core
-  layout (location = 0) in vec3 vertexPosition_modelspace;
-  layout (location = 1) in vec3 vertexColor;
-  out vec3 fragmentColor;
-  uniform mat4 MVP;
-
-  void main() {
-    //gl_Position.xyz = vertexPosition_modelspace;
-    //gl_Position.w = 1.0;
-    gl_Position = MVP * vec4(vertexPosition_modelspace,1);
-    fragmentColor = vertexColor;
-  }
-"""
-var frags: cstring = """
-  #version 330 core
-  in vec3 fragmentColor;
-  out vec3 color;
-  void main(){
-    color = fragmentColor;
-  }
-"""
-
-var player_pos, player_vel, player_acc = vec3f(0f, 0f, 0f)
-
-var player_racc: cfloat = 0.0f
-var player_rvel: cfloat = 0.0f
-var player_rot : cfloat = 0.0f
+type Mesh = ref object
+  pos, vel, acc: Vec3f
+  rot, rvel, racc: cfloat
+  vao: VAO
+  vert_vbo, color_vbo: VBO
+  mvp: Mat4f
+  model: Mat4f
+  matrix: Matrix
+  program: Program
 
 proc main =
   let w = setup_glfw()
@@ -263,61 +221,76 @@ proc main =
   setup_opengl()
 
   ## chapter 2
-  var vao = newVAO()
-  var vbo = newVBO(3, cube)
-
   var color_buf = setup_colors()
-  var colors = newVBO(3, color_buf)
-
-  ## chapter 2 shaders
-  var program = newProgram(frags, verts)
+  var player = Mesh(
+    pos: vec3f(0f, 0f, 0f),
+    vel: vec3f(0f, 0f, 0f),
+    acc: vec3f(0f, 0f, 0f),
+    rot: 0f,
+    rvel: 0f,
+    racc: 0f,
+    vao: newVAO(),
+    vert_vbo: newVBO(3, cube),
+    color_vbo: newVBO(3, color_buf),
+    program: newProgram(frags, verts, geoms),
+  )
 
   ## chapter 3
   let aspect: float32 = width / height
   var proj: Mat4f = perspective(radians(45.0f), aspect, 0.1f, 100.0f)
   #var proj: Mat4f = ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.0f, 20.0f) # In world coordinates
   var view = lookAt(
-    vec3f( 0f,  3f,  9f ), # camera pos
+    vec3f( 0f,  7f,  49f ), # camera pos
     vec3f( 0f,  0f,  0f ), # target
     vec3f( 0f,  1f,  0f ), # up
   )
-  var model = mat4(1.0f).translate(player_pos)
-  var mvp = proj * view * model
-  var matrix = program.newMatrix(mvp)
+  player.model  = mat4(1.0f).translate(player.pos)
+  player.mvp    = proj * view * player.model
+  player.matrix = player.program.newMatrix(player.mvp)
+
+  var t  = 0.0f
+  var dt = 0.0f
+  proc physics() =
+    let time = glfwGetTime()
+    dt = time - t
+    t = time
+
+    const mass = 1.0f
+    const max_vel = 20.0f * vec3f( 1f, 1f, 1f )
+    player.acc = mass * vec3f(mouse.x, mouse.y, 0)
+    player.vel = clamp(player.vel + dt * player.acc, -max_vel, max_vel)
+    player.pos += player.vel * dt
+
+    const max_rvel = 6.0f
+    player.racc += mouse.z
+    player.rvel  = clamp( player.rvel + dt * player.racc, -max_rvel, max_rvel )
+    player.rot  += player.rvel * dt
+
+    const friction = 0.995
+    player.vel  *= friction
+    player.rvel *= friction
+    player.racc *= friction
+
+    mouse *= 0
+
+    player.model = mat4(1.0f)
+      .translate(player.pos)
+      .rotateY(radians(360 * player.rot))
+    player.mvp = proj * view * player.model
+    player.matrix.update player.mvp
+
 
   # main loop
   while not w.windowShouldClose():
+    physics()
 
     glClear GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
 
-    glUseProgram program.id
+    glUseProgram player.program.id
 
-    model = mat4(1.0f)
-      .translate(player_pos)
-      .rotateY(radians(360 * player_rot))
-    mvp = proj * view * model
-    matrix.update mvp
-
-    vbo.apply 0
-    colors.apply 1
-    vbo.draw()
-
-    const inertia = 0.05
-    player_acc = vec3f(mouse_x, mouse_y, 0) * inertia
-    player_vel += player_acc
-    player_pos += player_vel
-
-    player_racc = mouse_z * inertia
-    player_rvel += player_racc
-    player_rot  += player_rvel
-
-    const friction = 0.995
-    player_vel *= friction
-    player_rvel *= friction
-
-    mouse_x = 0
-    mouse_y = 0
-    mouse_z = 0
+    player.vert_vbo.apply 0
+    player.color_vbo.apply 1
+    player.vert_vbo.draw()
 
     glDisableVertexAttribArray 0
     glDisableVertexAttribArray 1
