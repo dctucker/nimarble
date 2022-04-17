@@ -261,7 +261,7 @@ proc main =
   player.mvp    = proj * view * player.model
   player.matrix = player.program.newMatrix(player.mvp)
 
-  floor_plane.model = mat4(1.0f)
+  floor_plane.model = mat4(1.0f).scale(1f, 0.2f, 1f).rotateY(radians(-45f)).translate(vec3f(0f,0f,-10f))
   floor_plane.mvp = proj * view * floor_plane.model
   floor_plane.matrix = floor_plane.program.newMatrix(floor_plane.mvp)
 
@@ -311,7 +311,17 @@ proc main =
     player.physics()
 
     glClear GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
+
+    #glPolygonMode( GL_FRONT_AND_BACK, GL_FILL )
+    #glEnable GL_POLYGON_OFFSET_FILL
+    #floor_plane.render GL_TRIANGLE_STRIP
+    #glDisable GL_POLYGON_OFFSET_FILL
+
+    glPolygonMode( GL_FRONT_AND_BACK, GL_LINE )
+    glPolygonOffset( 1f, 1f )
     floor_plane.render GL_TRIANGLE_STRIP
+
+    glPolygonMode( GL_FRONT_AND_BACK, GL_FILL )
     player.render
 
     w.swapBuffers()
