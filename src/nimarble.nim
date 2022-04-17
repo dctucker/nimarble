@@ -96,8 +96,7 @@ proc newShader(kind: GLEnum, code: var cstring): Shader =
   result.check
 
 proc `=destroy`(o: var VAO) = glDeleteVertexArrays 1, o.id.addr
-proc `=destroy`(o: var VBO[cushort]) = glDeleteBuffers 1, o.id.addr
-proc `=destroy`(o: var VBO[cfloat]) = glDeleteBuffers 1, o.id.addr
+proc `=destroy`[T](o: var VBO[T]) = glDeleteBuffers 1, o.id.addr
 proc `=destroy`(shader: var Shader) = shader.id.glDeleteShader
 proc `=destroy`(program: var Program) = program.id.glDeleteProgram
 
@@ -204,36 +203,6 @@ proc cleanup(w: GLFWWindow) {.inline.} =
   w.destroyWindow
   glfwTerminate()
 
-proc setup_colors(): seq[cfloat] =
-  result = newSeq[cfloat](36*3)
-  for i in 0..<36:
-    let phase = (i.cfloat/36.0f)
-    result[3*i+0] = 0.0f * phase
-    result[3*i+1] = 1.0f * phase
-    result[3*i+2] = 0.5f * (1.0-phase)
-
-proc setup_floor_points[T](level: seq[T]): seq[cfloat] =
-  let w = level.len.float.sqrt.int
-  result = newSeq[cfloat](3 * w * w)
-  for z in 0..<w:
-    for x in 0..<w:
-      let index = 3 * (w * z + x)
-      let y = level[w * z + x]
-      result[index+0] = x.cfloat
-      result[index+1] = y.cfloat
-      result[index+2] = z.cfloat
-
-proc setup_floor_colors[T](level: seq[T]): seq[cfloat] =
-  let w = level.len.float.sqrt.int
-  result = newSeq[cfloat](3 * w * w)
-  for z in 0..<w:
-    for x in 0..<w:
-      let index = 3 * (w * z + x)
-      let y = level[w * z + x]
-      result[index+0] = 1f
-      result[index+1] = 0f
-      result[index+2] = 1f
-
 type Mesh = ref object
   pos, vel, acc: Vec3f
   rot, rvel, racc: cfloat
@@ -266,9 +235,8 @@ proc main =
   setup_opengl()
 
   ## chapter 2
-  var color_buf = setup_colors()
   var player = Mesh(
-    pos: vec3f(0f, 0f, 0f),
+    pos: vec3f(0f, -1f, 0f),
     vel: vec3f(0f, 0f, 0f),
     acc: vec3f(0f, 0f, 0f),
     rot: 0f,
@@ -276,17 +244,16 @@ proc main =
     racc: 0f,
     vao: newVAO(),
     vert_vbo: newVBO(3, cube),
-    color_vbo: newVBO(3, color_buf),
+    color_vbo: newVBO(3, cube_colors),
     elem_vbo: newElemVBO(cube_index),
     program: newProgram(frags, verts, geoms),
   )
 
-  var floor_points = setup_floor_points level_1
-  var floor_colors = setup_floor_colors level_1
   var floor_plane = Mesh(
     vao: newVAO(),
-    vert_vbo: newVBO(3, floor_points),
+    vert_vbo: newVBO(3, floor_verts),
     color_vbo: newVBO(3, floor_colors),
+    elem_vbo: newElemVBO(floor_index),
     program: player.program,
   )
 
@@ -301,7 +268,7 @@ proc main =
   proc physics(mesh: var Mesh) =
     const mass = 1.0f
     const max_vel = 20.0f * vec3f( 1f, 1f, 1f )
-    mesh.acc = mass * vec3f(mouse.x, mouse.y, 0)
+    mesh.acc = mass * vec3f(mouse.x, 0, -mouse.y)
     mesh.vel = clamp(mesh.vel + dt * mesh.acc, -max_vel, max_vel)
     mesh.pos += mesh.vel * dt
 
@@ -344,8 +311,8 @@ proc main =
     player.physics()
 
     glClear GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
+    floor_plane.render GL_TRIANGLE_STRIP
     player.render
-    floor_plane.render GL_POINTS
 
     w.swapBuffers()
     glfwPollEvents()
