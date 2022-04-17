@@ -4,7 +4,7 @@ import nimgl/opengl
 import glm
 
 import models
-import level1
+import leveldata
 import contrib/heightmap
 
 const vert_source = readFile("src/shaders/player.vert")
@@ -16,17 +16,16 @@ var frags = frag_source.cstring
 const geom_source = readFile("src/shaders/player.geom")
 var geoms = "".cstring
 
-
 if os.getEnv("CI") != "": quit()
 
 type
   VAO = object
     id: uint32
-  VBO = object
+  VBO[T] = object
     id: uint32
     dimensions: cint
     n_verts: cint
-    data: seq[cfloat]
+    data: seq[T]
   Shader = object
     id: uint32
     code: cstring
@@ -50,7 +49,7 @@ proc newVAO(): VAO =
   glGenVertexArrays(1, result.id.addr)
   glBindVertexArray(result.id)
 
-proc newVBO[T](n: cint, data: var seq[T]): VBO =
+proc newVBO[T](n: cint, data: var seq[T]): VBO[T] =
   result.data = data
   result.dimensions = n
   result.n_verts = data.len.cint div n
@@ -58,6 +57,13 @@ proc newVBO[T](n: cint, data: var seq[T]): VBO =
   glBindBuffer GL_ARRAY_BUFFER, result.id
   glBufferData GL_ARRAY_BUFFER, cint(T.sizeof * result.data.len), result.data[0].addr, GL_STATIC_DRAW
 
+proc newElemVBO[T](data: var seq[T]): VBO[T] =
+  result.data = data
+  result.dimensions = 1
+  result.n_verts = data.len.cint
+  glGenBuffers 1, result.id.addr
+  glBindBuffer GL_ELEMENT_ARRAY_BUFFER, result.id
+  glBufferData GL_ELEMENT_ARRAY_BUFFER, cint(T.sizeof * result.data.len), result.data[0].addr, GL_STATIC_DRAW
 
 proc check(shader: Shader) =
   var status: int32
@@ -90,7 +96,8 @@ proc newShader(kind: GLEnum, code: var cstring): Shader =
   result.check
 
 proc `=destroy`(o: var VAO) = glDeleteVertexArrays 1, o.id.addr
-proc `=destroy`(o: var VBO) = glDeleteBuffers 1, o.id.addr
+proc `=destroy`(o: var VBO[cushort]) = glDeleteBuffers 1, o.id.addr
+proc `=destroy`(o: var VBO[cfloat]) = glDeleteBuffers 1, o.id.addr
 proc `=destroy`(shader: var Shader) = shader.id.glDeleteShader
 proc `=destroy`(program: var Program) = program.id.glDeleteProgram
 
@@ -114,6 +121,9 @@ proc newProgram(frag_code, vert_code, geom_code: var cstring): Program =
     result.id.glDetachShader geometry.id
 
 var width, height: int32
+width = 1600
+height = 1200
+
 proc display_size(): (int32, int32) =
   var monitor = glfwGetPrimaryMonitor()
   var videoMode = monitor.getVideoMode()
@@ -154,8 +164,6 @@ proc setup_glfw(): GLFWWindow =
   glfwWindowHint(GLFWTransparentFramebuffer, GLFW_FALSE);
 
   #(width, height) = display_size()
-  width = 1600
-  height = 1200
   let w = glfwCreateWindow(width, height, "NimGL", nil, nil)
   doAssert w != nil
 
@@ -180,10 +188,6 @@ proc setup_opengl() =
   glEnable GL_DEPTH_TEST # Enable depth test
   glDepthFunc GL_LESS    # Accept fragment if it closer to the camera than the former one
 
-
-proc len(vbo: VBO): GLint {.inline.} =
-  return (vbo.data.len() div 3).int32
-
 proc apply(vbo: VBO, n: GLuint) {.inline.} =
   glEnableVertexAttribArray n
   glBindBuffer GL_ARRAY_BUFFER, vbo.id
@@ -192,7 +196,11 @@ proc apply(vbo: VBO, n: GLuint) {.inline.} =
 proc draw(vbo: VBO, kind: GLEnum = GL_TRIANGLES) {.inline.} =
   glDrawArrays kind, 0, vbo.n_verts
 
-proc cleanup(w: GLFWWindow) =
+proc drawElem(vbo: VBO, kind: GLEnum = GL_TRIANGLES) {.inline.} =
+  glBindBuffer GL_ELEMENT_ARRAY_BUFFER, vbo.id
+  glDrawElements kind, vbo.n_verts, GL_UNSIGNED_SHORT, nil
+
+proc cleanup(w: GLFWWindow) {.inline.} =
   w.destroyWindow
   glfwTerminate()
 
@@ -204,15 +212,52 @@ proc setup_colors(): seq[cfloat] =
     result[3*i+1] = 1.0f * phase
     result[3*i+2] = 0.5f * (1.0-phase)
 
+proc setup_floor_points[T](level: seq[T]): seq[cfloat] =
+  let w = level.len.float.sqrt.int
+  result = newSeq[cfloat](3 * w * w)
+  for z in 0..<w:
+    for x in 0..<w:
+      let index = 3 * (w * z + x)
+      let y = level[w * z + x]
+      result[index+0] = x.cfloat
+      result[index+1] = y.cfloat
+      result[index+2] = z.cfloat
+
+proc setup_floor_colors[T](level: seq[T]): seq[cfloat] =
+  let w = level.len.float.sqrt.int
+  result = newSeq[cfloat](3 * w * w)
+  for z in 0..<w:
+    for x in 0..<w:
+      let index = 3 * (w * z + x)
+      let y = level[w * z + x]
+      result[index+0] = 1f
+      result[index+1] = 0f
+      result[index+2] = 1f
+
 type Mesh = ref object
   pos, vel, acc: Vec3f
   rot, rvel, racc: cfloat
   vao: VAO
-  vert_vbo, color_vbo: VBO
+  vert_vbo, color_vbo: VBO[cfloat]
+  elem_vbo: VBO[cushort]
   mvp: Mat4f
   model: Mat4f
   matrix: Matrix
   program: Program
+
+## chapter 3
+let aspect: float32 = width / height
+var proj: Mat4f = perspective(radians(45.0f), aspect, 0.1f, 100.0f)
+#var proj: Mat4f = ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.0f, 20.0f) # In world coordinates
+var view = lookAt(
+  vec3f( 0f,  49f,  49f ), # camera pos
+  vec3f( 0f,  0f,  0f ), # target
+  vec3f( 0f,  1f,  0f ), # up
+)
+
+var t  = 0.0f
+var dt = 0.0f
+var time = 0.0f
 
 proc main =
   let w = setup_glfw()
@@ -232,68 +277,75 @@ proc main =
     vao: newVAO(),
     vert_vbo: newVBO(3, cube),
     color_vbo: newVBO(3, color_buf),
+    elem_vbo: newElemVBO(cube_index),
     program: newProgram(frags, verts, geoms),
   )
 
-  ## chapter 3
-  let aspect: float32 = width / height
-  var proj: Mat4f = perspective(radians(45.0f), aspect, 0.1f, 100.0f)
-  #var proj: Mat4f = ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.0f, 20.0f) # In world coordinates
-  var view = lookAt(
-    vec3f( 0f,  7f,  49f ), # camera pos
-    vec3f( 0f,  0f,  0f ), # target
-    vec3f( 0f,  1f,  0f ), # up
+  var floor_points = setup_floor_points level_1
+  var floor_colors = setup_floor_colors level_1
+  var floor_plane = Mesh(
+    vao: newVAO(),
+    vert_vbo: newVBO(3, floor_points),
+    color_vbo: newVBO(3, floor_colors),
+    program: player.program,
   )
+
   player.model  = mat4(1.0f).translate(player.pos)
   player.mvp    = proj * view * player.model
   player.matrix = player.program.newMatrix(player.mvp)
 
-  var t  = 0.0f
-  var dt = 0.0f
-  proc physics() =
-    let time = glfwGetTime()
-    dt = time - t
-    t = time
+  floor_plane.model = mat4(1.0f)
+  floor_plane.mvp = proj * view * floor_plane.model
+  floor_plane.matrix = floor_plane.program.newMatrix(floor_plane.mvp)
 
+  proc physics(mesh: var Mesh) =
     const mass = 1.0f
     const max_vel = 20.0f * vec3f( 1f, 1f, 1f )
-    player.acc = mass * vec3f(mouse.x, mouse.y, 0)
-    player.vel = clamp(player.vel + dt * player.acc, -max_vel, max_vel)
-    player.pos += player.vel * dt
+    mesh.acc = mass * vec3f(mouse.x, mouse.y, 0)
+    mesh.vel = clamp(mesh.vel + dt * mesh.acc, -max_vel, max_vel)
+    mesh.pos += mesh.vel * dt
 
     const max_rvel = 6.0f
-    player.racc += mouse.z
-    player.rvel  = clamp( player.rvel + dt * player.racc, -max_rvel, max_rvel )
-    player.rot  += player.rvel * dt
+    mesh.racc += mouse.z
+    mesh.rvel  = clamp( mesh.rvel + dt * mesh.racc, -max_rvel, max_rvel )
+    mesh.rot  += mesh.rvel * dt
 
     const friction = 0.995
-    player.vel  *= friction
-    player.rvel *= friction
-    player.racc *= friction
+    mesh.vel  *= friction
+    mesh.rvel *= friction
+    mesh.racc *= friction
 
     mouse *= 0
 
-    player.model = mat4(1.0f)
-      .translate(player.pos)
-      .rotateY(radians(360 * player.rot))
-    player.mvp = proj * view * player.model
-    player.matrix.update player.mvp
+    mesh.model = mat4(1.0f)
+      .scale(0.5f)
+      .translate(mesh.pos)
+      .rotateY(radians(360 * mesh.rot))
+    mesh.mvp = proj * view * mesh.model
 
+  proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
+    mesh.matrix.update mesh.mvp
+    glUseProgram mesh.program.id
+    mesh.vert_vbo.apply 0
+    mesh.color_vbo.apply 1
+    if mesh.elem_vbo.n_verts > 0:
+      mesh.elem_vbo.draw_elem kind
+    else:
+      mesh.vert_vbo.draw kind
+    glDisableVertexAttribArray 0
+    glDisableVertexAttribArray 1
 
   # main loop
   while not w.windowShouldClose():
-    physics()
+    time = glfwGetTime()
+    dt = time - t
+    t = time
+
+    player.physics()
 
     glClear GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
-
-    glUseProgram player.program.id
-
-    player.vert_vbo.apply 0
-    player.color_vbo.apply 1
-    player.vert_vbo.draw()
-
-    glDisableVertexAttribArray 0
-    glDisableVertexAttribArray 1
+    player.render
+    floor_plane.render GL_POINTS
 
     w.swapBuffers()
     glfwPollEvents()

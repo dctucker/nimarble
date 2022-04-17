@@ -213,3 +213,12 @@ proc newHeightMap*(width,height: int): HeightMap =
   result.w = width
   result.h = height
   result.dataseq = newSeq[float32](width*height)
+
+proc newHeightMap*(data: seq[int]): HeightMap =
+  result.w = data.len.float.sqrt.int
+  result.h = result.w
+  result.dataseq = newSeq[float32](result.w*result.h)
+  for i in 0..<result.h:
+    for j in 0..<result.w:
+      let index = i * result.h + j
+      result.dataseq[index] = data[index].float32
