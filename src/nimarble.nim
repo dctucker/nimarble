@@ -225,7 +225,7 @@ var view = lookAt(
   vec3f( 0f,  40f,  29f ), # camera pos
   vec3f( 0f,   0f,   0f ), # target
   vec3f( 0f,   1f,   0f ), # up
-)
+).rotateY(radians(-45f))
 
 var t  = 0.0f
 var dt = 0.0f
@@ -266,27 +266,34 @@ proc main =
   player.mvp    = proj * view * player.model
   player.matrix = player.program.newMatrix(player.mvp, "MVP")
 
-  floor_plane.model = mat4(1.0f).scale(1f, level_squash, 1f).rotateY(radians(-45f))
+  floor_plane.model = mat4(1.0f).scale(1f, level_squash, 1f)#.rotateY(radians(-45f))
   floor_plane.mvp = proj * view * floor_plane.model
   floor_plane.matrix = floor_plane.program.newMatrix(floor_plane.mvp, "MVP")
+
+  proc rotate_mouse(mouse: Vec3f): Vec3f =
+    const th = radians(45f)
+    const rot_matrix = mat2f(vec2f(cos(th), sin(th)), vec2f(-sin(th), cos(th)))
+    let m = rot_matrix * vec2f(mouse.x, mouse.y)
+    result = vec3f(m.x, m.y, mouse.z)
 
   proc physics(mesh: var Mesh) =
     const mass = 1.0f
     const max_vel = 20.0f * vec3f( 1f, 1f, 1f )
     const gravity = -9.8f
-    let coord = mesh.model.rotateY(radians(-45f))
-    let x = coord[3].x
-    let z = coord[3].z
+    let coord = mat4f(1f).scale(0.5f).translate(mesh.pos).rotateY(radians(45f))[3]
+    let x = coord.x.int
+    let z = coord.z.int
     let fh = floor_height(x, z)
     let bh = mesh.pos.y / level_squash / 2f
-    stdout.write "\rx = ", x.int, ", z = ", z.int, ", y = ", bh.int, ", h = ", fh.int
+    stdout.write "\rx = ", x, ", z = ", z, ", y = ", bh.int, ", h = ", fh.int, "\27[K"
     var floor = 9.8f
     if fh < bh:
       floor = 0f
     else:
       mesh.vel.y = 0f
       mesh.pos.y = fh * level_squash * 2
-    mesh.acc = mass * vec3f(mouse.x, floor + gravity, -mouse.y)
+    let m = rotate_mouse(mouse)
+    mesh.acc = mass * vec3f(m.x, floor + gravity, -m.y)
     mesh.vel = clamp(mesh.vel + dt * mesh.acc, -max_vel, max_vel)
     mesh.pos += mesh.vel * dt
 

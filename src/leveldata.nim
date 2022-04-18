@@ -204,7 +204,7 @@ proc setup_floor_index[T](level: seq[T]): Index =
 
 var floor_index* = setup_floor_index level_1
 
-proc floor_height*(x,z: float): float =
+proc floor_height*(x,z: int): float =
   let i = (z+o).int
   let j = (x+o).int
   if i < 0 or j < 0 or i >= h-1 or j >= w-1: return EE.float
