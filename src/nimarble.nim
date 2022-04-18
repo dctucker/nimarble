@@ -140,12 +140,14 @@ proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mod
     discard
   else: discard
 
+proc middle(): Vec2f = vec2f(width.float * 0.5f, height.float * 0.5f)
+
 var mouse: Vec3f
 proc mouseProc(window: GLFWWindow, xpos, ypos: cdouble): void {.cdecl.} =
-  let middle = vec2f(width.float * 0.5f, height.float * 0.5f)
-  window.setCursorPos middle.x, middle.y
-  mouse.x = -(middle.x - xpos)
-  mouse.y =  (middle.y - ypos)
+  let mid = middle()
+  window.setCursorPos mid.x, mid.y
+  mouse.x = -(mid.x - xpos)
+  mouse.y =  (mid.y - ypos)
   #echo mouse.x, "\r" #, ",", mouse.y
 
 proc scrollProc(window: GLFWWindow, xoffset, yoffset: cdouble): void {.cdecl.} =
@@ -174,6 +176,8 @@ proc setup_glfw(): GLFWWindow =
   discard w.setCursorPosCallback(mouseProc)
   discard w.setScrollCallback(scrollProc)
   w.makeContextCurrent()
+  let mid = middle()
+  w.setCursorPos mid.x, mid.y
   #w.setWindowOpacity(0.9)
   result = w
 
@@ -277,7 +281,7 @@ proc main =
     result = vec3f(m.x, m.y, mouse.z)
 
   proc physics(mesh: var Mesh) =
-    const mass = 1.0f
+    const mass = 5.0f
     const max_vel = 20.0f * vec3f( 1f, 1f, 1f )
     const gravity = -9.8f
     let coord = mat4f(1f).scale(0.5f).translate(mesh.pos).rotateY(radians(45f))[3]
@@ -285,7 +289,7 @@ proc main =
     let z = coord.z.int
     let fh = floor_height(x, z)
     let bh = mesh.pos.y / level_squash / 2f
-    stdout.write "\rx = ", x, ", z = ", z, ", y = ", bh.int, ", h = ", fh.int, "\27[K"
+    #stdout.write "\rx = ", x, ", z = ", z, ", y = ", bh.int, ", h = ", fh.int, "\27[K"
     var floor = 9.8f
     if fh < bh:
       floor = 0f
@@ -339,11 +343,11 @@ proc main =
 
     glPolygonMode      GL_FRONT_AND_BACK, GL_FILL
     glEnable           GL_POLYGON_OFFSET_FILL
+    glPolygonOffset 1f, 1f
     floor_plane.render GL_TRIANGLE_STRIP
     glDisable          GL_POLYGON_OFFSET_FILL
 
     glPolygonMode      GL_FRONT_AND_BACK, GL_LINE
-    glPolygonOffset 1f, 1f
     floor_plane.render GL_TRIANGLE_STRIP
 
     glPolygonMode      GL_FRONT_AND_BACK, GL_FILL

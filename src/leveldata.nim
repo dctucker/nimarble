@@ -1,24 +1,70 @@
-#var level_1* = @[
-#  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-#  0,  0, -1, -1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-#  0,  0, -1, -1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-#  0,  0, -1, -1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-#  0,  0, -1, -1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-#  0,  0, -1, -1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-#  0,  0, -1, -1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-#  0,  0, -1, -1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-#  0,  0, -1, -1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-#  0,  0, -1, -1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-#  0,  0, -1, -1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-#  0,  0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  0,
-#  0,  0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  0,
-#  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-#  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-#  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-#]
-
 const EE = -256
-var level_1 = @[
+
+const w = 23
+const h = w
+const o = 13
+
+#const level_0 = @[
+#
+#  55 54  54 53  53 52
+#  54 53  53 52  52 51
+#
+#  54 53  53 52  52 51
+#  53 52  52 51  51 50
+#
+#  53 52  52 51  51 50 
+#  52 51  51 50  50 49
+#]
+type CliffMask = enum
+  xx = 0,     # regulard slope
+  LL = 1,     # L is left
+  JJ = 2,     # J is right
+  HH,         # H is left and right
+  AA = 4,     # A is up
+  LA, AJ, AH,
+  VV = 8,     # V is down
+  LV, VJ, VH,
+  II, IL, IJ, # I is top and bottom
+  IH,         # oops! all cliffs
+
+  #LA,AA,AJ,
+  #LL,xx JJ,
+  #LV,VV,VJ
+
+const level_1_mask: seq[CliffMask] = @[
+  xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
+  xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,VJ, VV,VV,VV, VV,VV,VV, VV,VV,xx,
+
+  xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,JJ, LA,AA,AA, AA,AA,AA, AA,AA,xx,
+  xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,JJ, LL,xx,xx, xx,xx,xx, xx,xx,xx,
+  xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,JJ, LL,xx,xx, xx,xx,xx, xx,xx,xx,
+
+  xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,JJ, LL,xx,xx, xx,xx,xx, xx,xx,xx,
+  xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,JJ, LL,xx,xx, xx,xx,xx, xx,xx,xx,
+  xx,xx, xx,xx,xx, xx,xx,VJ, VV,VV,VV, VV,VV,VJ, LL,xx,xx, xx,xx,VJ, VV,VV,VJ,
+
+  xx,xx, xx,xx,xx, xx,xx,JJ, LA,AA,AA, AA,AA,AA, LA,xx,xx, xx,xx,JJ, LA,AA,AJ,
+  xx,xx, xx,xx,xx, xx,xx,JJ, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,JJ, LL,xx,JJ,
+  xx,xx, xx,xx,xx, xx,xx,JJ, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,JJ, LV,VV,VJ,
+
+  xx,xx, xx,xx,xx, xx,xx,JJ, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,AJ, AA,AA,AA,
+  xx,xx, xx,xx,xx, xx,xx,JJ, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
+  xx,xx, xx,xx,xx, xx,xx,JJ, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
+
+  xx,xx, LA,AA,AA, AA,AA,AJ, LA,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
+  xx,xx, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
+  xx,xx, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
+
+  xx,xx, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
+  xx,xx, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
+  xx,xx, LL,xx,xx, xx,xx,VJ, VV,VV,VV, LV,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
+
+  xx,xx, xx,xx,xx, xx,xx,JJ, LA,AA,AJ, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
+  xx,xx, xx,xx,xx, xx,xx,JJ, LL,xx,JJ, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
+  xx,xx, xx,xx,xx, xx,xx,JJ, LV,VV,VJ, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
+]
+
+const level_1 = @[
   EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE,
   EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE,
 
@@ -51,10 +97,62 @@ var level_1 = @[
   EE,EE, EE,EE,EE, 47,47,47, EE,EE,EE, 43,43,43, EE,EE,EE, EE,EE,EE, EE,EE,EE,
 ]
 
+proc get_value[T](level: seq[T], x,z: int): T =
+  let index = w * z + x
+  if index in level_1.low..level_1.high:
+    return level[index]
+  return EE
 
-const w = 23
-const h = w
-const o = 13
+proc setup_floor_verts[T](level: seq[T], level_mask: seq[CliffMask]): seq[cfloat] =
+  const q = 0.5
+  const dim = 3
+  const nv = 8
+  var verts = newSeqOfCap[cfloat](dim * w * w)
+  for z in -o..<h-o:
+    for x in -o..<w-o:
+      let offset = w * z + x
+      let y = level[offset]
+
+      verts.add cfloat x - q
+      verts.add cfloat y
+      verts.add cfloat z - q
+
+      verts.add cfloat x - q
+      verts.add cfloat y
+      verts.add cfloat z + q
+
+      verts.add cfloat x + q
+      verts.add cfloat y
+      verts.add cfloat z - q
+
+      verts.add cfloat x + q
+      verts.add cfloat y
+      verts.add cfloat z + q
+
+
+      let left = ( get_value(x - 1, z).cfloat + y.cfloat ) / 2.cfloat
+      if level_mask[offset] and LL: # left
+        discard
+      else:
+        discard
+      verts.add cfloat x - q
+      verts.add cfloat left
+      verts.add cfloat z - q
+
+      if level_mask[offset] and JJ: # right
+        discard
+      else:
+        discard
+      if level_mask[offset] and AA: # up
+        discard
+      else:
+        discard
+      if level_mask[offset] and VV: # down
+        discard
+      else:
+        discard
+
+  result = verts
 
 proc setup_floor_points[T](level: seq[T]): seq[cfloat] =
   result = newSeq[cfloat](3 * w * w)
@@ -84,7 +182,7 @@ proc setup_floor_colors[T](level: seq[T]): seq[cfloat] =
         result[index+0] = 1.0 #((y.float-COLOR_H) * (1.0/COLOR_D))
         result[index+1] = ((y.float-COLOR_H) * (1.0/COLOR_D))
         result[index+2] = ((y.float-COLOR_H) * (1.0/COLOR_D))
-        result[index+3] = 0.8
+        result[index+3] = 1.0
 
 var floor_verts* = setup_floor_points level_1
 var floor_colors* = setup_floor_colors level_1
