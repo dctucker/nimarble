@@ -17,34 +17,35 @@
 #  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
 #]
 
-const E = -300
+const EE = -20
 var level_1* = @[
-  E, E, E,  E, E, E,  E, E, E,  E, E, E,   6, 5, 4,  3, 3, 3,
-  E, E, E,  E, E, E,  E, E, E,  E, E, E,   5, 2, 3,  2, 2, 2,
-  E, E, E,  E, E, E,  E, E, E,  E, E, E,   4, 3, 4,  1, 1, 1,
+  EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, 56,55,54, 53,53,53, EE,
+  EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, 55,52,53, 52,52,52, EE,
+  EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, 54,53,54, 51,51,51, EE,
 
-  E, E, E,  E, E, E,  E, E, E,  E, E, E,   3, 2, 1,  0, 0, 0,
-  E, E, E,  E, E, E,  E, E, E,  E, E, E,   3, 2, 1,  0, 0, 0,
-  E, E, E,  E, E, E,  E, E, E,  E, E, E,   3, 2, 1,  0, 0, 0,
+  EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, 53,52,51, 50,50,50, EE,
+  EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, 53,52,51, 50,50,50, EE,
+  EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, 53,52,51, 50,50,50, EE,
 
-  E, E, E,  E, E, E,  5, 4, 3,  3, 3, 3,   2, 1, 0,  -1,-1,-1,
-  E, E, E,  E, E, E,  4, 3, 2,  2, 2, 2,   1, 0,-1,  -2,-2,-2,
-  E, E, E,  E, E, E,  3, 2, 1,  1, 1, 1,   0,-1,-2,  -3,-3,-3,
+  EE,EE,EE, EE,EE,EE, 55,54,53, 53,53,53, 52,51,50, 49,49,49, EE,
+  EE,EE,EE, EE,EE,EE, 54,53,52, 52,52,52, 51,50,49, 48,48,48, EE,
+  EE,EE,EE, EE,EE,EE, 53,52,51, 51,51,51, 50,49,48, 47,47,47, EE,
 
-  E, E, E,  E, E, E,  3, 2, 1,  0, 0, 0,  -3,-3,-3,  -4,-5,-6,
-  E, E, E,  E, E, E,  3, 2, 1,  0, 0, 0,  -3,-3,-3,  -4,-5,-6,
-  E, E, E,  E, E, E,  3, 2, 1,  0, 0, 0,  -3,-3,-3,  -4,-5,-6,
+  EE,EE,EE, EE,EE,EE, 53,52,51, 50,50,50, 49,48,47, 46,46,46, EE,
+  EE,EE,EE, EE,EE,EE, 53,52,51, 50,50,50, 49,48,47, 46,46,46, EE,
+  EE,EE,EE, EE,EE,EE, 53,52,51, 50,50,50, 49,48,47, 46,46,46, EE,
 
-  6, 5, 4,  3, 3, 3,  2, 1, 0, -1,-1,-1,  -3,-3,-3,  -4,-5,-6,
-  5, 4, 3,  2, 2, 2,  1, 0,-1, -2,-2,-2,  -3,-3,-3,  -4,-5,-6,
-  4, 3, 2,  1, 1, 1,  0,-1,-2, -3,-3,-3,  -3,-3,-3,  -4,-5,-6,
+  56,55,54, 53,53,53, 52,51, 0, 49,49,49, 49,48,47, 46,46,46, EE,
+  55,54,53, 52,52,52, 51,50,49, 48,48,48, 48,47,46, 45,45,45, EE,
+  54,53,52, 51,51,51, 50,49,48, 47,47,47, 47,46,45, 44,44,44, EE,
 
-  3, 2, 1,  0, 0, 0, -1,-2,-3, -4,-4,-4,  -3,-3,-3,  -4,-5,-6,
-  3, 2, 1,  0, 0, 0, -1,-2,-3, -4,-4,-4,  -3,-3,-3,  -4,-5,-6,
-  3, 2, 1,  0, 0, 0, -1,-2,-3, -4,-4,-4,  -3,-3,-3,  -4,-5,-6,
+  53,52,51, 50,50,50, 49,48,47, 46,46,46, 47,47,47, 46,45,44, EE,
+  53,52,51, 50,50,50, 49,48,47, 46,46,46, 47,47,47, 46,45,44, EE,
+  53,52,51, 50,50,50, 49,48,47, 46,46,46, 47,47,47, 46,45,44, EE,
+  EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,
 ]
 
-let w = 18
+let w = 19
 let h = w
 
 proc setup_floor_points[T](level: seq[T]): seq[cfloat] =
@@ -58,14 +59,20 @@ proc setup_floor_points[T](level: seq[T]): seq[cfloat] =
       result[index+2] = z.cfloat
 
 proc setup_floor_colors[T](level: seq[T]): seq[cfloat] =
+  const COLOR_H = 50f
   result = newSeq[cfloat](3 * w * w)
   for z in 0..<w:
     for x in 0..<w:
       let index = 3 * (w * z + x)
       let y = level[w * z + x]
-      result[index+0] = 0.5 + (-y.float * (1.0/E.float))
-      result[index+1] = 0.5 + (-y.float * (1.0/E.float))
-      result[index+2] = 1f
+      if y == EE:
+        result[index+0] = 1.0
+        result[index+1] = 0.8
+        result[index+2] = 0.0
+      else:
+        result[index+0] = 0.5 + (y.float * (1.0/COLOR_H))
+        result[index+1] = 0.5 + (y.float * (1.0/COLOR_H))
+        result[index+2] = 0.5 + (y.float * (1.0/COLOR_H))
 
 var floor_verts* = setup_floor_points level_1
 var floor_colors* = setup_floor_colors level_1
