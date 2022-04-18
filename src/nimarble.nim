@@ -35,15 +35,15 @@ type
     fragment: Shader
   Matrix = object
     id: GLint
-    mvp*: Mat4f
+    matrix*: Mat4f
 
 proc update(matrix: Matrix, value: var Mat4f) =
-  matrix.id.glUniformMatrix4fv 1, false, value.caddr
+  glUniformMatrix4fv matrix.id, 1, false, value.caddr
 
-proc newMatrix(program: Program, mvp: var Mat4f): Matrix =
-  result.mvp = mvp
-  result.id = glGetUniformLocation(program.id, "MVP")
-  result.update mvp
+proc newMatrix(program: Program, matrix: var Mat4f, name: string): Matrix =
+  result.matrix = matrix
+  result.id = glGetUniformLocation(program.id, name)
+  result.update matrix
 
 proc newVAO(): VAO =
   glGenVertexArrays(1, result.id.addr)
@@ -187,6 +187,9 @@ proc setup_opengl() =
   glEnable GL_DEPTH_TEST # Enable depth test
   glDepthFunc GL_LESS    # Accept fragment if it closer to the camera than the former one
 
+  glEnable GL_BLEND
+  glBlendFunc GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
+
 proc apply(vbo: VBO, n: GLuint) {.inline.} =
   glEnableVertexAttribArray n
   glBindBuffer GL_ARRAY_BUFFER, vbo.id
@@ -219,9 +222,9 @@ let aspect: float32 = width / height
 var proj: Mat4f = perspective(radians(45.0f), aspect, 0.1f, 100.0f)
 #var proj: Mat4f = ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.0f, 20.0f) # In world coordinates
 var view = lookAt(
-  vec3f( 0f,  49f,  49f ), # camera pos
-  vec3f( 0f,  0f,  0f ), # target
-  vec3f( 0f,  1f,  0f ), # up
+  vec3f( 0f,  40f,  29f ), # camera pos
+  vec3f( 0f,   0f,   0f ), # target
+  vec3f( 0f,   1f,   0f ), # up
 )
 
 var t  = 0.0f
@@ -230,13 +233,15 @@ var time = 0.0f
 
 proc main =
   let w = setup_glfw()
+  const level_squash = 0.2f
+  const player_top = 1f + 50f * level_squash * 2f
 
   ## chapter 1
   setup_opengl()
 
   ## chapter 2
   var player = Mesh(
-    pos: vec3f(0f, -1f, 0f),
+    pos: vec3f(0f, player_top, 0f),
     vel: vec3f(0f, 0f, 0f),
     acc: vec3f(0f, 0f, 0f),
     rot: 0f,
@@ -244,7 +249,7 @@ proc main =
     racc: 0f,
     vao: newVAO(),
     vert_vbo: newVBO(3, cube),
-    color_vbo: newVBO(3, cube_colors),
+    color_vbo: newVBO(4, cube_colors),
     elem_vbo: newElemVBO(cube_index),
     program: newProgram(frags, verts, geoms),
   )
@@ -252,23 +257,36 @@ proc main =
   var floor_plane = Mesh(
     vao: newVAO(),
     vert_vbo: newVBO(3, floor_verts),
-    color_vbo: newVBO(3, floor_colors),
+    color_vbo: newVBO(4, floor_colors),
     elem_vbo: newElemVBO(floor_index),
     program: player.program,
   )
 
-  player.model  = mat4(1.0f).translate(player.pos)
+  player.model  = mat4(1.0f).scale(0.5f).translate(player.pos)
   player.mvp    = proj * view * player.model
-  player.matrix = player.program.newMatrix(player.mvp)
+  player.matrix = player.program.newMatrix(player.mvp, "MVP")
 
-  floor_plane.model = mat4(1.0f).scale(1f, 0.2f, 1f).rotateY(radians(-45f)).translate(vec3f(0f,0f,-10f))
+  floor_plane.model = mat4(1.0f).scale(1f, level_squash, 1f).rotateY(radians(-45f))
   floor_plane.mvp = proj * view * floor_plane.model
-  floor_plane.matrix = floor_plane.program.newMatrix(floor_plane.mvp)
+  floor_plane.matrix = floor_plane.program.newMatrix(floor_plane.mvp, "MVP")
 
   proc physics(mesh: var Mesh) =
     const mass = 1.0f
     const max_vel = 20.0f * vec3f( 1f, 1f, 1f )
-    mesh.acc = mass * vec3f(mouse.x, 0, -mouse.y)
+    const gravity = -9.8f
+    let coord = mesh.model.rotateY(radians(-45f))
+    let x = coord[3].x
+    let z = coord[3].z
+    let fh = floor_height(x, z)
+    let bh = mesh.pos.y / level_squash / 2f
+    stdout.write "\rx = ", x.int, ", z = ", z.int, ", y = ", bh.int, ", h = ", fh.int
+    var floor = 9.8f
+    if fh < bh:
+      floor = 0f
+    else:
+      mesh.vel.y = 0f
+      mesh.pos.y = fh * level_squash * 2
+    mesh.acc = mass * vec3f(mouse.x, floor + gravity, -mouse.y)
     mesh.vel = clamp(mesh.vel + dt * mesh.acc, -max_vel, max_vel)
     mesh.pos += mesh.vel * dt
 
@@ -277,7 +295,7 @@ proc main =
     mesh.rvel  = clamp( mesh.rvel + dt * mesh.racc, -max_rvel, max_rvel )
     mesh.rot  += mesh.rvel * dt
 
-    const friction = 0.995
+    const friction = 0.986
     mesh.vel  *= friction
     mesh.rvel *= friction
     mesh.racc *= friction
@@ -310,18 +328,18 @@ proc main =
 
     player.physics()
 
-    glClear GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
+    glClear            GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
 
-    #glPolygonMode( GL_FRONT_AND_BACK, GL_FILL )
-    #glEnable GL_POLYGON_OFFSET_FILL
-    #floor_plane.render GL_TRIANGLE_STRIP
-    #glDisable GL_POLYGON_OFFSET_FILL
+    glPolygonMode      GL_FRONT_AND_BACK, GL_FILL
+    glEnable           GL_POLYGON_OFFSET_FILL
+    floor_plane.render GL_TRIANGLE_STRIP
+    glDisable          GL_POLYGON_OFFSET_FILL
 
-    glPolygonMode( GL_FRONT_AND_BACK, GL_LINE )
-    glPolygonOffset( 1f, 1f )
+    glPolygonMode      GL_FRONT_AND_BACK, GL_LINE
+    glPolygonOffset 1f, 1f
     floor_plane.render GL_TRIANGLE_STRIP
 
-    glPolygonMode( GL_FRONT_AND_BACK, GL_FILL )
+    glPolygonMode      GL_FRONT_AND_BACK, GL_FILL
     player.render
 
     w.swapBuffers()

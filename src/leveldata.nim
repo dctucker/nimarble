@@ -17,36 +17,44 @@
 #  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
 #]
 
-const EE = -20
-var level_1* = @[
-  EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, 56,55,54, 53,53,53, EE,
-  EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, 55,52,53, 52,52,52, EE,
-  EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, 54,53,54, 51,51,51, EE,
+const EE = -256
+var level_1 = @[
+  EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE,
+  EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE,
 
-  EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, 53,52,51, 50,50,50, EE,
-  EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, 53,52,51, 50,50,50, EE,
-  EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, 53,52,51, 50,50,50, EE,
+  EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, 56,55,54, 53,53,53, 52,51,EE,
+  EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, 55,54,53, 52,52,52, 51,50,49,
+  EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, 54,53,52, 51,51,51, 50,49,48,
 
-  EE,EE,EE, EE,EE,EE, 55,54,53, 53,53,53, 52,51,50, 49,49,49, EE,
-  EE,EE,EE, EE,EE,EE, 54,53,52, 52,52,52, 51,50,49, 48,48,48, EE,
-  EE,EE,EE, EE,EE,EE, 53,52,51, 51,51,51, 50,49,48, 47,47,47, EE,
+  EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, 53,52,51, 50,50,50, 49,48,47,
+  EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, 53,52,51, 50,50,50, 49,48,47,
+  EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, 53,52,51, 50,50,50, 49,48,47,
 
-  EE,EE,EE, EE,EE,EE, 53,52,51, 50,50,50, 49,48,47, 46,46,46, EE,
-  EE,EE,EE, EE,EE,EE, 53,52,51, 50,50,50, 49,48,47, 46,46,46, EE,
-  EE,EE,EE, EE,EE,EE, 53,52,51, 50,50,50, 49,48,47, 46,46,46, EE,
+  EE,EE, EE,EE,EE, EE,EE,EE, 55,54,53, 53,53,53, 52,51,50, 49,49,49, EE,EE,EE,
+  EE,EE, EE,EE,EE, EE,EE,EE, 54,53,52, 52,52,52, 51,50,49, 48,48,48, EE,EE,EE,
+  EE,EE, EE,EE,EE, EE,EE,EE, 53,52,51, 51,51,51, 50,49,48, 47,47,47, EE,EE,EE,
 
-  56,55,54, 53,53,53, 52,51, 0, 49,49,49, 49,48,47, 46,46,46, EE,
-  55,54,53, 52,52,52, 51,50,49, 48,48,48, 48,47,46, 45,45,45, EE,
-  54,53,52, 51,51,51, 50,49,48, 47,47,47, 47,46,45, 44,44,44, EE,
+  EE,EE, EE,EE,EE, EE,EE,EE, 53,52,51, 50,50,50, 49,48,47, 46,46,46, 45,44,43,
+  EE,EE, EE,EE,EE, EE,EE,EE, 53,52,51, 50,50,50, 49,48,47, 46,46,46, 45,44,43,
+  EE,EE, EE,EE,EE, EE,EE,EE, 53,52,51, 50,50,50, 49,48,47, 46,46,46, 45,44,43,
 
-  53,52,51, 50,50,50, 49,48,47, 46,46,46, 47,47,47, 46,45,44, EE,
-  53,52,51, 50,50,50, 49,48,47, 46,46,46, 47,47,47, 46,45,44, EE,
-  53,52,51, 50,50,50, 49,48,47, 46,46,46, 47,47,47, 46,45,44, EE,
-  EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,
+  EE,EE, 56,55,54, 53,53,53, 52,51,50, 49,49,49, 49,48,47, 46,46,46, 45,44,43,
+  EE,EE, 55,54,53, 52,52,52, 51,50,49, 48,48,48, 48,47,46, 45,45,45, 44,43,42,
+  EE,EE, 54,53,52, 51,51,51, 50,49,48, 47,47,47, 47,46,45, 44,44,44, 43,42,41,
+
+  EE,EE, 53,52,51, 50,50,50, 49,48,47, 46,46,46, 47,47,47, 46,45,44, EE,EE,EE,
+  EE,EE, 53,52,51, 50,50,50, 49,48,47, 46,46,46, 47,47,47, 46,45,44, EE,EE,EE,
+  EE,EE, 53,52,51, 50,50,50, 49,48,47, 46,46,46, 47,47,47, 46,45,44, EE,EE,EE,
+
+  EE,EE, EE,51,50, 49,49,49, EE,EE,EE, 45,45,45, EE,EE,EE, EE,EE,EE, EE,EE,EE,
+  EE,EE, EE,EE,49, 48,48,48, EE,EE,EE, 44,44,44, EE,EE,EE, EE,EE,EE, EE,EE,EE,
+  EE,EE, EE,EE,EE, 47,47,47, EE,EE,EE, 43,43,43, EE,EE,EE, EE,EE,EE, EE,EE,EE,
 ]
 
-let w = 19
-let h = w
+
+const w = 23
+const h = w
+const o = 13
 
 proc setup_floor_points[T](level: seq[T]): seq[cfloat] =
   result = newSeq[cfloat](3 * w * w)
@@ -54,25 +62,29 @@ proc setup_floor_points[T](level: seq[T]): seq[cfloat] =
     for x in 0..<w:
       let index = 3 * (w * z + x)
       let y = level[w * z + x]
-      result[index+0] = x.cfloat
+      result[index+0] = (x-o).cfloat
       result[index+1] = y.cfloat
-      result[index+2] = z.cfloat
+      result[index+2] = (z-o).cfloat
 
+const ch = 4
 proc setup_floor_colors[T](level: seq[T]): seq[cfloat] =
-  const COLOR_H = 50f
-  result = newSeq[cfloat](3 * w * w)
+  const COLOR_H = 44f
+  const COLOR_D = 56f - 44f
+  result = newSeq[cfloat](ch * w * w)
   for z in 0..<w:
     for x in 0..<w:
-      let index = 3 * (w * z + x)
+      let index = ch * (w * z + x)
       let y = level[w * z + x]
       if y == EE:
-        result[index+0] = 1.0
-        result[index+1] = 0.8
+        result[index+0] = 0.0
+        result[index+1] = 0.0
         result[index+2] = 0.0
+        result[index+3] = 0.0
       else:
-        result[index+0] = 0.5 + (y.float * (1.0/COLOR_H))
-        result[index+1] = 0.5 + (y.float * (1.0/COLOR_H))
-        result[index+2] = 0.5 + (y.float * (1.0/COLOR_H))
+        result[index+0] = 1.0 #((y.float-COLOR_H) * (1.0/COLOR_D))
+        result[index+1] = ((y.float-COLOR_H) * (1.0/COLOR_D))
+        result[index+2] = ((y.float-COLOR_H) * (1.0/COLOR_D))
+        result[index+3] = 0.8
 
 var floor_verts* = setup_floor_points level_1
 var floor_colors* = setup_floor_colors level_1
@@ -191,3 +203,10 @@ proc setup_floor_index[T](level: seq[T]): Index =
       V1 = V2 + N.cushort
 
 var floor_index* = setup_floor_index level_1
+
+proc floor_height*(x,z: float): float =
+  let i = (z+o).int
+  let j = (x+o).int
+  if i < 0 or j < 0 or i >= h-1 or j >= w-1: return EE.float
+  return level_1[i * w + j].float
+
