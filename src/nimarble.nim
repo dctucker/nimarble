@@ -281,9 +281,9 @@ proc main =
     rvel: 0f,
     racc: 0f,
     vao: newVAO(),
-    vert_vbo: newVBO(3, cube),
-    color_vbo: newVBO(4, cube_colors),
-    elem_vbo: newElemVBO(cube_index),
+    vert_vbo: newVBO(3, sphere),
+    color_vbo: newVBO(4, sphere_colors),
+    elem_vbo: newElemVBO(sphere_index),
     program: newProgram(frags, verts, geoms),
   )
 
@@ -367,11 +367,11 @@ proc main =
 
     glClear            GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
 
-    glPolygonMode      GL_FRONT_AND_BACK, GL_FILL
-    glEnable           GL_POLYGON_OFFSET_FILL
-    glPolygonOffset 1f, 1f
-    floor_plane.render GL_TRIANGLE_STRIP
-    glDisable          GL_POLYGON_OFFSET_FILL
+    #glPolygonMode      GL_FRONT_AND_BACK, GL_FILL
+    #glEnable           GL_POLYGON_OFFSET_FILL
+    #glPolygonOffset 1f, 1f
+    #floor_plane.render GL_TRIANGLE_STRIP
+    #glDisable          GL_POLYGON_OFFSET_FILL
 
     glPolygonMode      GL_FRONT_AND_BACK, GL_LINE
     floor_plane.render GL_TRIANGLE_STRIP

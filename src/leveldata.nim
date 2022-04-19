@@ -80,7 +80,7 @@ proc tsv_lines(line: string): seq[float] =
     if s.len() > 0: s.parseFloat
     else: 0
   )
-  echo result.len
+  #echo result.len
 
 const level_1 = staticRead("../levels/1.tsv").splitLines.map(tsv_lines).flatten()
 #echo level_1
@@ -217,8 +217,8 @@ proc setup_floor_index[T](level: seq[T]): Index =
   of   UpOut:  diagdir = Up
   of DownIn :  diagdir = Down
   of DownOut:  diagdir = Down
-  else:
-    return newSeq[cushort](0)
+  #else:
+  #  return newSeq[cushort](0)
 
   # Calculate the total number of vertices in the resultant triangle
   # strip.  This is equal to the number of vertices for each column
