@@ -128,17 +128,35 @@ proc display_size(): (int32, int32) =
   var videoMode = monitor.getVideoMode()
   return (videoMode.width, videoMode.height)
 
+var view: Mat4f
+var pan: Vec3f
 proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mods: int32): void {.cdecl.} =
-  case action
-  of GLFWPress:
-    case key
-    of GLFWKey.Q,
-       GLFWKey.Escape:
-      window.setWindowShouldClose(true)
-    else: discard
-  of GLFWRelease:
-    discard
+  case key
+  of GLFWKey.Up:
+    if action == GLFWPress:
+      pan += vec3f(+0.1f, 0f, +0.1f)
+    elif action == GLFWRelease:
+      pan = vec3f(0f,0f,0f)
+  of GLFWKey.Down:
+    if action == GLFWPress:
+      pan += vec3f(-0.1f, 0f, -0.1f)
+    elif action == GLFWRelease:
+      pan = vec3f(0f,0f,0f)
+  of GLFWKey.Left:
+    if action == GLFWPress:
+      pan += vec3f(+0.1f, 0f, -0.1f)
+    elif action == GLFWRelease:
+      pan = vec3f(0f,0f,0f)
+  of GLFWKey.Right:
+    if action == GLFWPress:
+      pan += vec3f(-0.1f, 0f, +0.1f)
+    elif action == GLFWRelease:
+      pan = vec3f(0f,0f,0f)
+  of GLFWKey.Q,
+     GLFWKey.Escape:
+    window.setWindowShouldClose(true)
   else: discard
+  pan = pan.clamp(-0.1f, 0.1f)
 
 proc middle(): Vec2f = vec2f(width.float * 0.5f, height.float * 0.5f)
 
@@ -221,15 +239,26 @@ type Mesh = ref object
   matrix: Matrix
   program: Program
 
-## chapter 3
+proc rotate_mouse(mouse: Vec3f): Vec3f =
+  const th = radians(45f)
+  const rot_matrix = mat2f(vec2f(cos(th), sin(th)), vec2f(-sin(th), cos(th)))
+  let m = rot_matrix * vec2f(mouse.x, mouse.y)
+  result = vec3f(m.x, m.y, mouse.z)
+
+const field_width = 10f
 let aspect: float32 = width / height
-var proj: Mat4f = perspective(radians(45.0f), aspect, 0.1f, 100.0f)
-#var proj: Mat4f = ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.0f, 20.0f) # In world coordinates
-var view = lookAt(
-  vec3f( 0f,  40f,  29f ), # camera pos
+#var proj: Mat4f = perspective(radians(30.0f), aspect, 0.1f, 200.0f)
+var proj: Mat4f = ortho(aspect * -field_width, aspect * field_width, -field_width, field_width, 0f, 100f) # In world coordinates
+const distance = 50f
+let xlat = vec3f( oz*1.5, 0, oz*1.5 )
+#let xlat = vec3f( xlat_rot.x, 0, xlat_rot.y )
+view = lookAt(
+  vec3f( 0f,  distance,  distance ), # camera pos
   vec3f( 0f,   0f,   0f ), # target
   vec3f( 0f,   1f,   0f ), # up
-).rotateY(radians(-45f))
+).rotateY(radians(-45f)).translate( xlat )
+
+
 
 var t  = 0.0f
 var dt = 0.0f
@@ -237,7 +266,7 @@ var time = 0.0f
 
 proc main =
   let w = setup_glfw()
-  const level_squash = 0.2f
+  const level_squash = 0.5f
   const player_top = 1f + 50f * level_squash * 2f
 
   ## chapter 1
@@ -274,14 +303,8 @@ proc main =
   floor_plane.mvp = proj * view * floor_plane.model
   floor_plane.matrix = floor_plane.program.newMatrix(floor_plane.mvp, "MVP")
 
-  proc rotate_mouse(mouse: Vec3f): Vec3f =
-    const th = radians(45f)
-    const rot_matrix = mat2f(vec2f(cos(th), sin(th)), vec2f(-sin(th), cos(th)))
-    let m = rot_matrix * vec2f(mouse.x, mouse.y)
-    result = vec3f(m.x, m.y, mouse.z)
-
   proc physics(mesh: var Mesh) =
-    const mass = 5.0f
+    const mass = 1.0f
     const max_vel = 20.0f * vec3f( 1f, 1f, 1f )
     const gravity = -9.8f
     let coord = mat4f(1f).scale(0.5f).translate(mesh.pos).rotateY(radians(45f))[3]
@@ -317,9 +340,9 @@ proc main =
       .scale(0.5f)
       .translate(mesh.pos)
       .rotateY(radians(360 * mesh.rot))
-    mesh.mvp = proj * view * mesh.model
 
   proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
+    mesh.mvp = proj * view * mesh.model
     mesh.matrix.update mesh.mvp
     glUseProgram mesh.program.id
     mesh.vert_vbo.apply 0
@@ -336,6 +359,9 @@ proc main =
     time = glfwGetTime()
     dt = time - t
     t = time
+
+    view = view.translate(pan)
+
 
     player.physics()
 

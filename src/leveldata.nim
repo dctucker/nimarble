@@ -1,8 +1,14 @@
-const EE = -256
+import sequtils
+import strutils
 
-const w = 23
-const h = w
-const o = 13
+const EE = 0
+
+const w = 114
+const h = 74
+
+#AG13
+const ox* = 32
+const oz* = 12
 
 #const level_0 = @[
 #
@@ -64,38 +70,20 @@ const level_1_mask: seq[CliffMask] = @[
   xx,xx, xx,xx,xx, xx,xx,JJ, LV,VV,VJ, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
 ]
 
-const level_1 = @[
-  EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE,
-  EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE,
+proc flatten[T](input: seq[seq[T]]): seq[T] =
+  for row in input:
+    for value in row:
+      result.add value
 
-  EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, 56,55,54, 53,53,53, 52,51,EE,
-  EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, 55,54,53, 52,52,52, 51,50,49,
-  EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, 54,53,52, 51,51,51, 50,49,48,
+proc tsv_lines(line: string): seq[float] =
+  result = line.split("\t").map(proc(s:string):float =
+    if s.len() > 0: s.parseFloat
+    else: 0
+  )
+  echo result.len
 
-  EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, 53,52,51, 50,50,50, 49,48,47,
-  EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, 53,52,51, 50,50,50, 49,48,47,
-  EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, EE,EE,EE, 53,52,51, 50,50,50, 49,48,47,
-
-  EE,EE, EE,EE,EE, EE,EE,EE, 55,54,53, 53,53,53, 52,51,50, 49,49,49, EE,EE,EE,
-  EE,EE, EE,EE,EE, EE,EE,EE, 54,53,52, 52,52,52, 51,50,49, 48,48,48, EE,EE,EE,
-  EE,EE, EE,EE,EE, EE,EE,EE, 53,52,51, 51,51,51, 50,49,48, 47,47,47, EE,EE,EE,
-
-  EE,EE, EE,EE,EE, EE,EE,EE, 53,52,51, 50,50,50, 49,48,47, 46,46,46, 45,44,43,
-  EE,EE, EE,EE,EE, EE,EE,EE, 53,52,51, 50,50,50, 49,48,47, 46,46,46, 45,44,43,
-  EE,EE, EE,EE,EE, EE,EE,EE, 53,52,51, 50,50,50, 49,48,47, 46,46,46, 45,44,43,
-
-  EE,EE, 56,55,54, 53,53,53, 52,51,50, 49,49,49, 49,48,47, 46,46,46, 45,44,43,
-  EE,EE, 55,54,53, 52,52,52, 51,50,49, 48,48,48, 48,47,46, 45,45,45, 44,43,42,
-  EE,EE, 54,53,52, 51,51,51, 50,49,48, 47,47,47, 47,46,45, 44,44,44, 43,42,41,
-
-  EE,EE, 53,52,51, 50,50,50, 49,48,47, 46,46,46, 47,47,47, 46,45,44, EE,EE,EE,
-  EE,EE, 53,52,51, 50,50,50, 49,48,47, 46,46,46, 47,47,47, 46,45,44, EE,EE,EE,
-  EE,EE, 53,52,51, 50,50,50, 49,48,47, 46,46,46, 47,47,47, 46,45,44, EE,EE,EE,
-
-  EE,EE, EE,51,50, 49,49,49, EE,EE,EE, 45,45,45, EE,EE,EE, EE,EE,EE, EE,EE,EE,
-  EE,EE, EE,EE,49, 48,48,48, EE,EE,EE, 44,44,44, EE,EE,EE, EE,EE,EE, EE,EE,EE,
-  EE,EE, EE,EE,EE, 47,47,47, EE,EE,EE, 43,43,43, EE,EE,EE, EE,EE,EE, EE,EE,EE,
-]
+const level_1 = staticRead("../levels/1.tsv").splitLines.map(tsv_lines).flatten()
+#echo level_1
 
 proc get_value[T](level: seq[T], x,z: int): T =
   let index = w * z + x
@@ -108,8 +96,8 @@ proc setup_floor_verts[T](level: seq[T], level_mask: seq[CliffMask]): seq[cfloat
   const dim = 3
   const nv = 8
   var verts = newSeqOfCap[cfloat](dim * w * w)
-  for z in -o..<h-o:
-    for x in -o..<w-o:
+  for z in -oz..<h-oz:
+    for x in -ox..<w-ox:
       let offset = w * z + x
       let y = level[offset]
 
@@ -155,21 +143,21 @@ proc setup_floor_verts[T](level: seq[T], level_mask: seq[CliffMask]): seq[cfloat
   result = verts
 
 proc setup_floor_points[T](level: seq[T]): seq[cfloat] =
-  result = newSeq[cfloat](3 * w * w)
-  for z in 0..<w:
+  result = newSeq[cfloat](3 * w * h)
+  for z in 0..<h:
     for x in 0..<w:
       let index = 3 * (w * z + x)
       let y = level[w * z + x]
-      result[index+0] = (x-o).cfloat
+      result[index+0] = (x-ox).cfloat
       result[index+1] = y.cfloat
-      result[index+2] = (z-o).cfloat
+      result[index+2] = (z-oz).cfloat
 
 const ch = 4
 proc setup_floor_colors[T](level: seq[T]): seq[cfloat] =
   const COLOR_H = 44f
   const COLOR_D = 56f - 44f
-  result = newSeq[cfloat](ch * w * w)
-  for z in 0..<w:
+  result = newSeq[cfloat](ch * w * h)
+  for z in 0..<h:
     for x in 0..<w:
       let index = ch * (w * z + x)
       let y = level[w * z + x]
@@ -303,8 +291,8 @@ proc setup_floor_index[T](level: seq[T]): Index =
 var floor_index* = setup_floor_index level_1
 
 proc floor_height*(x,z: int): float =
-  let i = (z+o).int
-  let j = (x+o).int
+  let i = (z+oz).int
+  let j = (x+ox).int
   if i < 0 or j < 0 or i >= h-1 or j >= w-1: return EE.float
   return level_1[i * w + j].float
 
