@@ -292,7 +292,7 @@ proc setup_floor_index[T](level: seq[T]): Index =
 var floor_index* = setup_floor_index level_1
 
 proc xlat_coord(x,z: float): (int,int) =
-  return (z.int+oz-1, x.int+ox-1)
+  return ((z.floor+oz.float).int, (x.floor+ox.float).int)
 
 proc floor_height*(x,z: float): float =
   let (i,j) = xlat_coord(x,z)
@@ -324,15 +324,16 @@ proc point_height*(x,z: float): float =
   let h3 = floor_height( v3.x, v3.z )
   let h4 = floor_height( v4.x, v4.z )
   #stdout.write ", ", h1.toString, ", ", h2.toString, ", ", h3.toString, ", ", h4.toString
-  let c1 = v2.x.int.float - x
-  let c2 = v2.z.int.float - z
-  let c3 = z - v1.z.int.float
-  let c4 = x - v1.x.int.float
-  let n1 = h1 * c1 * c2
-  let n2 = h2 * c4 * c2
-  let n3 = h3 * c1 * c3
-  let n4 = h4 * c4 * c3
-  stdout.write ",", c1.toString, ",", c2.toString, ",", c3.toString, ",", c4.toString
+  let c2x = v2.x.floor - x
+  let c2z = v2.z.floor - z
+  let c1z = z - v1.z.floor
+  let c1x = x - v1.x.floor
+  let n1 = h1 * c2x * c2z
+  let n2 = h2 * c1x * c2z
+  let n3 = h3 * c2x * c1z
+  let n4 = h4 * c1x * c1z
+  stdout.write ", c1x=", c1x.toString, ", c1z=", c1z.toString
+  stdout.write ", c2x=", c2x.toString, ", c2z=", c2z.toString
   #let den = (v2.x - v1.x) * (v2.z - v1.z)
   #if den == 0f:
   #  return h1

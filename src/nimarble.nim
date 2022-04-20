@@ -142,6 +142,8 @@ const player_top = 1f + 50f * level_squash * 2f
 
 proc reset_player =
   player.pos = vec3f(0f, player_top, 0f)
+  player.vel = vec3f(0,0,0)
+  player.acc = vec3f(0,0,0)
 
 proc display_size(): (int32, int32) =
   var monitor = glfwGetPrimaryMonitor()
