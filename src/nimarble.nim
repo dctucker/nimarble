@@ -1,4 +1,5 @@
 import os
+import strutils
 import nimgl/glfw
 import nimgl/opengl
 import glm
@@ -36,6 +37,18 @@ type
   Matrix = object
     id: GLint
     matrix*: Mat4f
+
+type Mesh = ref object
+  pos, vel, acc: Vec3f
+  rot, rvel, racc: cfloat
+  vao: VAO
+  vert_vbo, color_vbo: VBO[cfloat]
+  elem_vbo: VBO[cushort]
+  mvp: Mat4f
+  model: Mat4f
+  matrix: Matrix
+  program: Program
+
 
 proc update(matrix: Matrix, value: var Mat4f) =
   glUniformMatrix4fv matrix.id, 1, false, value.caddr
@@ -123,6 +136,13 @@ var width, height: int32
 width = 1600
 height = 1200
 
+var player: Mesh
+const level_squash = 0.5f
+const player_top = 1f + 50f * level_squash * 2f
+
+proc reset_player =
+  player.pos = vec3f(0f, player_top, 0f)
+
 proc display_size(): (int32, int32) =
   var monitor = glfwGetPrimaryMonitor()
   var videoMode = monitor.getVideoMode()
@@ -152,6 +172,8 @@ proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mod
       pan += vec3f(-0.1f, 0f, +0.1f)
     elif action == GLFWRelease:
       pan = vec3f(0f,0f,0f)
+  of GLFWKey.R:
+    reset_player()
   of GLFWKey.Q,
      GLFWKey.Escape:
     window.setWindowShouldClose(true)
@@ -228,17 +250,6 @@ proc cleanup(w: GLFWWindow) {.inline.} =
   w.destroyWindow
   glfwTerminate()
 
-type Mesh = ref object
-  pos, vel, acc: Vec3f
-  rot, rvel, racc: cfloat
-  vao: VAO
-  vert_vbo, color_vbo: VBO[cfloat]
-  elem_vbo: VBO[cushort]
-  mvp: Mat4f
-  model: Mat4f
-  matrix: Matrix
-  program: Program
-
 proc rotate_mouse(mouse: Vec3f): Vec3f =
   const th = radians(45f)
   const rot_matrix = mat2f(vec2f(cos(th), sin(th)), vec2f(-sin(th), cos(th)))
@@ -266,14 +277,12 @@ var time = 0.0f
 
 proc main =
   let w = setup_glfw()
-  const level_squash = 0.5f
-  const player_top = 1f + 50f * level_squash * 2f
 
   ## chapter 1
   setup_opengl()
 
   ## chapter 2
-  var player = Mesh(
+  player = Mesh(
     pos: vec3f(0f, player_top, 0f),
     vel: vec3f(0f, 0f, 0f),
     acc: vec3f(0f, 0f, 0f),
@@ -303,26 +312,34 @@ proc main =
   floor_plane.mvp = proj * view * floor_plane.model
   floor_plane.matrix = floor_plane.program.newMatrix(floor_plane.mvp, "MVP")
 
+  proc toString[T: float](f: T, prec: int = 8): string =
+    result = f.formatFloat(ffDecimal, prec)
+
   proc physics(mesh: var Mesh) =
+    const sky = 100f
     const mass = 1.0f
     const max_vel = 20.0f * vec3f( 1f, 1f, 1f )
-    const gravity = -9.8f
+    const gravity = -39f
     let coord = mat4f(1f).scale(0.5f).translate(mesh.pos).rotateY(radians(45f))[3]
-    let x = coord.x.int
-    let z = coord.z.int
-    let fh = floor_height(x, z)
+    let x = coord.x
+    let z = coord.z
+    let fh = point_height(x, z)
     let bh = mesh.pos.y / level_squash / 2f
-    #stdout.write "\rx = ", x, ", z = ", z, ", y = ", bh.int, ", h = ", fh.int, "\27[K"
-    var floor = 9.8f
+    stdout.write "\rx = ", x.toString(3), ", z = ", z.toString(3), ", y = ", bh.int, ", h = ", fh.toString(3)
+    stdout.write ", slope = ", slope(x,z)
+    stdout.write "\27[K"
+
+    var floor = -gravity
     if fh < bh:
       floor = 0f
     else:
       mesh.vel.y = 0f
-      mesh.pos.y = fh * level_squash * 2
+    #  mesh.pos.y = fh * level_squash * 2
     let m = rotate_mouse(mouse)
-    mesh.acc = mass * vec3f(m.x, floor + gravity, -m.y)
+    mesh.acc = mass * vec3f(m.x, floor+gravity, -m.y) - gravity * slope(x,z)
     mesh.vel = clamp(mesh.vel + dt * mesh.acc, -max_vel, max_vel)
     mesh.pos += mesh.vel * dt
+    mesh.pos.y = clamp(mesh.pos.y, fh, sky)
 
     const max_rvel = 6.0f
     mesh.racc += mouse.z

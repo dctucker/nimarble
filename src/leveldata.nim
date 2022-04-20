@@ -1,3 +1,4 @@
+import glm
 import sequtils
 import strutils
 
@@ -290,9 +291,45 @@ proc setup_floor_index[T](level: seq[T]): Index =
 
 var floor_index* = setup_floor_index level_1
 
-proc floor_height*(x,z: int): float =
-  let i = (z+oz).int
-  let j = (x+ox).int
+proc xlat_coord(x,z: float): (int,int) =
+  return ((z+oz).int, (x+ox).int)
+
+proc floor_height*(x,z: float): float =
+  let (i,j) = xlat_coord(x,z)
   if i < 0 or j < 0 or i >= h-1 or j >= w-1: return EE.float
   return level_1[i * w + j].float
+
+proc slope*(x,z: float): Vec3f =
+  const default = vec3f(0,0,0)
+  let (i,j) = xlat_coord(x,z)
+  if i < 0 or j < 0 or i >= h-1 or j >= w-1:
+    return default
+  let p0 = floor_height(x,z)
+  let p1 = floor_height(x+1,z)
+  let p2 = floor_height(x,z+1)
+  #let p3 = floor_height(x+1,z+1)
+  #let dxz = p0 - p3
+  let dx = p0 - p1
+  let dz = p0 - p2
+
+  return vec3f( dx, 0f, dz )
+  #return vec3f( 0.5 * ((p0-p1) + (p3-p1)), 0f , 0.5 * ((p0-p2) + (p3-p2)) )
+
+proc point_height*(x,z: float): float =
+  let v1 = vec3f( x   ,0, z   )
+  let v2 = vec3f( x+1 ,0, z   )
+  let v3 = vec3f( x   ,0, z+1 )
+  let v4 = vec3f( x+1 ,0, z+1 )
+  let h1 = floor_height( v1.x, v1.z)
+  let h2 = floor_height( v2.x, v2.z)
+  let h3 = floor_height( v3.x, v3.z)
+  let h4 = floor_height( v4.x, v4.z)
+  let n1 = h1 * (v2.x - x) * (v2.z - z)
+  let n2 = h2 * (x - v1.x) * (v2.z - z)
+  let n3 = h3 * (v2.x - x) * (z - v1.z)
+  let n4 = h4 * (x - v1.x) * (z - v1.z)
+  let den = (v2.x - v1.x) * (v2.z - v1.z)
+  if den == 0f:
+    return h1
+  result = (n1 + n2 + n3 + n4) / den
 
