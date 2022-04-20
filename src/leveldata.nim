@@ -315,28 +315,15 @@ proc toString(x: float): string =
   x.formatFloat(ffDecimal,3)
 
 proc point_height*(x,z: float): float =
-  let v1 = vec3f( x   ,0, z   )
-  let v2 = vec3f( x+1 ,0, z   )
-  let v3 = vec3f( x   ,0, z+1 )
-  let v4 = vec3f( x+1 ,0, z+1 )
-  let h1 = floor_height( v1.x, v1.z )
-  let h2 = floor_height( v2.x, v2.z )
-  let h3 = floor_height( v3.x, v3.z )
-  let h4 = floor_height( v4.x, v4.z )
-  #stdout.write ", ", h1.toString, ", ", h2.toString, ", ", h3.toString, ", ", h4.toString
-  let c2x = v2.x.floor - x
-  let c2z = v2.z.floor - z
-  let c1z = z - v1.z.floor
-  let c1x = x - v1.x.floor
-  let n1 = h1 * c2x * c2z
-  let n2 = h2 * c1x * c2z
-  let n3 = h3 * c2x * c1z
-  let n4 = h4 * c1x * c1z
-  stdout.write ", c1x=", c1x.toString, ", c1z=", c1z.toString
-  stdout.write ", c2x=", c2x.toString, ", c2z=", c2z.toString
-  #let den = (v2.x - v1.x) * (v2.z - v1.z)
-  #if den == 0f:
-  #  return h1
-  result = n1 + n2 + n3 + n4
+  let h1 = floor_height( x+0, z+0 )
+  let h2 = floor_height( x+1, z+0 )
+  let h3 = floor_height( x+0, z+1 )
+  let h4 = floor_height( x+1, z+1 )
+  let ux = x - x.floor
+  let uz = z - z.floor
+  result  = h1 * (1-ux) * (1-uz)
+  result += h2 *    ux  * (1-uz)
+  result += h3 * (1-ux) * uz
+  result += h4 * ux * uz
   stdout.write ", floor = ", result.formatFloat(ffDecimal, 3)
 

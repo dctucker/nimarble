@@ -136,51 +136,81 @@ var width, height: int32
 width = 1600
 height = 1200
 
+var view: Mat4f
+var pan_vel: Vec3f
+var pan: Vec3f
 var player: Mesh
 const level_squash = 0.5f
 const player_top = 1f + 50f * level_squash * 2f
+
+proc reset_view =
+  const distance = 50f
+  let xlat = vec3f( oz*1.5, 0, oz*1.5 )
+  view = lookAt(
+    vec3f( 0f,  distance,  distance ), # camera pos
+    vec3f( 0f,   0f,   0f ), # target
+    vec3f( 0f,   1f,   0f ), # up
+  ).rotateY(radians(-45f)).translate( xlat )
+  pan = vec3f(0,0,0)
 
 proc reset_player =
   player.pos = vec3f(0f, player_top, 0f)
   player.vel = vec3f(0,0,0)
   player.acc = vec3f(0,0,0)
+  pan_vel = vec3f(0,0,0)
+  #view = view.translate( vec3f( -view[3].x, 0, -view[3].z ) ).translate( vec3f( oz*1.5, 0, oz*1.5 ) )
+
+proc rotate_coord(v: Vec3f): Vec3f =
+  let v4 = mat4f(1f).scale(0.5f).translate(v).rotateY(radians(45f))[3]
+  result = vec3f(v4.x, v4.y, v4.z)
+
+proc follow_player =
+  let threshold = 1f
+
+  echo player.pos
+  let pla = rotate_coord(player.pos) * vec3f(1,0,1)
+  let delta = pla - pan
+
+  if delta.x < -threshold or delta.z < -threshold:
+    pan += vec3f(-0.1f, 0f, -0.1f)
+  elif delta.x > threshold or delta.z > threshold:
+    pan += vec3f(+0.1f, 0f, +0.1f)
 
 proc display_size(): (int32, int32) =
   var monitor = glfwGetPrimaryMonitor()
   var videoMode = monitor.getVideoMode()
   return (videoMode.width, videoMode.height)
 
-var view: Mat4f
-var pan: Vec3f
 proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mods: int32): void {.cdecl.} =
   case key
   of GLFWKey.Up:
     if action == GLFWPress:
-      pan += vec3f(+0.1f, 0f, +0.1f)
+      pan_vel += vec3f(-0.1f, 0f, -0.1f)
     elif action == GLFWRelease:
-      pan = vec3f(0f,0f,0f)
+      pan_vel = vec3f(0f,0f,0f)
   of GLFWKey.Down:
     if action == GLFWPress:
-      pan += vec3f(-0.1f, 0f, -0.1f)
+      pan_vel += vec3f(+0.1f, 0f, +0.1f)
     elif action == GLFWRelease:
-      pan = vec3f(0f,0f,0f)
+      pan_vel = vec3f(0f,0f,0f)
   of GLFWKey.Left:
     if action == GLFWPress:
-      pan += vec3f(+0.1f, 0f, -0.1f)
+      pan_vel += vec3f(-0.1f, 0f, +0.1f)
     elif action == GLFWRelease:
-      pan = vec3f(0f,0f,0f)
+      pan_vel = vec3f(0f,0f,0f)
   of GLFWKey.Right:
     if action == GLFWPress:
-      pan += vec3f(-0.1f, 0f, +0.1f)
+      pan_vel += vec3f(+0.1f, 0f, -0.1f)
     elif action == GLFWRelease:
-      pan = vec3f(0f,0f,0f)
+      pan_vel = vec3f(0f,0f,0f)
   of GLFWKey.R:
     reset_player()
+    reset_view()
   of GLFWKey.Q,
      GLFWKey.Escape:
     window.setWindowShouldClose(true)
   else: discard
-  pan = pan.clamp(-0.1f, 0.1f)
+  pan_vel = pan_vel.clamp(-0.1f, 0.1f)
 
 proc middle(): Vec2f = vec2f(width.float * 0.5f, height.float * 0.5f)
 
@@ -262,16 +292,7 @@ const field_width = 10f
 let aspect: float32 = width / height
 #var proj: Mat4f = perspective(radians(30.0f), aspect, 0.1f, 200.0f)
 var proj: Mat4f = ortho(aspect * -field_width, aspect * field_width, -field_width, field_width, 0f, 100f) # In world coordinates
-const distance = 50f
-let xlat = vec3f( oz*1.5, 0, oz*1.5 )
-#let xlat = vec3f( xlat_rot.x, 0, xlat_rot.y )
-view = lookAt(
-  vec3f( 0f,  distance,  distance ), # camera pos
-  vec3f( 0f,   0f,   0f ), # target
-  vec3f( 0f,   1f,   0f ), # up
-).rotateY(radians(-45f)).translate( xlat )
-
-
+reset_view()
 
 var t  = 0.0f
 var dt = 0.0f
@@ -307,11 +328,11 @@ proc main =
   )
 
   player.model  = mat4(1.0f).scale(0.5f).translate(player.pos)
-  player.mvp    = proj * view * player.model
+  player.mvp    = proj * view.translate(-pan) * player.model
   player.matrix = player.program.newMatrix(player.mvp, "MVP")
 
   floor_plane.model = mat4(1.0f).scale(1f, level_squash, 1f)#.rotateY(radians(-45f))
-  floor_plane.mvp = proj * view * floor_plane.model
+  floor_plane.mvp = proj * view.translate(-pan) * floor_plane.model
   floor_plane.matrix = floor_plane.program.newMatrix(floor_plane.mvp, "MVP")
 
   proc toString[T: float](f: T, prec: int = 8): string =
@@ -322,14 +343,15 @@ proc main =
     const mass = 1.0f
     const max_vel = 20.0f * vec3f( 1f, 1f, 1f )
     const gravity = -39f
-    let coord = mat4f(1f).scale(0.5f).translate(mesh.pos).rotateY(radians(45f))[3]
+    let coord = rotate_coord(mesh.pos)
     let x = coord.x
     let z = coord.z
     let bh = mesh.pos.y / level_squash / 2f
     stdout.write "\rx = ", x.toString(3), ", z = ", z.toString(3)
     stdout.write ", y = ", bh.toString(3)
     let fh = point_height(x, z)
-    stdout.write ", slope = ", slope(x,z)
+    #stdout.write ", slope = ", slope(x,z)
+    stdout.write ", pan=", pan.x.toString(3), ",", pan.z.toString(3)
     stdout.write "\27[K"
 
     var floor = -gravity
@@ -340,7 +362,7 @@ proc main =
     #  mesh.pos.y = fh * level_squash * 2
     let m = rotate_mouse(mouse)
     let ay = floor + gravity
-    mesh.acc = mass * vec3f(m.x, 0*ay, -m.y) - gravity * slope(x,z)
+    mesh.acc = mass * vec3f(m.x, ay, -m.y) - gravity * slope(x,z)
     mesh.vel = clamp(mesh.vel + dt * mesh.acc, -max_vel, max_vel)
     mesh.pos += mesh.vel * dt
     mesh.pos.y = clamp(mesh.pos.y, fh, sky)
@@ -363,7 +385,7 @@ proc main =
       .rotateY(radians(360 * mesh.rot))
 
   proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
-    mesh.mvp = proj * view * mesh.model
+    mesh.mvp = proj * view.translate(-pan) * mesh.model
     mesh.matrix.update mesh.mvp
     glUseProgram mesh.program.id
     mesh.vert_vbo.apply 0
@@ -381,7 +403,8 @@ proc main =
     dt = time - t
     t = time
 
-    view = view.translate(pan)
+    #follow_player()
+    pan += pan_vel
 
 
     player.physics()
