@@ -316,16 +316,17 @@ proc main =
     result = f.formatFloat(ffDecimal, prec)
 
   proc physics(mesh: var Mesh) =
-    const sky = 100f
+    const sky = 60f
     const mass = 1.0f
     const max_vel = 20.0f * vec3f( 1f, 1f, 1f )
     const gravity = -39f
     let coord = mat4f(1f).scale(0.5f).translate(mesh.pos).rotateY(radians(45f))[3]
     let x = coord.x
     let z = coord.z
-    let fh = point_height(x, z)
     let bh = mesh.pos.y / level_squash / 2f
-    stdout.write "\rx = ", x.toString(3), ", z = ", z.toString(3), ", y = ", bh.int, ", h = ", fh.toString(3)
+    stdout.write "\rx = ", x.toString(3), ", z = ", z.toString(3)
+    stdout.write ", y = ", bh.toString(3)
+    let fh = point_height(x, z)
     stdout.write ", slope = ", slope(x,z)
     stdout.write "\27[K"
 
@@ -336,7 +337,8 @@ proc main =
       mesh.vel.y = 0f
     #  mesh.pos.y = fh * level_squash * 2
     let m = rotate_mouse(mouse)
-    mesh.acc = mass * vec3f(m.x, floor+gravity, -m.y) - gravity * slope(x,z)
+    let ay = floor + gravity
+    mesh.acc = mass * vec3f(m.x, 0*ay, -m.y) - gravity * slope(x,z)
     mesh.vel = clamp(mesh.vel + dt * mesh.acc, -max_vel, max_vel)
     mesh.pos += mesh.vel * dt
     mesh.pos.y = clamp(mesh.pos.y, fh, sky)
