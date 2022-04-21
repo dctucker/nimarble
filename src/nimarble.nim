@@ -57,7 +57,7 @@ proc update(matrix: Matrix, value: var Mat4f) =
 proc newMatrix(program: Program, matrix: var Mat4f, name: string): Matrix =
   result.matrix = matrix
   result.id = glGetUniformLocation(program.id, name)
-  result.update matrix
+  #result.update matrix
 
 proc newVAO(): VAO =
   glGenVertexArrays(1, result.id.addr)
@@ -142,14 +142,14 @@ var pan_vel: Vec3f
 var pan: Vec3f
 var player: Mesh
 const level_squash = 0.5f
-const player_top = 1f + 50f * level_squash * 2f
+let player_top = 1f + oy * level_squash * 2f
 
 proc reset_view =
-  const distance = 50f
+  let distance = oy
   let xlat = vec3f( oz*1.5, 0, oz*1.5 )
   view = lookAt(
     vec3f( 0f,  distance,  distance ), # camera pos
-    vec3f( 0f,   25f,   0f ), # target
+    vec3f( 0f,  0f,   0f ), # target
     vec3f( 0f,   1f,   0f ), # up
   ).rotateY(radians(-45f)).translate( xlat )
   pan = vec3f(0,0,0)
@@ -159,7 +159,6 @@ proc reset_player =
   player.vel = vec3f(0,0,0)
   player.acc = vec3f(0,0,0)
   pan_vel = vec3f(0,0,0)
-  #view = view.translate( vec3f( -view[3].x, 0, -view[3].z ) ).translate( vec3f( oz*1.5, 0, oz*1.5 ) )
 
 proc rotate_coord(v: Vec3f): Vec3f =
   let v4 = mat4f(1f).scale(0.5f).translate(v).rotateY(radians(45f))[3]
@@ -207,6 +206,16 @@ proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mod
   of GLFWKey.Right:
     if action == GLFWPress:
       pan_vel += vec3f(+0.1f, 0f, -0.1f)
+    elif action == GLFWRelease:
+      pan_vel = vec3f(0f,0f,0f)
+  of GLFWKey.PageUp:
+    if action == GLFWPress:
+      pan_vel += vec3f(0f, +0.1f, 0f)
+    elif action == GLFWRelease:
+      pan_vel = vec3f(0f,0f,0f)
+  of GLFWKey.PageDown:
+    if action == GLFWPress:
+      pan_vel += vec3f(0f, -0.1f, 0f)
     elif action == GLFWRelease:
       pan_vel = vec3f(0f,0f,0f)
   of GLFWKey.R:
@@ -315,9 +324,9 @@ proc draw_imgui =
   igBegin("Player vectors")
 
   #igText("Player vectors")
-  igSliderFloat3("pos", player.pos.arr, -100f, 100f)
-  igSliderFloat3("vel", player.vel.arr, -100f, 100f)
-  igSliderFloat3("acc", player.acc.arr, -100f, 100f)
+  igSliderFloat3("pos", player.pos.arr, -sky, sky)
+  igSliderFloat3("vel", player.vel.arr, -sky, sky)
+  igSliderFloat3("acc", player.acc.arr, -sky, sky)
 
   var sl = slope(player.pos.rotate_coord.x, player.pos.rotate_coord.z)
   igSpacing()
@@ -345,8 +354,8 @@ proc cleanup(w: GLFWWindow) {.inline.} =
 
 const field_width = 10f
 let aspect: float32 = width / height
-#var proj: Mat4f = perspective(radians(30.0f), aspect, 0.1f, 200.0f)
-var proj: Mat4f = ortho(aspect * -field_width, aspect * field_width, -field_width, field_width, 0f, 120f) # In world coordinates
+#var proj: Mat4f = perspective(radians(30.0f), aspect, 0.1f, 150.0f)
+var proj: Mat4f = ortho(aspect * -field_width, aspect * field_width, -field_width, field_width, 0f, sky) # In world coordinates
 reset_view()
 
 var t  = 0.0f
@@ -362,9 +371,6 @@ proc main =
 
   ## chapter 2
   player = Mesh(
-    pos: vec3f(0f, player_top, 0f),
-    vel: vec3f(0f, 0f, 0f),
-    acc: vec3f(0f, 0f, 0f),
     rot: 0f,
     rvel: 0f,
     racc: 0f,
@@ -374,6 +380,7 @@ proc main =
     elem_vbo: newElemVBO(sphere_index),
     program: newProgram(frags, verts, geoms),
   )
+  reset_player()
 
   var floor_plane = Mesh(
     vao: newVAO(),
@@ -395,7 +402,6 @@ proc main =
     result = f.formatFloat(ffDecimal, prec)
 
   proc physics(player: var Mesh) =
-    const sky = 60f
     const mass = 1.0f
     const max_vel = 15.0f * vec3f( 1f, 1f, 1f )
     const gravity = -59f

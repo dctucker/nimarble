@@ -87,7 +87,7 @@ const level_2_data = level_2_src.splitLines.map(tsv_lines).flatten()
 type
   Level = ref object
     width, height: int
-    origin_x, origin_z: int
+    origin_x, origin_z, origin_y: int
     data: seq[float]
 
 let level_1 = Level(
@@ -96,22 +96,26 @@ let level_1 = Level(
   height: 74,
   origin_x: 32,
   origin_z: 12,
+  origin_y: 50,
   #AG13
 )
 let level_2 = Level(
   data: level_2_data,
-  width: 157,
+  width: 158,
   height: 117,
   origin_x: 30,
   origin_z: 25,
+  origin_y: 99,
   #AE26
 )
 
-var level_ref = level_1
+var level_ref = level_2
 var w = level_ref.width
 var h = level_ref.height
 
+const sky* = 120f
 var ox* = level_ref.origin_x.float
+var oy* = level_ref.origin_y.float
 var oz* = level_ref.origin_z.float
 
 proc get_value[T](level: seq[T], x,z: int): T =
