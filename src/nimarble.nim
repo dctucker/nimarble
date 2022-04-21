@@ -165,15 +165,20 @@ proc rotate_coord(v: Vec3f): Vec3f =
   result = vec3f(v4.x, v4.y, v4.z)
 
 proc follow_player =
-  let threshold = 1f
+  let threshold = 4f
 
-  echo player.pos
-  let pla = rotate_coord(player.pos) * vec3f(1,0,1)
-  let delta = pla - pan
+  #echo player.pos
+  #let pla = rotate_coord(player.pos) * vec3f(1,0,1)
+  let pla = player.pos * vec3f(0.5,0,0.5)
+  let offset = vec3f(-5, 0, -5)
+  let d = pla - pan - offset
+  let delta = d.x + d.z
+  #stdout.write ", pla=", pla
+  stdout.write ", delta=", delta
 
-  if delta.x < -threshold or delta.z < -threshold:
+  if delta < -threshold:
     pan += vec3f(-0.1f, 0f, -0.1f)
-  elif delta.x > threshold or delta.z > threshold:
+  if delta > threshold:
     pan += vec3f(+0.1f, 0f, +0.1f)
 
 proc display_size(): (int32, int32) =
@@ -327,7 +332,7 @@ proc main =
     program: player.program,
   )
 
-  player.model  = mat4(1.0f).scale(0.5f).translate(player.pos)
+  player.model  = mat4(1.0f).translate(player.pos) #.scale(0.5f).translate(player.pos)
   player.mvp    = proj * view.translate(-pan) * player.model
   player.matrix = player.program.newMatrix(player.mvp, "MVP")
 
@@ -338,15 +343,15 @@ proc main =
   proc toString[T: float](f: T, prec: int = 8): string =
     result = f.formatFloat(ffDecimal, prec)
 
-  proc physics(mesh: var Mesh) =
+  proc physics(player: var Mesh) =
     const sky = 60f
     const mass = 1.0f
-    const max_vel = 20.0f * vec3f( 1f, 1f, 1f )
-    const gravity = -39f
-    let coord = rotate_coord(mesh.pos)
+    const max_vel = 15.0f * vec3f( 1f, 1f, 1f )
+    const gravity = -59f
+    let coord = rotate_coord(player.pos)
     let x = coord.x
     let z = coord.z
-    let bh = mesh.pos.y / level_squash / 2f
+    let bh = player.pos.y / level_squash / 2f
     stdout.write "\rx = ", x.toString(3), ", z = ", z.toString(3)
     stdout.write ", y = ", bh.toString(3)
     let fh = point_height(x, z)
@@ -358,31 +363,30 @@ proc main =
     if fh < bh:
       floor = 0f
     else:
-      mesh.vel.y = 0f
-    #  mesh.pos.y = fh * level_squash * 2
+      player.vel.y = 0f
     let m = rotate_mouse(mouse)
     let ay = floor + gravity
-    mesh.acc = mass * vec3f(m.x, ay, -m.y) - gravity * slope(x,z)
-    mesh.vel = clamp(mesh.vel + dt * mesh.acc, -max_vel, max_vel)
-    mesh.pos += mesh.vel * dt
-    mesh.pos.y = clamp(mesh.pos.y, fh, sky)
+    player.acc = mass * vec3f(m.x, ay, -m.y) - gravity * slope(x,z)
+    player.vel = clamp(player.vel + dt * player.acc, -max_vel, max_vel)
+    player.pos += player.vel * dt
+    player.pos.y = clamp(player.pos.y, fh, sky)
 
     const max_rvel = 6.0f
-    mesh.racc += mouse.z
-    mesh.rvel  = clamp( mesh.rvel + dt * mesh.racc, -max_rvel, max_rvel )
-    mesh.rot  += mesh.rvel * dt
+    player.racc += mouse.z
+    player.rvel  = clamp( player.rvel + dt * player.racc, -max_rvel, max_rvel )
+    player.rot  += player.rvel * dt
 
     const friction = 0.986
-    mesh.vel  *= friction
-    mesh.rvel *= friction
-    mesh.racc *= friction
+    player.vel  *= friction
+    player.rvel *= friction
+    player.racc *= friction
 
     mouse *= 0
 
-    mesh.model = mat4(1.0f)
+    player.model = mat4(1.0f)
       .scale(0.5f)
-      .translate(mesh.pos)
-      .rotateY(radians(360 * mesh.rot))
+      .translate(player.pos)
+      .rotateY(radians(360 * player.rot))
 
   proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
     mesh.mvp = proj * view.translate(-pan) * mesh.model
