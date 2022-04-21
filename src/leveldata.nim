@@ -303,6 +303,8 @@ proc slope*(x,z: float): Vec3f =
   let p0 = floor_height(x,z)
   let p1 = floor_height(x+1,z)
   let p2 = floor_height(x,z+1)
+  #if p0 == 0 and p1 == 0 and p2 == 0:
+  #  return vec3f(0, -1, 0)
   #let p3 = floor_height(x+1,z+1)
   #let dxz = p0 - p3
   let dx = p0 - p1
@@ -325,5 +327,5 @@ proc point_height*(x,z: float): float =
   result += h2 *    ux  * (1-uz)
   result += h3 * (1-ux) * uz
   result += h4 * ux * uz
-  stdout.write ", floor = ", result.formatFloat(ffDecimal, 3)
+  #stdout.write ", floor = ", result.formatFloat(ffDecimal, 3)
 

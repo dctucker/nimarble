@@ -1,7 +1,8 @@
 import os
 import strutils
-import nimgl/glfw
-import nimgl/opengl
+import nimgl/[glfw,opengl]
+import nimgl/imgui
+import nimgl/imgui/[impl_opengl, impl_glfw]
 import glm
 
 import models
@@ -219,6 +220,12 @@ proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mod
 
 proc middle(): Vec2f = vec2f(width.float * 0.5f, height.float * 0.5f)
 
+proc rotate_mouse(mouse: Vec3f): Vec3f =
+  const th = radians(45f)
+  const rot_matrix = mat2f(vec2f(cos(th), sin(th)), vec2f(-sin(th), cos(th)))
+  let m = rot_matrix * vec2f(mouse.x, mouse.y)
+  result = vec3f(m.x, m.y, mouse.z)
+
 var mouse: Vec3f
 proc mouseProc(window: GLFWWindow, xpos, ypos: cdouble): void {.cdecl.} =
   let mid = middle()
@@ -245,7 +252,7 @@ proc setup_glfw(): GLFWWindow =
   let w = glfwCreateWindow(width, height, "NimGL", nil, nil)
   doAssert w != nil
 
-  w.setInputMode GLFW_CURSOR_SPECIAL, GLFW_CURSOR_HIDDEN
+  w.setInputMode GLFW_CURSOR_SPECIAL, GLFWCursorDisabled
   #w.setCursor GLFWCursorDisabled
   if glfwRawMouseMotionSupported() == GLFW_TRUE:
     w.setInputMode GLFW_RAW_MOUSE_MOTION, GLFW_TRUE
@@ -264,6 +271,7 @@ proc setup_glfw(): GLFWWindow =
 
 proc setup_opengl() =
   doAssert glInit()
+
   glClear(GL_COLOR_BUFFER_BIT)
   glEnable GL_DEPTH_TEST # Enable depth test
   glDepthFunc GL_LESS    # Accept fragment if it closer to the camera than the former one
@@ -279,19 +287,56 @@ proc apply(vbo: VBO, n: GLuint) {.inline.} =
 proc draw(vbo: VBO, kind: GLEnum = GL_TRIANGLES) {.inline.} =
   glDrawArrays kind, 0, vbo.n_verts
 
-proc drawElem(vbo: VBO, kind: GLEnum = GL_TRIANGLES) {.inline.} =
+proc draw_elem(vbo: VBO, kind: GLEnum = GL_TRIANGLES) {.inline.} =
   glBindBuffer GL_ELEMENT_ARRAY_BUFFER, vbo.id
   glDrawElements kind, vbo.n_verts, GL_UNSIGNED_SHORT, nil
+
+var ig_context: ptr ImGuiContext
+proc setup_imgui(w: GLFWWindow) =
+  ig_context = igCreateContext()
+  #var io = igGetIO()
+  #io.configFlags = NoMouseCursorChange
+  doAssert igGlfwInitForOpenGL(w, true)
+  doAssert igOpenGL3Init()
+  igStyleColorsCherry()
+
+proc str(f: float): string =
+  return f.formatFloat(ffDecimal, 3)
+
+proc str(v: Vec3f): string =
+  return "x=" & v.x.str & ", y=" & v.y.str & ", z=" & v.z.str
+
+var somefloat: float32 = 0.0f
+var counter: int32 = 0
+proc draw_imgui =
+  igSetNextWindowSize(ImVec2(x:300f, y:200f))
+  igBegin("Player vectors")
+
+  #igText("Player vectors")
+  igSliderFloat3("pos", player.pos.arr, -100f, 100f)
+  igSliderFloat3("vel", player.vel.arr, -100f, 100f)
+  igSliderFloat3("acc", player.acc.arr, -100f, 100f)
+
+  var sl = slope(player.pos.rotate_coord.x, player.pos.rotate_coord.z)
+  igSliderFloat3("slope", sl.arr, -100f, 100f)
+  igSliderFloat3("pan", pan.arr, -100f, 100f)
+
+  #igText("average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
+  igEnd()
+
+proc imgui_frame =
+  igOpenGL3NewFrame()
+  igGlfwNewFrame()
+  igNewFrame()
+
+  draw_imgui()
+
+  igRender()
+  igOpenGL3RenderDrawData(igGetDrawData())
 
 proc cleanup(w: GLFWWindow) {.inline.} =
   w.destroyWindow
   glfwTerminate()
-
-proc rotate_mouse(mouse: Vec3f): Vec3f =
-  const th = radians(45f)
-  const rot_matrix = mat2f(vec2f(cos(th), sin(th)), vec2f(-sin(th), cos(th)))
-  let m = rot_matrix * vec2f(mouse.x, mouse.y)
-  result = vec3f(m.x, m.y, mouse.z)
 
 const field_width = 10f
 let aspect: float32 = width / height
@@ -308,6 +353,7 @@ proc main =
 
   ## chapter 1
   setup_opengl()
+  setup_imgui(w)
 
   ## chapter 2
   player = Mesh(
@@ -352,12 +398,8 @@ proc main =
     let x = coord.x
     let z = coord.z
     let bh = player.pos.y / level_squash / 2f
-    stdout.write "\rx = ", x.toString(3), ", z = ", z.toString(3)
-    stdout.write ", y = ", bh.toString(3)
     let fh = point_height(x, z)
-    #stdout.write ", slope = ", slope(x,z)
-    stdout.write ", pan=", pan.x.toString(3), ",", pan.z.toString(3)
-    stdout.write "\27[K"
+    #stdout.write "\27[K"
 
     var floor = -gravity
     if fh < bh:
@@ -426,6 +468,8 @@ proc main =
 
     glPolygonMode      GL_FRONT_AND_BACK, GL_FILL
     player.render
+
+    imgui_frame()
 
     w.swapBuffers()
     glfwPollEvents()
