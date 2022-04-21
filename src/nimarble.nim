@@ -149,7 +149,7 @@ proc reset_view =
   let xlat = vec3f( oz*1.5, 0, oz*1.5 )
   view = lookAt(
     vec3f( 0f,  distance,  distance ), # camera pos
-    vec3f( 0f,   0f,   0f ), # target
+    vec3f( 0f,   25f,   0f ), # target
     vec3f( 0f,   1f,   0f ), # up
   ).rotateY(radians(-45f)).translate( xlat )
   pan = vec3f(0,0,0)
@@ -298,7 +298,8 @@ proc setup_imgui(w: GLFWWindow) =
   #io.configFlags = NoMouseCursorChange
   doAssert igGlfwInitForOpenGL(w, true)
   doAssert igOpenGL3Init()
-  igStyleColorsCherry()
+  igStyleColorsDark()
+  #igPushStyleColor ImGuiCol.Text, ImVec4(x:1f, y:0f, z:1f, w:1f)
 
 proc str(f: float): string =
   return f.formatFloat(ffDecimal, 3)
@@ -309,7 +310,8 @@ proc str(v: Vec3f): string =
 var somefloat: float32 = 0.0f
 var counter: int32 = 0
 proc draw_imgui =
-  igSetNextWindowSize(ImVec2(x:300f, y:200f))
+  igSetNextWindowPos(ImVec2(x:5, y:5))
+  igSetNextWindowSize(ImVec2(x:300f, y:180f))
   igBegin("Player vectors")
 
   #igText("Player vectors")
@@ -318,6 +320,9 @@ proc draw_imgui =
   igSliderFloat3("acc", player.acc.arr, -100f, 100f)
 
   var sl = slope(player.pos.rotate_coord.x, player.pos.rotate_coord.z)
+  igSpacing()
+  igSeparator()
+  igSpacing()
   igSliderFloat3("slope", sl.arr, -100f, 100f)
   igSliderFloat3("pan", pan.arr, -100f, 100f)
 
@@ -341,7 +346,7 @@ proc cleanup(w: GLFWWindow) {.inline.} =
 const field_width = 10f
 let aspect: float32 = width / height
 #var proj: Mat4f = perspective(radians(30.0f), aspect, 0.1f, 200.0f)
-var proj: Mat4f = ortho(aspect * -field_width, aspect * field_width, -field_width, field_width, 0f, 100f) # In world coordinates
+var proj: Mat4f = ortho(aspect * -field_width, aspect * field_width, -field_width, field_width, 0f, 120f) # In world coordinates
 reset_view()
 
 var t  = 0.0f
@@ -408,7 +413,7 @@ proc main =
       player.vel.y = 0f
     let m = rotate_mouse(mouse)
     let ay = floor + gravity
-    player.acc = mass * vec3f(m.x, ay, -m.y) - gravity * slope(x,z)
+    player.acc = mass * vec3f(m.x, ay, -m.y) - gravity * slope(x,z) * 0.25
     player.vel = clamp(player.vel + dt * player.acc, -max_vel, max_vel)
     player.pos += player.vel * dt
     player.pos.y = clamp(player.pos.y, fh, sky)
