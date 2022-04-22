@@ -347,6 +347,14 @@ proc slope*(x,z: float): Vec3f =
   return vec3f( dx, 0f, dz )
   #return vec3f( 0.5 * ((p0-p1) + (p3-p1)), 0f , 0.5 * ((p0-p2) + (p3-p2)) )
 
+proc surface_normal*(x,z: float): Vec3f = 
+  let p0 = floor_height(x,z)
+  let p1 = floor_height(x+1,z)
+  let p2 = floor_height(x,z+1)
+  let u = vec3f(1, p1-p0, 0)
+  let v = vec3f(0, p2-p0, 1)
+  result = v.cross(u).normalize()
+
 proc toString(x: float): string =
   x.formatFloat(ffDecimal,3)
 

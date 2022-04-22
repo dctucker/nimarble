@@ -47,6 +47,7 @@ type Mesh = ref object
   elem_vbo: VBO[cushort]
   mvp: Mat4f
   model: Mat4f
+  normal: Vec3f
   matrix: Matrix
   program: Program
 
@@ -158,7 +159,8 @@ proc reset_player =
   player.pos = vec3f(0f, player_top, 0f)
   player.vel = vec3f(0,0,0)
   player.acc = vec3f(0,0,0)
-  player.rot = quatf(vec3f(0,0,0), 0)
+  player.rot = quatf(vec3f(0,-1,0),0).normalize
+  player.normal = vec3f(0,-1,0)
   #player.rvel = vec3f(0,0,0)
   #player.racc = vec3f(0,0,0)
   pan_vel = vec3f(0,0,0)
@@ -318,6 +320,8 @@ proc str(f: float): string =
 
 proc str(v: Vec3f): string =
   return "x=" & v.x.str & ", y=" & v.y.str & ", z=" & v.z.str
+proc str(v: Vec4f): string =
+  return "x=" & v.x.str & ", y=" & v.y.str & ", z=" & v.z.str & ", w=" & v.w.str
 
 var somefloat: float32 = 0.0f
 var counter: int32 = 0
@@ -409,6 +413,7 @@ proc main =
     const mass = 1.0f
     const max_vel = 15.0f * vec3f( 1f, 1f, 1f )
     const gravity = -59f
+    const player_radius = 0.25f
     let coord = rotate_coord(player.pos)
     let x = coord.x
     let z = coord.z
@@ -423,15 +428,24 @@ proc main =
       player.vel.y = 0f
     let m = rotate_mouse(mouse)
     let ay = floor + gravity
-    player.acc = mass * vec3f(m.x, ay, -m.y) - gravity * slope(x,z) * 0.25
+    let ramp = slope(x,z)
+    player.acc = mass * vec3f(m.x, ay, -m.y) - gravity * ramp * 0.25
     player.vel = clamp(player.vel + dt * player.acc, -max_vel, max_vel)
     player.pos += player.vel * dt
     player.pos.y = clamp(player.pos.y, fh, sky)
 
     const max_rvel = vec3f(6f,6f,6f)
     #player.racc.y += mouse.z
-    player.rot = player.rot
-      .rotate( 0.03 * player.vel.length, player.vel.normalize())
+    if (player.vel * vec3f(1,0,1)).length > 0:
+      var dir = player.vel.normalize()
+      var axis = player.normal.cross dir
+      #var ax = mat4f(1f).translate(dir).rotateY(radians(-90f))[3]
+      #var axis = vec3f(ax.x, ax.y, ax.z)
+      echo axis.str
+      let angle = player.vel.length * dt / player_radius / Pi
+      #player.rot = quatf(axis, angle) * player.rot
+      player.rot = player.rot.rotate(angle, axis)
+
 
     const friction = 0.986
     player.vel  *= friction
@@ -440,10 +454,13 @@ proc main =
 
     mouse *= 0
 
-    player.model = mat4(1.0f).scale(0.5f).translate(player.pos) * player.rot.mat4f
-      #.rotateX(radians(360 * player.rot.x))
-      #.rotateZ(radians(360 * player.rot.z))
-      #.rotateY(radians(360 * player.rot.y))
+    player.model = mat4(1.0f)
+      .scale(2 * player_radius)
+      .translate(player.pos) * player.rot.mat4f
+      #.rotateX(radians(90f)) * player.rot.mat4f
+
+    player.normal = (mat4(1.0f).translate(0,-1,0) * player.rot.mat4f)[3].xyz
+    echo player.normal.str
 
   proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
     mesh.mvp = proj * view.translate(-pan) * mesh.model
