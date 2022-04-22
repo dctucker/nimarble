@@ -92,10 +92,48 @@ proc uvSphereColors*(segments, rings: int): seq[cfloat] =
     for i in 0 ..< rings:
       let alpha = (i / (rings-1)).float32
 
-      result.add 0.2
-      result.add alpha
-      result.add beta
-      result.add 0.9
+      if beta < 0.5:
+        if alpha < 0.25:
+          result.add 0.0
+          result.add 1.0
+          result.add 0.0
+          result.add 1.0
+        elif alpha < 0.5:
+          result.add 0.0
+          result.add 0.0
+          result.add 1.0
+          result.add 1.0
+        elif alpha < 0.75:
+          result.add 1.0
+          result.add 1.0
+          result.add 0.0
+          result.add 1.0
+        else:
+          result.add 1.0
+          result.add 0.0
+          result.add 1.0
+          result.add 1.0
+      else:
+        if alpha < 0.25:
+          result.add 1.0
+          result.add 0.0
+          result.add 0.0
+          result.add 1.0
+        elif alpha < 0.5:
+          result.add 0.0
+          result.add 1.0
+          result.add 1.0
+          result.add 1.0
+        elif alpha < 0.75:
+          result.add 1.0
+          result.add 0.5
+          result.add 0.0
+          result.add 1.0
+        else:
+          result.add 0.5
+          result.add 0.0
+          result.add 1.0
+          result.add 1.0
 
 const nseg = 32
 const nrings = 16

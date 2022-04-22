@@ -41,7 +41,7 @@ type
 
 type Mesh = ref object
   pos, vel, acc: Vec3f
-  rot, rvel, racc: cfloat
+  rot: Quatf
   vao: VAO
   vert_vbo, color_vbo: VBO[cfloat]
   elem_vbo: VBO[cushort]
@@ -142,7 +142,7 @@ var pan_vel: Vec3f
 var pan: Vec3f
 var player: Mesh
 const level_squash = 0.5f
-let player_top = 1f + oy * level_squash * 2f
+let player_top = oy * level_squash * 2f
 
 proc reset_view =
   let distance = oy
@@ -158,6 +158,9 @@ proc reset_player =
   player.pos = vec3f(0f, player_top, 0f)
   player.vel = vec3f(0,0,0)
   player.acc = vec3f(0,0,0)
+  player.rot = quatf(vec3f(0,0,0), 0)
+  #player.rvel = vec3f(0,0,0)
+  #player.racc = vec3f(0,0,0)
   pan_vel = vec3f(0,0,0)
 
 proc rotate_coord(v: Vec3f): Vec3f =
@@ -320,13 +323,17 @@ var somefloat: float32 = 0.0f
 var counter: int32 = 0
 proc draw_imgui =
   igSetNextWindowPos(ImVec2(x:5, y:5))
-  igSetNextWindowSize(ImVec2(x:300f, y:180f))
+  igSetNextWindowSize(ImVec2(x:300f, y:240f))
   igBegin("Player vectors")
 
   #igText("Player vectors")
   igSliderFloat3("pos", player.pos.arr, -sky, sky)
   igSliderFloat3("vel", player.vel.arr, -sky, sky)
   igSliderFloat3("acc", player.acc.arr, -sky, sky)
+
+  igSliderFloat4("rot", player.rot.arr, -sky, sky)
+  #igSliderFloat3("rvel", player.rvel.arr, -sky, sky)
+  #igSliderFloat3("racc", player.racc.arr, -sky, sky)
 
   var sl = slope(player.pos.rotate_coord.x, player.pos.rotate_coord.z)
   igSpacing()
@@ -371,9 +378,6 @@ proc main =
 
   ## chapter 2
   player = Mesh(
-    rot: 0f,
-    rvel: 0f,
-    racc: 0f,
     vao: newVAO(),
     vert_vbo: newVBO(3, sphere),
     color_vbo: newVBO(4, sphere_colors),
@@ -390,7 +394,7 @@ proc main =
     program: player.program,
   )
 
-  player.model  = mat4(1.0f).translate(player.pos) #.scale(0.5f).translate(player.pos)
+  player.model  = mat4(1.0f).scale(0.5f)
   player.mvp    = proj * view.translate(-pan) * player.model
   player.matrix = player.program.newMatrix(player.mvp, "MVP")
 
@@ -424,22 +428,22 @@ proc main =
     player.pos += player.vel * dt
     player.pos.y = clamp(player.pos.y, fh, sky)
 
-    const max_rvel = 6.0f
-    player.racc += mouse.z
-    player.rvel  = clamp( player.rvel + dt * player.racc, -max_rvel, max_rvel )
-    player.rot  += player.rvel * dt
+    const max_rvel = vec3f(6f,6f,6f)
+    #player.racc.y += mouse.z
+    player.rot = player.rot
+      .rotate( 0.03 * player.vel.length, player.vel.normalize())
 
     const friction = 0.986
     player.vel  *= friction
-    player.rvel *= friction
-    player.racc *= friction
+    #player.rvel *= friction
+    #player.racc *= friction
 
     mouse *= 0
 
-    player.model = mat4(1.0f)
-      .scale(0.5f)
-      .translate(player.pos)
-      .rotateY(radians(360 * player.rot))
+    player.model = mat4(1.0f).scale(0.5f).translate(player.pos) * player.rot.mat4f
+      #.rotateX(radians(360 * player.rot.x))
+      #.rotateZ(radians(360 * player.rot.z))
+      #.rotateY(radians(360 * player.rot.y))
 
   proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
     mesh.mvp = proj * view.translate(-pan) * mesh.model
