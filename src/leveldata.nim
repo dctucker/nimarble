@@ -27,8 +27,10 @@ type CliffMask = enum
   LV, VJ, VH,
   II, IL, IJ, # I is top and bottom
   IH,         # oops! all cliffs
-  IC,         # icy
   GG,         # goal
+  TU,         # tube
+  IC,         # icy
+  P1,         # player 1 start position
 
   #LA,AA,AJ,
   #LL,xx JJ,
@@ -46,9 +48,24 @@ proc tsv_floats(line: string): seq[float] =
   )
   #echo result.len
 
+proc is_numeric(s: string): bool =
+  try:
+    discard s.parseInt()
+    result = true
+  except:
+    result = false
+
 proc tsv_masks(line: string): seq[CliffMask] =
+  var j = 0
   result = line.split("\t").map(proc(s:string):CliffMask =
-    parseEnum[CliffMask](s, xx)
+    j += 1
+    try:
+      result = parseEnum[CliffMask](s)
+    except:
+      if s.len > 0 and s != "0":
+        if not s.is_numeric():
+          echo "Unrecognized mask at " & "," & $j & ": " & s
+      result = xx
   )
 
 const level_1_src = staticRead("../levels/1.tsv")
