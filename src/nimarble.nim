@@ -336,6 +336,7 @@ proc draw_imgui =
   igSliderFloat3("acc", player.acc.arr, -sky, sky)
 
   igSliderFloat4("rot", player.rot.arr, -sky, sky)
+  igSliderFloat3("normal", player.normal.arr, -1.0, 1.0)
   #igSliderFloat3("rvel", player.rvel.arr, -sky, sky)
   #igSliderFloat3("racc", player.racc.arr, -sky, sky)
 
@@ -432,20 +433,16 @@ proc main =
     player.acc = mass * vec3f(m.x, ay, -m.y) - gravity * ramp * 0.25
     player.vel = clamp(player.vel + dt * player.acc, -max_vel, max_vel)
     player.pos += player.vel * dt
+    #player.pos.y += player.vel.y * dt # hack to keep ball in place
     player.pos.y = clamp(player.pos.y, fh, sky)
 
     const max_rvel = vec3f(6f,6f,6f)
     #player.racc.y += mouse.z
     if (player.vel * vec3f(1,0,1)).length > 0:
-      var dir = player.vel.normalize()
-      var axis = player.normal.cross dir
-      #var ax = mat4f(1f).translate(dir).rotateY(radians(-90f))[3]
-      #var axis = vec3f(ax.x, ax.y, ax.z)
-      echo axis.str
+      var dir = -player.vel.normalize()
+      var axis = player.normal.cross(dir).normalize()
       let angle = player.vel.length * dt / player_radius / Pi
-      #player.rot = quatf(axis, angle) * player.rot
-      player.rot = player.rot.rotate(angle, axis)
-
+      player.rot = (quatf(axis, angle) * player.rot).normalize
 
     const friction = 0.986
     player.vel  *= friction
@@ -457,10 +454,6 @@ proc main =
     player.model = mat4(1.0f)
       .scale(2 * player_radius)
       .translate(player.pos) * player.rot.mat4f
-      #.rotateX(radians(90f)) * player.rot.mat4f
-
-    player.normal = (mat4(1.0f).translate(0,-1,0) * player.rot.mat4f)[3].xyz
-    echo player.normal.str
 
   proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
     mesh.mvp = proj * view.translate(-pan) * mesh.model
