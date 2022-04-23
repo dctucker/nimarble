@@ -27,62 +27,36 @@ type CliffMask = enum
   LV, VJ, VH,
   II, IL, IJ, # I is top and bottom
   IH,         # oops! all cliffs
+  IC,         # icy
+  GG,         # goal
 
   #LA,AA,AJ,
   #LL,xx JJ,
   #LV,VV,VJ
-
-#[
-const level_1_mask: seq[CliffMask] = @[
-  xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
-  xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,VJ, VV,VV,VV, VV,VV,VV, VV,VV,xx,
-
-  xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,JJ, LA,AA,AA, AA,AA,AA, AA,AA,xx,
-  xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,JJ, LL,xx,xx, xx,xx,xx, xx,xx,xx,
-  xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,JJ, LL,xx,xx, xx,xx,xx, xx,xx,xx,
-
-  xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,JJ, LL,xx,xx, xx,xx,xx, xx,xx,xx,
-  xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,JJ, LL,xx,xx, xx,xx,xx, xx,xx,xx,
-  xx,xx, xx,xx,xx, xx,xx,VJ, VV,VV,VV, VV,VV,VJ, LL,xx,xx, xx,xx,VJ, VV,VV,VJ,
-
-  xx,xx, xx,xx,xx, xx,xx,JJ, LA,AA,AA, AA,AA,AA, LA,xx,xx, xx,xx,JJ, LA,AA,AJ,
-  xx,xx, xx,xx,xx, xx,xx,JJ, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,JJ, LL,xx,JJ,
-  xx,xx, xx,xx,xx, xx,xx,JJ, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,JJ, LV,VV,VJ,
-
-  xx,xx, xx,xx,xx, xx,xx,JJ, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,AJ, AA,AA,AA,
-  xx,xx, xx,xx,xx, xx,xx,JJ, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
-  xx,xx, xx,xx,xx, xx,xx,JJ, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
-
-  xx,xx, LA,AA,AA, AA,AA,AJ, LA,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
-  xx,xx, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
-  xx,xx, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
-
-  xx,xx, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
-  xx,xx, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
-  xx,xx, LL,xx,xx, xx,xx,VJ, VV,VV,VV, LV,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
-
-  xx,xx, xx,xx,xx, xx,xx,JJ, LA,AA,AJ, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
-  xx,xx, xx,xx,xx, xx,xx,JJ, LL,xx,JJ, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
-  xx,xx, xx,xx,xx, xx,xx,JJ, LV,VV,VJ, LL,xx,xx, xx,xx,xx, xx,xx,xx, xx,xx,xx,
-]
-]#
 
 proc flatten[T](input: seq[seq[T]]): seq[T] =
   for row in input:
     for value in row:
       result.add value
 
-proc tsv_lines(line: string): seq[float] =
+proc tsv_floats(line: string): seq[float] =
   result = line.split("\t").map(proc(s:string):float =
     if s.len() > 0: s.parseFloat
     else: 0
   )
   #echo result.len
 
+proc tsv_masks(line: string): seq[CliffMask] =
+  result = line.split("\t").map(proc(s:string):CliffMask =
+    parseEnum[CliffMask](s, xx)
+  )
+
 const level_1_src = staticRead("../levels/1.tsv")
 const level_2_src = staticRead("../levels/2.tsv")
-const level_1_data = level_1_src.splitLines.map(tsv_lines).flatten()
-const level_2_data = level_2_src.splitLines.map(tsv_lines).flatten()
+const level_2_mask_src = staticRead("../levels/2mask.tsv")
+const level_1_data = level_1_src.splitLines.map(tsv_floats).flatten()
+const level_2_data = level_2_src.splitLines.map(tsv_floats).flatten()
+const level_2_mask = level_2_mask_src.splitLines.map(tsv_masks).flatten()
 
 type
   Level = ref object
@@ -334,9 +308,9 @@ proc floor_height*(x,z: float): float =
   return level_ref.data[i * w + j].float
 
 proc slope*(x,z: float): Vec3f =
-  let p0 = floor_height(x,z)
-  let p1 = floor_height(x+1,z)
-  let p2 = floor_height(x,z+1)
+  let p0 = floor_height(x+0,z+0)
+  let p1 = floor_height(x+1,z+0)
+  let p2 = floor_height(x+0,z+1)
   #if p0 == 0 and p1 == 0 and p2 == 0:
   #  return vec3f(0, -1, 0)
   #let p3 = floor_height(x+1,z+1)
@@ -347,7 +321,7 @@ proc slope*(x,z: float): Vec3f =
   return vec3f( dx, 0f, dz )
   #return vec3f( 0.5 * ((p0-p1) + (p3-p1)), 0f , 0.5 * ((p0-p2) + (p3-p2)) )
 
-proc surface_normal*(x,z: float): Vec3f = 
+proc surface_normal*(x,z: float): Vec3f =
   let p0 = floor_height(x,z)
   let p1 = floor_height(x+1,z)
   let p2 = floor_height(x,z+1)

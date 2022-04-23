@@ -86,6 +86,7 @@ proc uvSphereElements*(segments, rings: int): seq[cushort] =
 proc uvSphereColors*(segments, rings: int): seq[cfloat] =
   result = newSeqOfCap[cfloat](4 * (segments+1) * rings)
 
+  const opacity = 0.8
   for j in 0 .. segments:
     let beta = (j / segments).float32
 
@@ -96,49 +97,49 @@ proc uvSphereColors*(segments, rings: int): seq[cfloat] =
         result.add 0.0
         result.add 0.0
         result.add 0.0
-        result.add 0.8
+        result.add opacity
       elif alpha < 0.5:
         if beta < 0.25:
           result.add 0.0
           result.add 1.0
           result.add 0.0
-          result.add 1.0
+          result.add opacity
         elif beta < 0.5:
           result.add 0.0
           result.add 0.0
           result.add 1.0
-          result.add 1.0
+          result.add opacity
         elif beta < 0.75:
           result.add 1.0
           result.add 1.0
           result.add 0.0
-          result.add 1.0
+          result.add opacity
         else:
           result.add 1.0
           result.add 0.0
           result.add 1.0
-          result.add 1.0
+          result.add opacity
       else:
         if beta < 0.25:
           result.add 1.0
           result.add 0.0
           result.add 0.0
-          result.add 1.0
+          result.add opacity
         elif beta < 0.5:
           result.add 0.0
           result.add 1.0
           result.add 1.0
-          result.add 1.0
+          result.add opacity
         elif beta < 0.75:
           result.add 1.0
           result.add 0.5
           result.add 0.0
-          result.add 1.0
+          result.add opacity
         else:
           result.add 0.5
           result.add 0.0
           result.add 1.0
-          result.add 1.0
+          result.add opacity
 
 const nseg = 32
 const nrings = 16

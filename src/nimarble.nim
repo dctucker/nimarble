@@ -164,6 +164,7 @@ proc reset_player =
   #player.rvel = vec3f(0,0,0)
   #player.racc = vec3f(0,0,0)
   pan_vel = vec3f(0,0,0)
+  reset_view()
 
 proc rotate_coord(v: Vec3f): Vec3f =
   let v4 = mat4f(1f).scale(0.5f).translate(v).rotateY(radians(45f))[3]
@@ -190,6 +191,22 @@ proc display_size(): (int32, int32) =
   var monitor = glfwGetPrimaryMonitor()
   var videoMode = monitor.getVideoMode()
   return (videoMode.width, videoMode.height)
+
+proc middle(): Vec2f = vec2f(width.float * 0.5f, height.float * 0.5f)
+
+var mouse: Vec3f
+var paused = false
+var frame_step = false
+
+proc toggle_pause(w: GLFWWindow) =
+  paused = not paused
+  if paused:
+    w.setInputMode GLFW_CURSOR_SPECIAL, GLFWCursorNormal
+  else:
+    let mid = middle()
+    w.setCursorPos mid.x, mid.y
+    mouse *= 0
+    w.setInputMode GLFW_CURSOR_SPECIAL, GLFWCursorDisabled
 
 proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mods: int32): void {.cdecl.} =
   case key
@@ -223,16 +240,19 @@ proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mod
       pan_vel += vec3f(0f, -0.1f, 0f)
     elif action == GLFWRelease:
       pan_vel = vec3f(0f,0f,0f)
+  of GLFWKey.P:
+    if action == GLFWPress:
+      window.toggle_pause()
   of GLFWKey.R:
     reset_player()
-    reset_view()
+  of GLFWKey.S:
+    if action != GLFWRelease:
+      frame_step = true
   of GLFWKey.Q,
      GLFWKey.Escape:
     window.setWindowShouldClose(true)
   else: discard
   pan_vel = pan_vel.clamp(-0.1f, 0.1f)
-
-proc middle(): Vec2f = vec2f(width.float * 0.5f, height.float * 0.5f)
 
 proc rotate_mouse(mouse: Vec3f): Vec3f =
   const th = radians(45f)
@@ -240,10 +260,10 @@ proc rotate_mouse(mouse: Vec3f): Vec3f =
   let m = rot_matrix * vec2f(mouse.x, mouse.y)
   result = vec3f(m.x, m.y, mouse.z)
 
-var mouse: Vec3f
 proc mouseProc(window: GLFWWindow, xpos, ypos: cdouble): void {.cdecl.} =
   let mid = middle()
-  window.setCursorPos mid.x, mid.y
+  if not paused:
+    window.setCursorPos mid.x, mid.y
   mouse.x = -(mid.x - xpos)
   mouse.y =  (mid.y - ypos)
   #echo mouse.x, "\r" #, ",", mouse.y
@@ -314,6 +334,7 @@ proc setup_imgui(w: GLFWWindow) =
   doAssert igOpenGL3Init()
   igStyleColorsDark()
   #igPushStyleColor ImGuiCol.Text, ImVec4(x:1f, y:0f, z:1f, w:1f)
+  igSetNextWindowPos(ImVec2(x:5, y:5))
 
 proc str(f: float): string =
   return f.formatFloat(ffDecimal, 3)
@@ -323,10 +344,7 @@ proc str(v: Vec3f): string =
 proc str(v: Vec4f): string =
   return "x=" & v.x.str & ", y=" & v.y.str & ", z=" & v.z.str & ", w=" & v.w.str
 
-var somefloat: float32 = 0.0f
-var counter: int32 = 0
 proc draw_imgui =
-  igSetNextWindowPos(ImVec2(x:5, y:5))
   igSetNextWindowSize(ImVec2(x:300f, y:240f))
   igBegin("Player vectors")
 
@@ -403,7 +421,7 @@ proc main =
   player.mvp    = proj * view.translate(-pan) * player.model
   player.matrix = player.program.newMatrix(player.mvp, "MVP")
 
-  floor_plane.model = mat4(1.0f).scale(1f, level_squash, 1f)#.rotateY(radians(-45f))
+  floor_plane.model = mat4(1.0f).scale(1f, level_squash, 1f)
   floor_plane.mvp = proj * view.translate(-pan) * floor_plane.model
   floor_plane.matrix = floor_plane.program.newMatrix(floor_plane.mvp, "MVP")
 
@@ -412,8 +430,8 @@ proc main =
 
   proc physics(player: var Mesh) =
     const mass = 1.0f
-    const max_vel = 15.0f * vec3f( 1f, 1f, 1f )
-    const gravity = -59f
+    const max_vel = 15.0f * vec3f( 1f, 1.616f, 1f )
+    const gravity = -49f
     const player_radius = 0.25f
     let coord = rotate_coord(player.pos)
     let x = coord.x
@@ -422,38 +440,53 @@ proc main =
     let fh = point_height(x, z)
     #stdout.write "\27[K"
 
-    var floor = -gravity
-    if fh < bh:
-      floor = 0f
-    else:
-      player.vel.y = 0f
-    let m = rotate_mouse(mouse)
-    let ay = floor + gravity
     let ramp = slope(x,z)
-    player.acc = mass * vec3f(m.x, ay, -m.y) - gravity * ramp * 0.25
-    player.vel = clamp(player.vel + dt * player.acc, -max_vel, max_vel)
-    player.pos += player.vel * dt
-    #player.pos.y += player.vel.y * dt # hack to keep ball in place
+    let thx = arctan(ramp.x * level_squash)
+    let thz = arctan(ramp.z * level_squash)
+    let cosx = cos(thx)
+    let cosz = cos(thz)
+    let sinx = sin(thx)
+    let sinz = sin(thz)
+    var ramp_a = vec3f( -ramp.x * level_squash, sinx + sinz, -ramp.z * level_squash ) * gravity
+    var traction: float
+    if bh - fh > 0.25:
+      traction = 0f
+    else:
+      traction = 1f
+
+    var m = vec3f(0,0,0)
+    if not paused:
+      m = rotate_mouse(mouse)
+
+    player.acc *= 0
+    player.acc += mass * vec3f(m.x, 0, -m.y) * traction  # mouse motion
+    player.acc += vec3f(0, (1f-traction) * gravity, 0)   # free fall
+    player.acc += ramp_a
+
+    player.vel.x = clamp(player.vel.x + dt * player.acc.x, -max_vel.x, max_vel.x)
+    player.vel.y = clamp(player.vel.y + dt * player.acc.y, -max_vel.y * 1.5f, max_vel.y)
+    player.vel.z = clamp(player.vel.z + dt * player.acc.z, -max_vel.z, max_vel.z)
+
+    player.pos += player.vel * dt #player.vel.y * dt # hack to keep ball in place
     player.pos.y = clamp(player.pos.y, fh, sky)
 
-    const max_rvel = vec3f(6f,6f,6f)
-    #player.racc.y += mouse.z
     if (player.vel * vec3f(1,0,1)).length > 0:
       var dir = -player.vel.normalize()
       var axis = player.normal.cross(dir).normalize()
-      let angle = player.vel.length * dt / player_radius / Pi
-      player.rot = (quatf(axis, angle) * player.rot).normalize
+      let angle = player.vel.xz.length * dt / player_radius / Pi
+      player.rot = normalize(quatf(axis, angle) * player.rot)
 
-    const friction = 0.986
-    player.vel  *= friction
-    #player.rvel *= friction
-    #player.racc *= friction
+    const brake = 0.986
+    player.vel  *= brake
 
     mouse *= 0
 
     player.model = mat4(1.0f)
       .scale(2 * player_radius)
       .translate(player.pos) * player.rot.mat4f
+
+    if ((1f-traction) * player.vel.y) < -max_vel.y:
+      reset_player()
 
   proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
     mesh.mvp = proj * view.translate(-pan) * mesh.model
@@ -478,7 +511,11 @@ proc main =
     pan += pan_vel
 
 
-    player.physics()
+    if paused and frame_step:
+      player.physics()
+      frame_step = false
+    elif not paused:
+      player.physics()
 
     glClear            GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
 
