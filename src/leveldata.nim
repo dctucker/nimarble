@@ -80,9 +80,12 @@ type
     width, height: int
     origin_x, origin_z, origin_y: int
     data: seq[float]
+    mask: seq[CliffMask]
+    color: Vec3f
 
 let level_1 = Level(
   data: level_1_data,
+  color: vec3f(1f,0.8f,0f),
   width: 114,
   height: 74,
   origin_x: 32,
@@ -92,6 +95,8 @@ let level_1 = Level(
 )
 let level_2 = Level(
   data: level_2_data,
+  mask: level_2_mask,
+  color: vec3f(0f,0.4f,0.8f),
   width: 158,
   height: 117,
   origin_x: 30,
@@ -177,7 +182,7 @@ proc setup_floor_points[T](level: seq[T]): seq[cfloat] =
       result[index+2] = (z.cfloat-oz).cfloat
 
 const ch = 4
-proc setup_floor_colors[T](level: seq[T]): seq[cfloat] =
+proc setup_floor_colors[T](level: seq[T], level_mask: seq[CliffMask], level_color: Vec3f): seq[cfloat] =
   #const COLOR_H = 44f
   #const COLOR_D = 56f - 44f
   const COLOR_H = 11f
@@ -185,21 +190,39 @@ proc setup_floor_colors[T](level: seq[T]): seq[cfloat] =
   result = newSeq[cfloat](ch * w * h)
   for z in 0..<h:
     for x in 0..<w:
-      let index = ch * (w * z + x)
-      let y = level[w * z + x]
+      let level_index = w * z + x
+      let index = ch * level_index
+      let y = level[level_index]
       if y == EE:
         result[index+0] = 0.0
         result[index+1] = 0.0
         result[index+2] = 0.0
         result[index+3] = 0.0
       else:
-        result[index+0] = 1.0 #((y.float-COLOR_H) * (1.0/COLOR_D))
-        result[index+1] = ((y.float-COLOR_H) * (1.0/COLOR_D))
-        result[index+2] = ((y.float-COLOR_H) * (1.0/COLOR_D))
-        result[index+3] = 1.0
+        case level_mask[level_index]
+        of GG:
+          result[index+0] = 0.8
+          result[index+1] = 0.8
+          result[index+2] = 0.8
+          result[index+3] = 1.0
+        of LV, LA, AJ, VJ:
+          result[index+0] = 1.0
+          result[index+1] = 0.0
+          result[index+2] = 1.0
+          result[index+3] = 1.0
+        of AA, JJ, LL, VV:
+          result[index+0] = 1.0
+          result[index+1] = 0.3
+          result[index+2] = 0.8
+          result[index+3] = 1.0
+        else:
+          result[index+0] = level_color.x #1.0 #((y.float-COLOR_H) * (1.0/COLOR_D))
+          result[index+1] = level_color.y #((y.float-COLOR_H) * (1.0/COLOR_D))
+          result[index+2] = level_color.z #((y.float-COLOR_H) * (1.0/COLOR_D))
+          result[index+3] = 1.0
 
 var floor_verts*  = setup_floor_points level_ref.data
-var floor_colors* = setup_floor_colors level_ref.data
+var floor_colors* = setup_floor_colors(level_ref.data, level_ref.mask, level_ref.color)
 
 
 type
