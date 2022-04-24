@@ -401,7 +401,7 @@ proc draw_goal =
   igEnd()
 
 proc draw_imgui =
-  igSetNextWindowSize(ImVec2(x:300f, y:300f))
+  igSetNextWindowSize(ImVec2(x:300f, y:400f))
   igPushFont( small_font )
   igBegin("Player vectors")
 
@@ -416,7 +416,7 @@ proc draw_imgui =
   #igSliderFloat3("normal", player.normal.arr, -1.0, 1.0)
 
   let coord = player.pos.rotate_coord
-  var curmask = ($mask(coord.x, coord.z)).cstring
+  var cur_mask = ($mask(coord.x, coord.z)).cstring
   igInputText("cur_mask", curmask, 2)
 
   var sl = slope(coord.x, coord.z)
@@ -495,9 +495,9 @@ proc main =
     let z = coord.z
     let bh = player.pos.y / level_squash / 2f
     let fh = point_height(x, z)
+    let cur_mask = mask(x,z)
     #stdout.write "\27[K"
 
-    let cur_mask = mask(x,z)
     if cur_mask == GG:
       goal = true
 
@@ -556,7 +556,7 @@ proc main =
       .scale(2 * player_radius)
       .translate(player.pos) * player.rot.mat4f
 
-    if mask(x,z) == TU:
+    if TU.around(x,z):
       player.vel.y = clamp(player.vel.y, -max_vel.y, max_vel.y)
 
     if ((1f-traction) * player.vel.y) < -max_vel.y or player.pos.y < 1f:
