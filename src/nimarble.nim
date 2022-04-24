@@ -139,7 +139,7 @@ width = 1600
 height = 1200
 
 var view: Mat4f
-var safe: Vec3f
+var respawn_pos: Vec3f
 var pan_vel: Vec3f
 var pan_acc: Vec3f
 var pan: Vec3f
@@ -151,7 +151,7 @@ let player_top = oy
 proc reset_view =
   let xlat = vec3f( oz*1.5, 0, oz*1.5 )
   view = lookAt(
-    vec3f( 0f,  sky/2f,        sky/2f ), # camera pos
+    vec3f( 0f,  sky*0.9f,        sky*0.9f ), # camera pos
     vec3f( 0f,  0f,            0f ),     # target
     vec3f( 0f,  level_squash,  0f ),     # up
   ).rotateY(radians(-45f)).translate( xlat )
@@ -176,7 +176,7 @@ proc reset_player =
 
 proc respawn =
   reset_player()
-  player.pos = safe
+  player.pos = respawn_pos
   reset_view()
 
 proc rotate_coord(v: Vec3f): Vec3f =
@@ -288,8 +288,10 @@ proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mod
   of GLFWKey.G:
     if action == GLFWPress:
       goal = not goal
-  of GLFWKey.Q,
-     GLFWKey.Escape:
+  of GLFWKey.X:
+    if action == GLFWPress:
+      respawn()
+  of GLFWKey.Q, GLFWKey.Escape:
     window.setWindowShouldClose(true)
   else: discard
 
@@ -406,13 +408,18 @@ proc draw_imgui =
   #igText("Player vectors")
   #var lateral = player.pos.xz.length()
   #igSliderFloat("lateral_d", lateral.addr, -sky, sky)
-  igSliderFloat3("pos", player.pos.arr, -sky, sky)
-  igSliderFloat3("vel", player.vel.arr, -sky, sky)
-  igSliderFloat3("acc", player.acc.arr, -sky, sky)
-  igSliderFloat4("rot", player.rot.arr, -sky, sky)
+  igSliderFloat3 "respawn", respawn_pos.arr, -100f, 100f
+  igSliderFloat3 "pos"    , player.pos.arr ,  -sky, sky
+  igSliderFloat3 "vel"    , player.vel.arr ,  -sky, sky
+  igSliderFloat3 "acc"    , player.acc.arr ,  -sky, sky
+  igSliderFloat4 "rot"    , player.rot.arr ,  -sky, sky
   #igSliderFloat3("normal", player.normal.arr, -1.0, 1.0)
 
-  var sl = slope(player.pos.rotate_coord.x, player.pos.rotate_coord.z)
+  let coord = player.pos.rotate_coord
+  var curmask = ($mask(coord.x, coord.z)).cstring
+  igInputText("cur_mask", curmask, 2)
+
+  var sl = slope(coord.x, coord.z)
   igSpacing()
   igSeparator()
   igSpacing()
@@ -471,8 +478,8 @@ proc main =
   player.mvp    = proj * view.translate(-pan) * player.model
   player.matrix = player.program.newMatrix(player.mvp, "MVP")
 
-  current_level = 1
-  load_level current_level
+  #current_level = 1
+  #load_level current_level
   init_floor_plane()
 
   proc toString[T: float](f: T, prec: int = 8): string =
@@ -490,7 +497,8 @@ proc main =
     let fh = point_height(x, z)
     #stdout.write "\27[K"
 
-    if mask(x,z) == GG:
+    let cur_mask = mask(x,z)
+    if cur_mask == GG:
       goal = true
 
     let ramp = slope(x,z)
@@ -501,17 +509,18 @@ proc main =
     let sinx = sin(thx)
     let sinz = sin(thz)
     var ramp_a = vec3f( -ramp.x * level_squash, sinx + sinz, -ramp.z * level_squash ) * gravity
+    var icy = IC.around(x,z)
     var traction: float
     if bh - fh > 0.25:
       traction = 0f
     else:
       traction = 1f
 
-    if ramp.length == 0 and fh > 0f:
-      safe = player.pos
+    if ramp.length == 0 and fh > 0f and cur_mask == CliffMask.xx:
+      respawn_pos = vec3f(player.pos.x.floor, player.pos.y, player.pos.z.floor)
 
     var m = vec3f(0,0,0)
-    if not paused and not goal:
+    if not paused and not goal and not icy:
       m = rotate_mouse(mouse)
 
     player.acc *= 0
@@ -519,9 +528,14 @@ proc main =
     player.acc += vec3f(0, (1f-traction) * gravity, 0)   # free fall
     player.acc += ramp_a
 
+    let vel = player.vel.length()
+
     player.vel.x = clamp(player.vel.x + dt * player.acc.x, -max_vel.x, max_vel.x)
     player.vel.y = clamp(player.vel.y + dt * player.acc.y, -max_vel.y * 1.5f, max_vel.y)
     player.vel.z = clamp(player.vel.z + dt * player.acc.z, -max_vel.z, max_vel.z)
+    if icy:
+      if vel > 0f:
+        player.vel = player.vel.normalize() * vel
 
     player.pos += player.vel * dt #player.vel.y * dt # hack to keep ball in place
     player.pos.y = clamp(player.pos.y, fh, sky)
@@ -533,7 +547,8 @@ proc main =
       player.rot = normalize(quatf(axis, angle) * player.rot)
 
     const brake = 0.986
-    player.vel  *= brake
+    if not icy:
+      player.vel  *= brake
 
     mouse *= 0
 
@@ -544,8 +559,8 @@ proc main =
     if mask(x,z) == TU:
       player.vel.y = clamp(player.vel.y, -max_vel.y, max_vel.y)
 
-    if ((1f-traction) * player.vel.y) < -max_vel.y:
-        respawn()
+    if ((1f-traction) * player.vel.y) < -max_vel.y or player.pos.y < 1f:
+      respawn()
 
   proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
     mesh.mvp = proj * view.translate(-pan) * mesh.model
@@ -587,19 +602,20 @@ proc main =
     elif not paused:
       player.physics()
 
-    if following and not paused:
-      follow_player()
+    if not paused:
+      if following:
+        follow_player()
 
-    camera_physics()
+      camera_physics()
 
 
     glClear            GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
 
-    #glPolygonMode      GL_FRONT_AND_BACK, GL_FILL
-    #glEnable           GL_POLYGON_OFFSET_FILL
-    #glPolygonOffset 1f, 1f
-    #floor_plane.render GL_TRIANGLE_STRIP
-    #glDisable          GL_POLYGON_OFFSET_FILL
+    glPolygonMode      GL_FRONT_AND_BACK, GL_FILL
+    glEnable           GL_POLYGON_OFFSET_FILL
+    glPolygonOffset 1f, 1f
+    floor_plane.render GL_TRIANGLE_STRIP
+    glDisable          GL_POLYGON_OFFSET_FILL
 
     glPolygonMode      GL_FRONT_AND_BACK, GL_LINE
     floor_plane.render GL_TRIANGLE_STRIP

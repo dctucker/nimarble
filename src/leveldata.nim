@@ -22,7 +22,7 @@ type
     IC,         # icy
     P1,         # player 1 start position
 
-  Level = ref object
+  Level* = ref object
     width, height: int
     origin: Vec3i
     data: seq[float]
@@ -219,7 +219,7 @@ proc setup_floor_colors[T](level_data: seq[T], level_mask: seq[CliffMask], level
           result[index+0] = level_color.x #1.0 #((y.float-COLOR_H) * (1.0/COLOR_D))
           result[index+1] = level_color.y #((y.float-COLOR_H) * (1.0/COLOR_D))
           result[index+2] = level_color.z #((y.float-COLOR_H) * (1.0/COLOR_D))
-          result[index+3] = 1.0
+          result[index+3] = 0.9
 
 type
   PatchKind = enum
@@ -368,6 +368,15 @@ proc mask*(x,z: float): CliffMask =
   if i < 0 or j < 0 or i >= h-1 or j >= w-1: return xx
   return level_ref.mask[i * w + j]
 
+proc around*(m: CliffMask, x,z: float): bool =
+  if mask(x,z) == m:
+    return true
+  for i in -1..1:
+    for j in -1..1:
+      if mask(x,z) == m:
+        return true
+  return false
+
 proc toString(x: float): string =
   x.formatFloat(ffDecimal,3)
 
@@ -426,5 +435,6 @@ proc load_level*(n: int) =
     floor_colors = setup_floor_colors(level_ref.data, level_ref.mask, level_ref.color)
     floor_index = setup_floor_index level_ref.data
 
-load_level 1
+current_level = 2
+load_level current_level
 
