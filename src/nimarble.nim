@@ -206,7 +206,7 @@ proc middle(): Vec2f = vec2f(width.float * 0.5f, height.float * 0.5f)
 
 var mouse: Vec3f
 var paused = false
-var following = false
+var following = true
 var frame_step = false
 var goal = false
 
@@ -288,6 +288,9 @@ proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mod
   of GLFWKey.F:
     if action == GLFWPress:
       following = not following
+  of GLFWKey.G:
+    if action == GLFWPress:
+      goal = not goal
   of GLFWKey.Q,
      GLFWKey.Escape:
     window.setWindowShouldClose(true)
@@ -383,6 +386,14 @@ proc str(v: Vec3f): string =
 proc str(v: Vec4f): string =
   return "x=" & v.x.str & ", y=" & v.y.str & ", z=" & v.z.str & ", w=" & v.w.str
 
+proc draw_goal =
+  let mid = middle()
+  igSetNextWindowPos(ImVec2(x:mid.x, y:mid.y))
+  igSetNextWindowSize(ImVec2(x:300f, y:300f))
+  igBegin("Level complete!")
+  igText("GOAL")
+  igEnd()
+
 proc draw_imgui =
   igSetNextWindowSize(ImVec2(x:300f, y:300f))
   igBegin("Player vectors")
@@ -415,6 +426,9 @@ proc imgui_frame =
   igNewFrame()
 
   draw_imgui()
+
+  if goal:
+    draw_goal()
 
   igRender()
   igOpenGL3RenderDrawData(igGetDrawData())
@@ -485,7 +499,7 @@ proc main =
       traction = 1f
 
     var m = vec3f(0,0,0)
-    if not paused:
+    if not paused and not goal:
       m = rotate_mouse(mouse)
 
     player.acc *= 0
@@ -531,6 +545,21 @@ proc main =
     glDisableVertexAttribArray 0
     glDisableVertexAttribArray 1
 
+  proc camera_physics {.inline.} =
+    pan_target += pan_acc
+    pan_vel = (pan_vel + pan_acc).clamp(-0.125, 0.125)
+    pan += pan_vel
+
+    const camera_maxvel = 1f/24f
+    let pan_delta = pan_target - pan
+    if pan_delta.length > 0f:
+      if pan_delta.length < camera_maxvel:
+        pan = pan_target
+        pan_vel *= 0
+      else:
+        pan_vel = pan_delta * dt
+        pan_vel = clamp(pan_vel, -camera_maxvel, +camera_maxvel)
+
   # main loop
   while not w.windowShouldClose():
     time = glfwGetTime()
@@ -546,19 +575,8 @@ proc main =
     if following and not paused:
       follow_player()
 
-    pan_target += pan_acc
-    pan_vel = (pan_vel + pan_acc).clamp(-0.125, 0.125)
-    pan += pan_vel
+    camera_physics()
 
-    const camera_maxvel = 1f/24f
-    let pan_delta = pan_target - pan
-    if pan_delta.length > 0f:
-      if pan_delta.length < camera_maxvel:
-        pan = pan_target
-        pan_vel *= 0
-      else:
-        pan_vel = pan_delta * dt
-        pan_vel = clamp(pan_vel, -camera_maxvel, +camera_maxvel)
 
     glClear            GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
 
