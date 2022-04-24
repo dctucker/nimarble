@@ -140,18 +140,19 @@ height = 1200
 
 var view: Mat4f
 var pan_vel: Vec3f
+var pan_acc: Vec3f
 var pan: Vec3f
+var pan_target: Vec3f
 var player: Mesh
 const level_squash = 0.5f
-let player_top = oy * level_squash * 2f
+let player_top = oy
 
 proc reset_view =
-  let distance = oy
   let xlat = vec3f( oz*1.5, 0, oz*1.5 )
   view = lookAt(
-    vec3f( 0f,  distance,  distance ), # camera pos
-    vec3f( 0f,  0f,   0f ), # target
-    vec3f( 0f,   1f,   0f ), # up
+    vec3f( 0f,  sky/2f,        sky/2f ), # camera pos
+    vec3f( 0f,  0f,            0f ),     # target
+    vec3f( 0f,  level_squash,  0f ),     # up
   ).rotateY(radians(-45f)).translate( xlat )
   pan = vec3f(0,0,0)
 
@@ -170,6 +171,7 @@ proc reset_player =
   #player.rvel = vec3f(0,0,0)
   #player.racc = vec3f(0,0,0)
   pan_vel = vec3f(0,0,0)
+  pan_target = vec3f(0,0,0)
   reset_view()
 
 proc rotate_coord(v: Vec3f): Vec3f =
@@ -177,17 +179,23 @@ proc rotate_coord(v: Vec3f): Vec3f =
   result = vec3f(v4.x, v4.y, v4.z)
 
 proc follow_player =
-  let threshold = 4f
+  #let threshold = 4f
 
-  let pla = player.pos * vec3f(0.5,0,0.5)
-  let offset = vec3f(-5, 0, -5)
-  let d = pla - pan - offset
-  let delta = d.x + d.z
+  #let pla = player.pos * vec3f(0.5,0,0.5)
+  #let offset = vec3f(-5, 0, -5)
+  #let d = pla - pan - offset
+  #let delta = d.x + d.z
 
-  if delta < -threshold:
-    pan += vec3f(-0.125f, 0f, -0.125f)
-  if delta > threshold:
-    pan += vec3f(+0.125f, 0f, +0.125f)
+  #if delta < -threshold:
+  #  pan += vec3f(-0.125f, 0f, -0.125f)
+  #if delta > threshold:
+  #  pan += vec3f(+0.125f, 0f, +0.125f)
+
+  let target = player.pos.rotate_coord * vec3f(1,0,1)
+  let target_min = min(target.x, target.z)
+  pan_target.x = target_min
+  pan_target.z = target_min
+  pan_target.y = average_height(player.pos.x, player.pos.z) - oy
 
 proc display_size(): (int32, int32) =
   var monitor = glfwGetPrimaryMonitor()
@@ -229,34 +237,34 @@ proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mod
   case key
   of GLFWKey.Up:
     if action == GLFWPress:
-      pan_vel += vec3f(-0.125f, 0f, -0.125)
+      pan_acc += vec3f(-0.125f, 0f, -0.125)
     elif action == GLFWRelease:
-      pan_vel = vec3f(0f,0f,0f)
+      pan_acc = vec3f(0f,0f,0f)
   of GLFWKey.Down:
     if action == GLFWPress:
-      pan_vel += vec3f(+0.125, 0f, +0.125)
+      pan_acc += vec3f(+0.125, 0f, +0.125)
     elif action == GLFWRelease:
-      pan_vel = vec3f(0f,0f,0f)
+      pan_acc = vec3f(0f,0f,0f)
   of GLFWKey.Left:
     if action == GLFWPress:
-      pan_vel += vec3f(-0.125, 0f, +0.125)
+      pan_acc += vec3f(-0.125, 0f, +0.125)
     elif action == GLFWRelease:
-      pan_vel = vec3f(0f,0f,0f)
+      pan_acc = vec3f(0f,0f,0f)
   of GLFWKey.Right:
     if action == GLFWPress:
-      pan_vel += vec3f(+0.125, 0f, -0.125)
+      pan_acc += vec3f(+0.125, 0f, -0.125)
     elif action == GLFWRelease:
-      pan_vel = vec3f(0f,0f,0f)
+      pan_acc = vec3f(0f,0f,0f)
   of GLFWKey.PageUp:
     if action == GLFWPress:
-      pan_vel += vec3f(0f, +0.125, 0f)
+      pan_acc += vec3f(0f, +0.125, 0f)
     elif action == GLFWRelease:
-      pan_vel = vec3f(0f,0f,0f)
+      pan_acc = vec3f(0f,0f,0f)
   of GLFWKey.PageDown:
     if action == GLFWPress:
-      pan_vel += vec3f(0f, -0.125, 0f)
+      pan_acc += vec3f(0f, -0.125, 0f)
     elif action == GLFWRelease:
-      pan_vel = vec3f(0f,0f,0f)
+      pan_acc = vec3f(0f,0f,0f)
   of GLFWKey.P:
     if action == GLFWPress:
       window.toggle_pause()
@@ -284,7 +292,6 @@ proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mod
      GLFWKey.Escape:
     window.setWindowShouldClose(true)
   else: discard
-  pan_vel = pan_vel.clamp(-0.125, 0.125)
 
 proc rotate_mouse(mouse: Vec3f): Vec3f =
   const th = radians(45f)
@@ -377,25 +384,27 @@ proc str(v: Vec4f): string =
   return "x=" & v.x.str & ", y=" & v.y.str & ", z=" & v.z.str & ", w=" & v.w.str
 
 proc draw_imgui =
-  igSetNextWindowSize(ImVec2(x:300f, y:240f))
+  igSetNextWindowSize(ImVec2(x:300f, y:300f))
   igBegin("Player vectors")
 
   #igText("Player vectors")
+  #var lateral = player.pos.xz.length()
+  #igSliderFloat("lateral_d", lateral.addr, -sky, sky)
   igSliderFloat3("pos", player.pos.arr, -sky, sky)
   igSliderFloat3("vel", player.vel.arr, -sky, sky)
   igSliderFloat3("acc", player.acc.arr, -sky, sky)
-
   igSliderFloat4("rot", player.rot.arr, -sky, sky)
-  igSliderFloat3("normal", player.normal.arr, -1.0, 1.0)
-  #igSliderFloat3("rvel", player.rvel.arr, -sky, sky)
-  #igSliderFloat3("racc", player.racc.arr, -sky, sky)
+  #igSliderFloat3("normal", player.normal.arr, -1.0, 1.0)
 
   var sl = slope(player.pos.rotate_coord.x, player.pos.rotate_coord.z)
   igSpacing()
   igSeparator()
   igSpacing()
   igSliderFloat3("slope", sl.arr, -100f, 100f)
-  igSliderFloat3("pan", pan.arr, -100f, 100f)
+  igSliderFloat3("pan_target", pan_target.arr, -100f, 100f)
+  igSliderFloat3("pan"       , pan.arr,     -100f, 100f)
+  igSliderFloat3("pan_vel"   , pan_vel.arr, -100f, 100f)
+  igSliderFloat3("pan_acc"   , pan_acc.arr, -100f, 100f)
 
   #igText("average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
   igEnd()
@@ -534,10 +543,22 @@ proc main =
     elif not paused:
       player.physics()
 
-    if following:
+    if following and not paused:
       follow_player()
 
+    pan_target += pan_acc
+    pan_vel = (pan_vel + pan_acc).clamp(-0.125, 0.125)
     pan += pan_vel
+
+    const camera_maxvel = 1f/24f
+    let pan_delta = pan_target - pan
+    if pan_delta.length > 0f:
+      if pan_delta.length < camera_maxvel:
+        pan = pan_target
+        pan_vel *= 0
+      else:
+        pan_vel = pan_delta * dt
+        pan_vel = clamp(pan_vel, -camera_maxvel, +camera_maxvel)
 
     glClear            GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
 

@@ -89,16 +89,14 @@ proc init_level(data_src, mask_src: string, color: Vec3f): Level =
 
 const level_1_src = staticRead("../levels/1.tsv")
 const level_1_mask_src = staticRead("../levels/1mask.tsv")
-let level_1 = init_level(level_1_src, level_1_mask_src, vec3f(1f, 0.8f, 0f))
 
 const level_2_src = staticRead("../levels/2.tsv")
 const level_2_mask_src = staticRead("../levels/2mask.tsv")
-let level_2 = init_level(level_2_src, level_2_mask_src, vec3f(0f, 0.4f, 0.8f))
 
 let levels = @[
   Level(),
-  level_1,
-  level_2
+  init_level(level_1_src, level_1_mask_src, vec3f(1f, 0.8f, 0f)),
+  init_level(level_2_src, level_2_mask_src, vec3f(0f, 0.4f, 0.8f)),
 ]
 var level_ref: Level
 
@@ -206,15 +204,15 @@ proc setup_floor_colors[T](level_data: seq[T], level_mask: seq[CliffMask], level
           result[index+1] = level_color.y * 0.5
           result[index+2] = level_color.z * 0.5
           result[index+3] = 1.0
-        of LV, LA, AJ, VJ:
+        of LV, LA, AJ, VJ, AA, JJ, LL, VV, IH, IL, IJ, AH, VH, II, HH:
           result[index+0] = 1.0
           result[index+1] = 0.0
           result[index+2] = 1.0
           result[index+3] = 1.0
-        of AA, JJ, LL, VV:
-          result[index+0] = 1.0
-          result[index+1] = 0.3
-          result[index+2] = 0.8
+        of P1:
+          result[index+0] = 0.1
+          result[index+1] = 0.1
+          result[index+2] = 0.1
           result[index+3] = 1.0
         else:
           result[index+0] = level_color.x #1.0 #((y.float-COLOR_H) * (1.0/COLOR_D))
@@ -384,6 +382,29 @@ proc point_height*(x,z: float): float =
   result += h3 * (1-ux) * uz
   result += h4 * ux * uz
   #stdout.write ", floor = ", result.formatFloat(ffDecimal, 3)
+
+proc average_height*(x,z: float): float =
+  var n = 1
+  var sum = floor_height(x,z)
+  proc accum(v: float) =
+    if v != EE and v > 0:
+      sum += v
+      inc n
+  var i = 0
+  while n < 100 and i < 200:
+    inc i
+    let ii = i.float
+    accum floor_height(x+ii, z)
+    accum floor_height(x-ii, z)
+    accum floor_height(x  , z+ii)
+    accum floor_height(x  , z-ii)
+    for j in 1..i:
+      let jj = j.float
+      accum floor_height(x+ii, z+jj)
+      accum floor_height(x-ii, z-jj)
+      accum floor_height(x-ii, z+jj)
+      accum floor_height(x+ii, z-jj)
+  return sum / n.float
 
 var floor_index*: Index
 var floor_verts* : seq[cfloat]
