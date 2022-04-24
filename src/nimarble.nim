@@ -139,6 +139,7 @@ width = 1600
 height = 1200
 
 var view: Mat4f
+var safe: Vec3f
 var pan_vel: Vec3f
 var pan_acc: Vec3f
 var pan: Vec3f
@@ -154,12 +155,14 @@ proc reset_view =
     vec3f( 0f,  0f,            0f ),     # target
     vec3f( 0f,  level_squash,  0f ),     # up
   ).rotateY(radians(-45f)).translate( xlat )
-  pan = vec3f(0,0,0)
+  #pan = vec3f(0,0,0)
+  pan_vel = vec3f(0,0,0)
+  #pan_target = vec3f(0,0,0)
 
 const field_width = 10f
 let aspect: float32 = width / height
-#var proj: Mat4f = perspective(radians(30.0f), aspect, 0.125, 150.0f)
-var proj: Mat4f = ortho(aspect * -field_width, aspect * field_width, -field_width, field_width, 0f, sky) # In world coordinates
+var proj: Mat4f = perspective(radians(30.0f), aspect, 0.125, 150.0f)
+#var proj: Mat4f = ortho(aspect * -field_width, aspect * field_width, -field_width, field_width, 0f, sky) # In world coordinates
 reset_view()
 
 proc reset_player =
@@ -170,8 +173,10 @@ proc reset_player =
   player.normal = vec3f(0,-1,0)
   #player.rvel = vec3f(0,0,0)
   #player.racc = vec3f(0,0,0)
-  pan_vel = vec3f(0,0,0)
-  pan_target = vec3f(0,0,0)
+
+proc respawn =
+  reset_player()
+  player.pos = safe
   reset_view()
 
 proc rotate_coord(v: Vec3f): Vec3f =
@@ -179,18 +184,6 @@ proc rotate_coord(v: Vec3f): Vec3f =
   result = vec3f(v4.x, v4.y, v4.z)
 
 proc follow_player =
-  #let threshold = 4f
-
-  #let pla = player.pos * vec3f(0.5,0,0.5)
-  #let offset = vec3f(-5, 0, -5)
-  #let d = pla - pan - offset
-  #let delta = d.x + d.z
-
-  #if delta < -threshold:
-  #  pan += vec3f(-0.125f, 0f, -0.125f)
-  #if delta > threshold:
-  #  pan += vec3f(+0.125f, 0f, +0.125f)
-
   let target = player.pos.rotate_coord * vec3f(1,0,1)
   let target_min = min(target.x, target.z)
   pan_target.x = target_min
@@ -232,6 +225,14 @@ proc init_floor_plane =
   floor_plane.model = mat4(1.0f).scale(1f, level_squash, 1f)
   floor_plane.mvp = proj * view.translate(-pan) * floor_plane.model
   floor_plane.matrix = floor_plane.program.newMatrix(floor_plane.mvp, "MVP")
+
+proc set_level =
+  following = false
+  goal = false
+  reset_player()
+  load_level current_level
+  init_floor_plane()
+  reset_view()
 
 proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mods: int32): void {.cdecl.} =
   case key
@@ -276,15 +277,11 @@ proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mod
   of GLFWKey.LeftBracket:
     if action == GLFWPress:
       dec current_level
-      load_level current_level
-      init_floor_plane()
-      reset_player()
+      set_level()
   of GLFWKey.RightBracket:
     if action == GLFWPress:
       inc current_level
-      load_level current_level
-      init_floor_plane()
-      reset_player()
+      set_level()
   of GLFWKey.F:
     if action == GLFWPress:
       following = not following
@@ -348,6 +345,7 @@ proc setup_glfw(): GLFWWindow =
 proc setup_opengl() =
   doAssert glInit()
 
+  glClearColor(0f,0f,0.1f, 1f)
   glClear(GL_COLOR_BUFFER_BIT)
   glEnable GL_DEPTH_TEST # Enable depth test
   glDepthFunc GL_LESS    # Accept fragment if it closer to the camera than the former one
@@ -368,6 +366,8 @@ proc draw_elem(vbo: VBO, kind: GLEnum = GL_TRIANGLES) {.inline.} =
   glDrawElements kind, vbo.n_verts, GL_UNSIGNED_SHORT, nil
 
 var ig_context: ptr ImGuiContext
+var small_font: ptr ImFont
+var large_font: ptr ImFont
 proc setup_imgui(w: GLFWWindow) =
   ig_context = igCreateContext()
   #var io = igGetIO()
@@ -375,6 +375,8 @@ proc setup_imgui(w: GLFWWindow) =
   doAssert igGlfwInitForOpenGL(w, true)
   doAssert igOpenGL3Init()
   igStyleColorsDark()
+  small_font = ig_context.io.fonts.addFontFromFileTTF("fonts/TerminusTTF.ttf", 14)
+  large_font = ig_context.io.fonts.addFontFromFileTTF("fonts/TerminusTTF.ttf", 36)
   #igPushStyleColor ImGuiCol.Text, ImVec4(x:1f, y:0f, z:1f, w:1f)
   igSetNextWindowPos(ImVec2(x:5, y:5))
 
@@ -388,14 +390,17 @@ proc str(v: Vec4f): string =
 
 proc draw_goal =
   let mid = middle()
-  igSetNextWindowPos(ImVec2(x:mid.x, y:mid.y))
-  igSetNextWindowSize(ImVec2(x:300f, y:300f))
-  igBegin("Level complete!")
-  igText("GOAL")
+  igSetNextWindowPos(ImVec2(x:mid.x - 150, y:mid.y))
+  igSetNextWindowSize(ImVec2(x:300f, y:48))
+  igPushFont( large_font )
+  igBegin("GOAL", nil, ImGuiWindowFlags.NoDecoration)
+  igText("Level complete!")
+  igPopFont()
   igEnd()
 
 proc draw_imgui =
   igSetNextWindowSize(ImVec2(x:300f, y:300f))
+  igPushFont( small_font )
   igBegin("Player vectors")
 
   #igText("Player vectors")
@@ -417,7 +422,11 @@ proc draw_imgui =
   igSliderFloat3("pan_vel"   , pan_vel.arr, -100f, 100f)
   igSliderFloat3("pan_acc"   , pan_acc.arr, -100f, 100f)
 
+  igCheckBox("following", following.addr)
+  igSliderInt("current_level", current_level.addr, 1.int32, n_levels.int32 - 1)
+
   #igText("average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
+  igPopFont()
   igEnd()
 
 proc imgui_frame =
@@ -498,6 +507,9 @@ proc main =
     else:
       traction = 1f
 
+    if ramp.length == 0 and fh > 0f:
+      safe = player.pos
+
     var m = vec3f(0,0,0)
     if not paused and not goal:
       m = rotate_mouse(mouse)
@@ -529,8 +541,11 @@ proc main =
       .scale(2 * player_radius)
       .translate(player.pos) * player.rot.mat4f
 
+    if mask(x,z) == TU:
+      player.vel.y = clamp(player.vel.y, -max_vel.y, max_vel.y)
+
     if ((1f-traction) * player.vel.y) < -max_vel.y:
-      reset_player()
+        respawn()
 
   proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
     mesh.mvp = proj * view.translate(-pan) * mesh.model

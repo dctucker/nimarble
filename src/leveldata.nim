@@ -99,6 +99,7 @@ let levels = @[
   init_level(level_2_src, level_2_mask_src, vec3f(0f, 0.4f, 0.8f)),
 ]
 var level_ref: Level
+let n_levels* = levels.len()
 
 var w,h: int
 var ox*, oy*, oz*: float
@@ -409,7 +410,7 @@ proc average_height*(x,z: float): float =
 var floor_index*: Index
 var floor_verts* : seq[cfloat]
 var floor_colors*: seq[cfloat]
-var current_level*: int
+var current_level*: int32
 
 proc load_level*(n: int) =
   if 0 < n and n < levels.len:
