@@ -61,17 +61,25 @@ proc tsv_masks(line: string): seq[CliffMask] =
       result = xx
   )
 
+proc find_p1(data: seq[float], mask: seq[CliffMask], w,h: int): Vec3i =
+  for i in 0..h:
+    for j in 0..w:
+      if mask[i*w+j] == P1:
+        return Vec3i(arr: [j.int32, data[i*w+j].int32, i.int32])
+
+
 const level_1_src = staticRead("../levels/1.tsv")
 const level_1_mask_src = staticRead("../levels/1mask.tsv")
 const level_1_data = level_1_src.splitLines.map(tsv_floats).flatten()
 const level_1_mask = level_1_mask_src.splitLines.map(tsv_masks).flatten()
+const level_1_origin = level_1_data.find_p1(level_1_mask, 115, 74)
 let level_1 = Level(
   data: level_1_data,
   mask: level_1_mask,
-  color: vec3f(1f,0.8f,0f),
+  color: vec3f(1f, 0.8f, 0f),
   width: 115,
   height: 74,
-  origin: vec3i(32, 50, 12)
+  origin: level_1_origin,
   #AG13
 )
 
@@ -79,13 +87,14 @@ const level_2_src = staticRead("../levels/2.tsv")
 const level_2_mask_src = staticRead("../levels/2mask.tsv")
 const level_2_data = level_2_src.splitLines.map(tsv_floats).flatten()
 const level_2_mask = level_2_mask_src.splitLines.map(tsv_masks).flatten()
+const level_2_origin = level_2_data.find_p1(level_2_mask, 158, 117)
 let level_2 = Level(
   data: level_2_data,
   mask: level_2_mask,
   color: vec3f(0f,0.4f,0.8f),
   width: 158,
   height: 117,
-  origin: vec3i(30, 99, 25)
+  origin: level_2_origin,
   #AE26
 )
 

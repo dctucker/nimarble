@@ -527,7 +527,6 @@ proc main =
     #follow_player()
     pan += pan_vel
 
-
     if paused and frame_step:
       player.physics()
       frame_step = false
