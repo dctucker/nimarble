@@ -6,7 +6,7 @@ const EE = 0
 const sky* = 120f
 
 type
-  CliffMask = enum
+  CliffMask* = enum
     xx = 0,     # regulard slope
     LL = 1,     # L is left
     JJ = 2,     # J is right
@@ -48,17 +48,20 @@ proc is_numeric(s: string): bool =
   except:
     result = false
 
+proc parse_mask(s: string): CliffMask =
+  try:
+    result = parseEnum[CliffMask](s)
+  except:
+    if s.len > 0 and s != "0":
+      if not s.is_numeric():
+        echo "Unrecognized mask: " & s
+    result = xx
+
 proc tsv_masks(line: string): seq[CliffMask] =
   var j = 0
   result = line.split("\t").map(proc(s:string):CliffMask =
     j += 1
-    try:
-      result = parseEnum[CliffMask](s)
-    except:
-      if s.len > 0 and s != "0":
-        if not s.is_numeric():
-          echo "Unrecognized mask at " & "," & $j & ": " & s
-      result = xx
+    result = parse_mask(s)
   )
 
 proc find_p1(data: seq[float], mask: seq[CliffMask], w,h: int): Vec3i =
@@ -67,36 +70,30 @@ proc find_p1(data: seq[float], mask: seq[CliffMask], w,h: int): Vec3i =
       if mask[i*w+j] == P1:
         return Vec3i(arr: [j.int32, data[i*w+j].int32, i.int32])
 
+proc init_level(data_src, mask_src: string, color: Vec3f): Level =
+  var i,j: int
+
+  let source_lines = data_src.splitLines()
+  let data = source_lines.map(tsv_floats).flatten()
+  let mask = mask_src.splitLines.map(tsv_masks).flatten()
+  let height = source_lines.len()
+  let width = source_lines[0].split("\t").len()
+  result = Level(
+    height: height,
+    width: width,
+    data: data,
+    mask: mask,
+    origin: data.find_p1(mask, width, height),
+    color: color,
+  )
 
 const level_1_src = staticRead("../levels/1.tsv")
 const level_1_mask_src = staticRead("../levels/1mask.tsv")
-const level_1_data = level_1_src.splitLines.map(tsv_floats).flatten()
-const level_1_mask = level_1_mask_src.splitLines.map(tsv_masks).flatten()
-const level_1_origin = level_1_data.find_p1(level_1_mask, 115, 74)
-let level_1 = Level(
-  data: level_1_data,
-  mask: level_1_mask,
-  color: vec3f(1f, 0.8f, 0f),
-  width: 115,
-  height: 74,
-  origin: level_1_origin,
-  #AG13
-)
+let level_1 = init_level(level_1_src, level_1_mask_src, vec3f(1f, 0.8f, 0f))
 
 const level_2_src = staticRead("../levels/2.tsv")
 const level_2_mask_src = staticRead("../levels/2mask.tsv")
-const level_2_data = level_2_src.splitLines.map(tsv_floats).flatten()
-const level_2_mask = level_2_mask_src.splitLines.map(tsv_masks).flatten()
-const level_2_origin = level_2_data.find_p1(level_2_mask, 158, 117)
-let level_2 = Level(
-  data: level_2_data,
-  mask: level_2_mask,
-  color: vec3f(0f,0.4f,0.8f),
-  width: 158,
-  height: 117,
-  origin: level_2_origin,
-  #AE26
-)
+let level_2 = init_level(level_2_src, level_2_mask_src, vec3f(0f, 0.4f, 0.8f))
 
 let levels = @[
   Level(),
@@ -366,6 +363,11 @@ proc surface_normal*(x,z: float): Vec3f =
   let u = vec3f(1, p1-p0, 0)
   let v = vec3f(0, p2-p0, 1)
   result = v.cross(u).normalize()
+
+proc mask*(x,z: float): CliffMask =
+  let (i,j) = xlat_coord(x,z)
+  if i < 0 or j < 0 or i >= h-1 or j >= w-1: return xx
+  return level_ref.mask[i * w + j]
 
 proc toString(x: float): string =
   x.formatFloat(ffDecimal,3)

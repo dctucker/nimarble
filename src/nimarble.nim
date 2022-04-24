@@ -157,7 +157,7 @@ proc reset_view =
 
 const field_width = 10f
 let aspect: float32 = width / height
-#var proj: Mat4f = perspective(radians(30.0f), aspect, 0.1f, 150.0f)
+#var proj: Mat4f = perspective(radians(30.0f), aspect, 0.125, 150.0f)
 var proj: Mat4f = ortho(aspect * -field_width, aspect * field_width, -field_width, field_width, 0f, sky) # In world coordinates
 reset_view()
 
@@ -179,19 +179,15 @@ proc rotate_coord(v: Vec3f): Vec3f =
 proc follow_player =
   let threshold = 4f
 
-  #echo player.pos
-  #let pla = rotate_coord(player.pos) * vec3f(1,0,1)
   let pla = player.pos * vec3f(0.5,0,0.5)
   let offset = vec3f(-5, 0, -5)
   let d = pla - pan - offset
   let delta = d.x + d.z
-  #stdout.write ", pla=", pla
-  stdout.write ", delta=", delta
 
   if delta < -threshold:
-    pan += vec3f(-0.1f, 0f, -0.1f)
+    pan += vec3f(-0.125f, 0f, -0.125f)
   if delta > threshold:
-    pan += vec3f(+0.1f, 0f, +0.1f)
+    pan += vec3f(+0.125f, 0f, +0.125f)
 
 proc display_size(): (int32, int32) =
   var monitor = glfwGetPrimaryMonitor()
@@ -202,7 +198,9 @@ proc middle(): Vec2f = vec2f(width.float * 0.5f, height.float * 0.5f)
 
 var mouse: Vec3f
 var paused = false
+var following = false
 var frame_step = false
+var goal = false
 
 proc toggle_pause(w: GLFWWindow) =
   paused = not paused
@@ -231,32 +229,32 @@ proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mod
   case key
   of GLFWKey.Up:
     if action == GLFWPress:
-      pan_vel += vec3f(-0.1f, 0f, -0.1f)
+      pan_vel += vec3f(-0.125f, 0f, -0.125)
     elif action == GLFWRelease:
       pan_vel = vec3f(0f,0f,0f)
   of GLFWKey.Down:
     if action == GLFWPress:
-      pan_vel += vec3f(+0.1f, 0f, +0.1f)
+      pan_vel += vec3f(+0.125, 0f, +0.125)
     elif action == GLFWRelease:
       pan_vel = vec3f(0f,0f,0f)
   of GLFWKey.Left:
     if action == GLFWPress:
-      pan_vel += vec3f(-0.1f, 0f, +0.1f)
+      pan_vel += vec3f(-0.125, 0f, +0.125)
     elif action == GLFWRelease:
       pan_vel = vec3f(0f,0f,0f)
   of GLFWKey.Right:
     if action == GLFWPress:
-      pan_vel += vec3f(+0.1f, 0f, -0.1f)
+      pan_vel += vec3f(+0.125, 0f, -0.125)
     elif action == GLFWRelease:
       pan_vel = vec3f(0f,0f,0f)
   of GLFWKey.PageUp:
     if action == GLFWPress:
-      pan_vel += vec3f(0f, +0.1f, 0f)
+      pan_vel += vec3f(0f, +0.125, 0f)
     elif action == GLFWRelease:
       pan_vel = vec3f(0f,0f,0f)
   of GLFWKey.PageDown:
     if action == GLFWPress:
-      pan_vel += vec3f(0f, -0.1f, 0f)
+      pan_vel += vec3f(0f, -0.125, 0f)
     elif action == GLFWRelease:
       pan_vel = vec3f(0f,0f,0f)
   of GLFWKey.P:
@@ -279,11 +277,14 @@ proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mod
       load_level current_level
       init_floor_plane()
       reset_player()
+  of GLFWKey.F:
+    if action == GLFWPress:
+      following = not following
   of GLFWKey.Q,
      GLFWKey.Escape:
     window.setWindowShouldClose(true)
   else: discard
-  pan_vel = pan_vel.clamp(-0.1f, 0.1f)
+  pan_vel = pan_vel.clamp(-0.125, 0.125)
 
 proc rotate_mouse(mouse: Vec3f): Vec3f =
   const th = radians(45f)
@@ -457,6 +458,9 @@ proc main =
     let fh = point_height(x, z)
     #stdout.write "\27[K"
 
+    if mask(x,z) == GG:
+      goal = true
+
     let ramp = slope(x,z)
     let thx = arctan(ramp.x * level_squash)
     let thz = arctan(ramp.z * level_squash)
@@ -524,14 +528,16 @@ proc main =
     dt = time - t
     t = time
 
-    #follow_player()
-    pan += pan_vel
-
     if paused and frame_step:
       player.physics()
       frame_step = false
     elif not paused:
       player.physics()
+
+    if following:
+      follow_player()
+
+    pan += pan_vel
 
     glClear            GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
 
