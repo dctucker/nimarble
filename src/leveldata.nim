@@ -3,38 +3,31 @@ import sequtils
 import strutils
 
 const EE = 0
+const sky* = 120f
 
+type
+  CliffMask = enum
+    xx = 0,     # regulard slope
+    LL = 1,     # L is left
+    JJ = 2,     # J is right
+    HH,         # H is left and right
+    AA = 4,     # A is up
+    LA, AJ, AH,
+    VV = 8,     # V is down
+    LV, VJ, VH,
+    II, IL, IJ, # I is top and bottom
+    IH,         # oops! all cliffs
+    GG,         # goal
+    TU,         # tube
+    IC,         # icy
+    P1,         # player 1 start position
 
-#const level_0 = @[
-#
-#  55 54  54 53  53 52
-#  54 53  53 52  52 51
-#
-#  54 53  53 52  52 51
-#  53 52  52 51  51 50
-#
-#  53 52  52 51  51 50 
-#  52 51  51 50  50 49
-#]
-type CliffMask = enum
-  xx = 0,     # regulard slope
-  LL = 1,     # L is left
-  JJ = 2,     # J is right
-  HH,         # H is left and right
-  AA = 4,     # A is up
-  LA, AJ, AH,
-  VV = 8,     # V is down
-  LV, VJ, VH,
-  II, IL, IJ, # I is top and bottom
-  IH,         # oops! all cliffs
-  GG,         # goal
-  TU,         # tube
-  IC,         # icy
-  P1,         # player 1 start position
-
-  #LA,AA,AJ,
-  #LL,xx JJ,
-  #LV,VV,VJ
+  Level = ref object
+    width, height: int
+    origin: Vec3i
+    data: seq[float]
+    mask: seq[CliffMask]
+    color: Vec3f
 
 proc flatten[T](input: seq[seq[T]]): seq[T] =
   for row in input:
@@ -50,7 +43,7 @@ proc tsv_floats(line: string): seq[float] =
 
 proc is_numeric(s: string): bool =
   try:
-    discard s.parseInt()
+    discard s.parseFloat()
     result = true
   except:
     result = false
@@ -69,50 +62,42 @@ proc tsv_masks(line: string): seq[CliffMask] =
   )
 
 const level_1_src = staticRead("../levels/1.tsv")
-const level_2_src = staticRead("../levels/2.tsv")
-const level_2_mask_src = staticRead("../levels/2mask.tsv")
+const level_1_mask_src = staticRead("../levels/1mask.tsv")
 const level_1_data = level_1_src.splitLines.map(tsv_floats).flatten()
-const level_2_data = level_2_src.splitLines.map(tsv_floats).flatten()
-const level_2_mask = level_2_mask_src.splitLines.map(tsv_masks).flatten()
-
-type
-  Level = ref object
-    width, height: int
-    origin_x, origin_z, origin_y: int
-    data: seq[float]
-    mask: seq[CliffMask]
-    color: Vec3f
-
+const level_1_mask = level_1_mask_src.splitLines.map(tsv_masks).flatten()
 let level_1 = Level(
   data: level_1_data,
+  mask: level_1_mask,
   color: vec3f(1f,0.8f,0f),
-  width: 114,
+  width: 115,
   height: 74,
-  origin_x: 32,
-  origin_z: 12,
-  origin_y: 50,
+  origin: vec3i(32, 50, 12)
   #AG13
 )
+
+const level_2_src = staticRead("../levels/2.tsv")
+const level_2_mask_src = staticRead("../levels/2mask.tsv")
+const level_2_data = level_2_src.splitLines.map(tsv_floats).flatten()
+const level_2_mask = level_2_mask_src.splitLines.map(tsv_masks).flatten()
 let level_2 = Level(
   data: level_2_data,
   mask: level_2_mask,
   color: vec3f(0f,0.4f,0.8f),
   width: 158,
   height: 117,
-  origin_x: 30,
-  origin_z: 25,
-  origin_y: 99,
+  origin: vec3i(30, 99, 25)
   #AE26
 )
 
-var level_ref = level_2
-var w = level_ref.width
-var h = level_ref.height
+let levels = @[
+  Level(),
+  level_1,
+  level_2
+]
+var level_ref: Level
 
-const sky* = 120f
-var ox* = level_ref.origin_x.float
-var oy* = level_ref.origin_y.float
-var oz* = level_ref.origin_z.float
+var w,h: int
+var ox*, oy*, oz*: float
 
 proc get_value[T](level: seq[T], x,z: int): T =
   let index = w * z + x
@@ -128,7 +113,7 @@ proc setup_floor_verts[T](level: seq[T], level_mask: seq[CliffMask]): seq[cfloat
   for z in -oz..<h-oz:
     for x in -ox..<w-ox:
       let offset = w * z + x
-      let y = level[offset]
+      let y = level_data[offset]
 
       verts.add cfloat x - q
       verts.add cfloat y
@@ -171,18 +156,18 @@ proc setup_floor_verts[T](level: seq[T], level_mask: seq[CliffMask]): seq[cfloat
 
   result = verts
 
-proc setup_floor_points[T](level: seq[T]): seq[cfloat] =
+proc setup_floor_points[T](level_data: seq[T], level_mask: seq[CliffMask]): seq[cfloat] =
   result = newSeq[cfloat](3 * w * h)
   for z in 0..<h:
     for x in 0..<w:
       let index = 3 * (w * z + x)
-      let y = level[w * z + x]
+      let y = level_data[w * z + x]
       result[index+0] = (x.cfloat-ox).cfloat
-      result[index+1] = y.cfloat
+      result[index+1] =  y.cfloat
       result[index+2] = (z.cfloat-oz).cfloat
 
 const ch = 4
-proc setup_floor_colors[T](level: seq[T], level_mask: seq[CliffMask], level_color: Vec3f): seq[cfloat] =
+proc setup_floor_colors[T](level_data: seq[T], level_mask: seq[CliffMask], level_color: Vec3f): seq[cfloat] =
   #const COLOR_H = 44f
   #const COLOR_D = 56f - 44f
   const COLOR_H = 11f
@@ -192,7 +177,7 @@ proc setup_floor_colors[T](level: seq[T], level_mask: seq[CliffMask], level_colo
     for x in 0..<w:
       let level_index = w * z + x
       let index = ch * level_index
-      let y = level[level_index]
+      let y = level_data[level_index]
       if y == EE:
         result[index+0] = 0.0
         result[index+1] = 0.0
@@ -200,10 +185,20 @@ proc setup_floor_colors[T](level: seq[T], level_mask: seq[CliffMask], level_colo
         result[index+3] = 0.0
       else:
         case level_mask[level_index]
+        of IC:
+          result[index+0] = 0.0
+          result[index+1] = 1.0
+          result[index+2] = 1.0
+          result[index+3] = 1.0
         of GG:
           result[index+0] = 0.8
           result[index+1] = 0.8
           result[index+2] = 0.8
+          result[index+3] = 1.0
+        of TU:
+          result[index+0] = level_color.x * 0.5
+          result[index+1] = level_color.y * 0.5
+          result[index+2] = level_color.z * 0.5
           result[index+3] = 1.0
         of LV, LA, AJ, VJ:
           result[index+0] = 1.0
@@ -220,10 +215,6 @@ proc setup_floor_colors[T](level: seq[T], level_mask: seq[CliffMask], level_colo
           result[index+1] = level_color.y #((y.float-COLOR_H) * (1.0/COLOR_D))
           result[index+2] = level_color.z #((y.float-COLOR_H) * (1.0/COLOR_D))
           result[index+3] = 1.0
-
-var floor_verts*  = setup_floor_points level_ref.data
-var floor_colors* = setup_floor_colors(level_ref.data, level_ref.mask, level_ref.color)
-
 
 type
   PatchKind = enum
@@ -337,8 +328,6 @@ proc setup_floor_index[T](level: seq[T]): Index =
       inc index
       V1 = V2 + N.cushort
 
-var floor_index* = setup_floor_index level_ref.data
-
 proc xlat_coord(x,z: float): (int,int) =
   return ((z.floor+oz.float).int, (x.floor+ox.float).int)
 
@@ -384,4 +373,25 @@ proc point_height*(x,z: float): float =
   result += h3 * (1-ux) * uz
   result += h4 * ux * uz
   #stdout.write ", floor = ", result.formatFloat(ffDecimal, 3)
+
+var floor_index*: Index
+var floor_verts* : seq[cfloat]
+var floor_colors*: seq[cfloat]
+var current_level*: int
+
+proc load_level*(n: int) =
+  if 0 < n and n < levels.len:
+    level_ref = levels[n]
+    w = level_ref.width
+    h = level_ref.height
+
+    ox = level_ref.origin.x.float
+    oy = level_ref.origin.y.float
+    oz = level_ref.origin.z.float
+
+    floor_verts  = setup_floor_points(level_ref.data, level_ref.mask)
+    floor_colors = setup_floor_colors(level_ref.data, level_ref.mask, level_ref.color)
+    floor_index = setup_floor_index level_ref.data
+
+load_level 1
 

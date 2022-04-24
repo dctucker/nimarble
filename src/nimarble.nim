@@ -155,6 +155,12 @@ proc reset_view =
   ).rotateY(radians(-45f)).translate( xlat )
   pan = vec3f(0,0,0)
 
+const field_width = 10f
+let aspect: float32 = width / height
+#var proj: Mat4f = perspective(radians(30.0f), aspect, 0.1f, 150.0f)
+var proj: Mat4f = ortho(aspect * -field_width, aspect * field_width, -field_width, field_width, 0f, sky) # In world coordinates
+reset_view()
+
 proc reset_player =
   player.pos = vec3f(0f, player_top, 0f)
   player.vel = vec3f(0,0,0)
@@ -208,6 +214,19 @@ proc toggle_pause(w: GLFWWindow) =
     mouse *= 0
     w.setInputMode GLFW_CURSOR_SPECIAL, GLFWCursorDisabled
 
+var floor_plane: Mesh
+proc init_floor_plane =
+  floor_plane = Mesh(
+    vao: newVAO(),
+    vert_vbo: newVBO(3, floor_verts),
+    color_vbo: newVBO(4, floor_colors),
+    elem_vbo: newElemVBO(floor_index),
+    program: player.program,
+  )
+  floor_plane.model = mat4(1.0f).scale(1f, level_squash, 1f)
+  floor_plane.mvp = proj * view.translate(-pan) * floor_plane.model
+  floor_plane.matrix = floor_plane.program.newMatrix(floor_plane.mvp, "MVP")
+
 proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mods: int32): void {.cdecl.} =
   case key
   of GLFWKey.Up:
@@ -248,6 +267,18 @@ proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mod
   of GLFWKey.S:
     if action != GLFWRelease:
       frame_step = true
+  of GLFWKey.LeftBracket:
+    if action == GLFWPress:
+      dec current_level
+      load_level current_level
+      init_floor_plane()
+      reset_player()
+  of GLFWKey.RightBracket:
+    if action == GLFWPress:
+      inc current_level
+      load_level current_level
+      init_floor_plane()
+      reset_player()
   of GLFWKey.Q,
      GLFWKey.Escape:
     window.setWindowShouldClose(true)
@@ -382,12 +413,6 @@ proc cleanup(w: GLFWWindow) {.inline.} =
   w.destroyWindow
   glfwTerminate()
 
-const field_width = 10f
-let aspect: float32 = width / height
-#var proj: Mat4f = perspective(radians(30.0f), aspect, 0.1f, 150.0f)
-var proj: Mat4f = ortho(aspect * -field_width, aspect * field_width, -field_width, field_width, 0f, sky) # In world coordinates
-reset_view()
-
 var t  = 0.0f
 var dt = 0.0f
 var time = 0.0f
@@ -409,21 +434,13 @@ proc main =
   )
   reset_player()
 
-  var floor_plane = Mesh(
-    vao: newVAO(),
-    vert_vbo: newVBO(3, floor_verts),
-    color_vbo: newVBO(4, floor_colors),
-    elem_vbo: newElemVBO(floor_index),
-    program: player.program,
-  )
-
   player.model  = mat4(1.0f).scale(0.5f)
   player.mvp    = proj * view.translate(-pan) * player.model
   player.matrix = player.program.newMatrix(player.mvp, "MVP")
 
-  floor_plane.model = mat4(1.0f).scale(1f, level_squash, 1f)
-  floor_plane.mvp = proj * view.translate(-pan) * floor_plane.model
-  floor_plane.matrix = floor_plane.program.newMatrix(floor_plane.mvp, "MVP")
+  current_level = 1
+  load_level current_level
+  init_floor_plane()
 
   proc toString[T: float](f: T, prec: int = 8): string =
     result = f.formatFloat(ffDecimal, prec)
