@@ -1,6 +1,7 @@
 import glm
 import sequtils
 import strutils
+import std/tables
 
 const EE = 0
 const sky* = 120f
@@ -28,6 +29,9 @@ type
     data: seq[float]
     mask: seq[CliffMask]
     color: Vec3f
+
+  Ind* = uint32
+  Index = seq[Ind]
 
 proc flatten[T](input: seq[seq[T]]): seq[T] =
   for row in input:
@@ -104,6 +108,11 @@ let n_levels* = levels.len()
 var w,h: int
 var ox*, oy*, oz*: float
 
+var floor_index*: Index
+var floor_verts* : seq[cfloat]
+var floor_colors*: seq[cfloat]
+var current_level*: int32
+
 proc get_value[T](level: seq[T], x,z: int): T =
   let index = w * z + x
   if index in level_ref.low..level_ref.high:
@@ -123,60 +132,117 @@ proc around*(m: CliffMask, x,z: float): bool =
     return true
   for i in -1..1:
     for j in -1..1:
-      if mask(x,z) == m:
+      if mask(x+i.float,z+j.float) == m:
         return true
   return false
 
-proc setup_floor_verts[T](level: seq[T], level_mask: seq[CliffMask]): seq[cfloat] =
-  const q = 0.5
-  const dim = 3
+proc point_color(level: Level, i,j: int): Vec4f =
+  let k = level.width * i + j
+  let y = level.data[k]
+  if y == EE:
+    return vec4f(0,0,0,0)
+  elif IC.around(j.float - level.origin.x.float, i.float - level.origin.z.float):
+    return vec4f( 0.0, 1.0, 1.0, 1.0)
+  else:
+    case level.mask[k]
+    of GG:
+      return vec4f( 0.8, 0.8, 0.8, 1.0)
+    of TU:
+      return vec4f( level.color.x * 0.5, level.color.y * 0.5, level.color.z * 0.5, 1.0)
+    of AA, JJ: return vec4f(level.color * 0.2, 0.5)
+    of LL, VV: return vec4f(level.color * 0.5, 0.5)
+    of LV, VJ: return vec4f(level.color * 0.7, 1.0)
+    of LA, AJ: return vec4f(level.color * 0.2, 1.0)
+    of AH, VH, IL, IJ,
+       IH, II, HH:     return vec4f(level.color * 0.9, 0.5)
+    of P1:
+      return vec4f( 0.1, 0.1, 0.1, 1.0)
+    else:
+      return vec4f(0.7)
+      #return vec4f(((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), 0.9)
+
+proc setup_floor(level: Level) =
   const nv = 8
-  var verts = newSeqOfCap[cfloat](dim * w * w)
-  for z in -oz..<h-oz:
-    for x in -ox..<w-ox:
-      let offset = w * z + x
-      let y = level_data[offset]
+  var lookup = newTable[(cfloat,cfloat,cfloat), Ind]()
+  var verts = newSeqOfCap[cfloat]( w * h)
+  var index = newSeqOfCap[Ind]( w * h * nv)
+  var colors = newSeqOfCap[cfloat](w * h * nv * 4)
+  var n = 0.Ind
+  var x,y,z: float
 
-      verts.add cfloat x - q
-      verts.add cfloat y
-      verts.add cfloat z - q
+  proc offset[T:Ordinal](level: Level, i,j: T): T =
+    if j >= level.width or j < 0: return 0
+    if i >= level.height or i < 0: return 0
+    result = level.width * i + j
 
-      verts.add cfloat x - q
-      verts.add cfloat y
-      verts.add cfloat z + q
+  proc add_color(i,j:int) =
+    let c = level.point_color(i,j)
+    colors.add c.x
+    colors.add c.y
+    colors.add c.z
+    colors.add 0.9f
 
-      verts.add cfloat x + q
-      verts.add cfloat y
-      verts.add cfloat z - q
+  proc add_index =
+    index.add n
+    inc n
+  proc add_index(nn: Ind) =
+    index.add nn
 
-      verts.add cfloat x + q
-      verts.add cfloat y
-      verts.add cfloat z + q
+  proc add_point(x,y,z: cfloat, i,j:int) =
+    if lookup.hasKey((x,y,z)):
+      index.add lookup[(x,y,z)]
+    else:
+      verts.add x
+      verts.add y
+      verts.add z
+      add_index()
+      add_color(i,j)
 
+  for i in  0..<level.height-1:
+    for j in 0..<level.width-1:
+      x = (j - level.origin.x).float
+      z = (i - level.origin.z).float
 
-      let left = ( get_value(x - 1, z).cfloat + y.cfloat ) / 2.cfloat
-      if level_mask[offset] and LL: # left
-        discard
-      else:
-        discard
-      verts.add cfloat x - q
-      verts.add cfloat left
-      verts.add cfloat z - q
+      if j < i - 4 or j > i + 44: continue
 
-      if level_mask[offset] and JJ: # right
-        discard
-      else:
-        discard
-      if level_mask[offset] and AA: # up
-        discard
-      else:
-        discard
-      if level_mask[offset] and VV: # down
-        discard
-      else:
-        discard
+      y = level.data[level.offset(i,j)]
+      add_point(x,y,z,i,j)
 
-  result = verts
+      y = level.data[level.offset(i,j+1)]
+      add_point(x+1,y,z,i,j+1)
+
+      y = level.data[level.offset(i+1,j)]
+      add_point(x,y,z+1,i+1,j)
+
+      y = level.data[level.offset(i+1,j+1)]
+      add_point(x+1,y,z+1,i+1,j+1)
+
+      #let left = ( get_value(x - 1, z).cfloat + y.cfloat ) / 2.cfloat
+      #if level_mask[offset] and LL: # left
+      #  discard
+      #else:
+      #  discard
+      #verts.add cfloat x - q
+      #verts.add cfloat left
+      #verts.add cfloat z - q
+
+      #if level_mask[offset] and JJ: # right
+      #  discard
+      #else:
+      #  discard
+      #if level_mask[offset] and AA: # up
+      #  discard
+      #else:
+      #  discard
+      #if level_mask[offset] and VV: # down
+      #  discard
+      #else:
+      #  discard
+
+  floor_colors = colors
+  floor_verts = verts
+  floor_index = index
+  echo index.len
 
 proc setup_floor_points[T](level_data: seq[T], level_mask: seq[CliffMask]): seq[cfloat] =
   result = newSeq[cfloat](3 * w * h)
@@ -188,8 +254,9 @@ proc setup_floor_points[T](level_data: seq[T], level_mask: seq[CliffMask]): seq[
       result[index+1] =  y.cfloat
       result[index+2] = (z.cfloat-oz).cfloat
 
+
 const ch = 4
-proc setup_floor_colors[T](level_data: seq[T], level_mask: seq[CliffMask], level_color: Vec3f): seq[cfloat] =
+proc setup_floor_colors[T](level: Level): seq[cfloat] =
   #const COLOR_H = 44f
   #const COLOR_D = 56f - 44f
   const COLOR_H = 11f
@@ -199,44 +266,11 @@ proc setup_floor_colors[T](level_data: seq[T], level_mask: seq[CliffMask], level
     for x in 0..<w:
       let level_index = w * z + x
       let index = ch * level_index
-      let y = level_data[level_index]
-      if y == EE:
-        result[index+0] = 0.0
-        result[index+1] = 0.0
-        result[index+2] = 0.0
-        result[index+3] = 0.0
-      elif IC.around(x.float - ox, z.float - oz):
-        result[index+0] = 0.0
-        result[index+1] = 1.0
-        result[index+2] = 1.0
-        result[index+3] = 1.0
-      else:
-        case level_mask[level_index]
-        of GG:
-          result[index+0] = 0.8
-          result[index+1] = 0.8
-          result[index+2] = 0.8
-          result[index+3] = 1.0
-        of TU:
-          result[index+0] = level_color.x * 0.5
-          result[index+1] = level_color.y * 0.5
-          result[index+2] = level_color.z * 0.5
-          result[index+3] = 1.0
-        of LV, LA, AJ, VJ, AA, JJ, LL, VV, IH, IL, IJ, AH, VH, II, HH:
-          result[index+0] = 1.0
-          result[index+1] = 0.0
-          result[index+2] = 1.0
-          result[index+3] = 1.0
-        of P1:
-          result[index+0] = 0.1
-          result[index+1] = 0.1
-          result[index+2] = 0.1
-          result[index+3] = 1.0
-        else:
-          result[index+0] = level_color.x #1.0 #((y.float-COLOR_H) * (1.0/COLOR_D))
-          result[index+1] = level_color.y #((y.float-COLOR_H) * (1.0/COLOR_D))
-          result[index+2] = level_color.z #((y.float-COLOR_H) * (1.0/COLOR_D))
-          result[index+3] = 0.9
+      let c = level.point_color[level_index]
+      result[index+0] = c.x
+      result[index+1] = c.y
+      result[index+2] = c.z
+      result[index+3] = c.w
 
 type
   PatchKind = enum
@@ -247,7 +281,6 @@ type
   DiagDirection = enum
     Up
     Down
-  Index = seq[cushort]
 
 # This procedure generates the vertex sequence for a triangle strip that
 # covers the given quadrilaterally-gridded surface.  The parameters 'N' and
@@ -271,7 +304,7 @@ proc setup_floor_index[T](level: seq[T]): Index =
   var column: int
   var index: int
   var diagdir: DiagDirection  # Slope Direction of Patch Diagonal */
-  var V1, V2: cushort         # Left & Right Vertex Indices */
+  var V1, V2: Ind         # Left & Right Vertex Indices */
 
 
   case patchtype
@@ -280,7 +313,7 @@ proc setup_floor_index[T](level: seq[T]): Index =
   of DownIn :  diagdir = Down
   of DownOut:  diagdir = Down
   #else:
-  #  return newSeq[cushort](0)
+  #  return newSeq[Ind](0)
 
   # Calculate the total number of vertices in the resultant triangle
   # strip.  This is equal to the number of vertices for each column
@@ -296,7 +329,7 @@ proc setup_floor_index[T](level: seq[T]): Index =
   if (patchtype == UpOut) or (patchtype == DownIn):
     inc Nverts
 
-  result = newSeq[cushort](Nverts)
+  result = newSeq[Ind](Nverts)
 
   # If the grid normal direction is opposite what is "natural" for the
   # triangle strip, then reverse the normal sense by specifying the first
@@ -305,7 +338,7 @@ proc setup_floor_index[T](level: seq[T]): Index =
   index = 0
 
   if patchtype == UpOut:
-    result[index] = N.cushort
+    result[index] = N.Ind
     inc index
   elif patchtype == DownIn:
     result[index] = 0
@@ -313,9 +346,9 @@ proc setup_floor_index[T](level: seq[T]): Index =
 
   # Generate the triangle strip by looping over each column.
   if diagdir == Up:
-    V1 = N.cushort ; V2 = 0
+    V1 = N.Ind ; V2 = 0
   else:
-    V1 = 0 ; V2 = N.cushort
+    V1 = 0 ; V2 = N.Ind
 
   for column in 0..<M-1:
     if (column mod 2) == 0:
@@ -342,13 +375,13 @@ proc setup_floor_index[T](level: seq[T]): Index =
       inc index
       result[index] = V1
       inc index
-      V2 = V1 + N.cushort
+      V2 = V1 + N.Ind
     else:
       result[index] = V2
       inc index
-      result[index] = V2 + N.cushort
+      result[index] = V2 + N.Ind
       inc index
-      V1 = V2 + N.cushort
+      V1 = V2 + N.Ind
 
 proc floor_height*(x,z: float): float =
   let (i,j) = xlat_coord(x,z)
@@ -416,11 +449,6 @@ proc average_height*(x,z: float): float =
       accum floor_height(x+ii, z-jj)
   return sum / n.float
 
-var floor_index*: Index
-var floor_verts* : seq[cfloat]
-var floor_colors*: seq[cfloat]
-var current_level*: int32
-
 proc load_level*(n: int) =
   if 0 < n and n < levels.len:
     level_ref = levels[n]
@@ -431,9 +459,10 @@ proc load_level*(n: int) =
     oy = level_ref.origin.y.float
     oz = level_ref.origin.z.float
 
-    floor_verts  = setup_floor_points(level_ref.data, level_ref.mask)
-    floor_colors = setup_floor_colors(level_ref.data, level_ref.mask, level_ref.color)
-    floor_index = setup_floor_index level_ref.data
+    setup_floor level_ref
+    #floor_verts  = setup_floor_points(level_ref.data, level_ref.mask)
+    #floor_colors = setup_floor_colors(level_ref.data, level_ref.mask, level_ref.color)
+    #floor_index = setup_floor_index level_ref.data
 
 current_level = 2
 load_level current_level

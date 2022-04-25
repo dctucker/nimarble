@@ -1,4 +1,5 @@
 import glm
+from leveldata import Ind
 
 var cube* = @[
   -1.0f, -1.0f, -1.0f, # triangle 1 : begin
@@ -40,9 +41,9 @@ var cube* = @[
 ]
 
 const d = 3
-var cube_index* = newSeq[cushort](cube.len div d)
+var cube_index* = newSeq[Ind](cube.len div d)
 for i in 0..<cube_index.len:
-  cube_index[i] = i.cushort
+  cube_index[i] = i.Ind
 
 const ch = 4
 var cube_colors* = newSeq[cfloat](cube.len * ch div d)
@@ -71,16 +72,16 @@ proc uvSphereVerts*(segments, rings: int): seq[cfloat] =
       result.add x * r
       result.add y * r
       result.add h
-proc uvSphereElements*(segments, rings: int): seq[cushort] =
-  result = newSeqOfCap[cushort]((segments+1) * rings)
+proc uvSphereElements*(segments, rings: int): seq[Ind] =
+  result = newSeqOfCap[Ind]((segments+1) * rings)
 
   for segment in 0 ..< segments:
     for ring in 0 ..< rings - 1:
       let
-        i1 = cushort( ring +     segment * rings )
-        i2 = cushort( ring + 1 + segment * rings )
-        i3 = cushort( ring +     segment * rings + rings )
-        i4 = cushort( ring + 1 + segment * rings + rings )
+        i1 = Ind( ring +     segment * rings )
+        i2 = Ind( ring + 1 + segment * rings )
+        i3 = Ind( ring +     segment * rings + rings )
+        i4 = Ind( ring + 1 + segment * rings + rings )
       result.add([i1,i2,i3,i3,i2,i4])
 
 proc uvSphereColors*(segments, rings: int): seq[cfloat] =

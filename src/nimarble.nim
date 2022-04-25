@@ -44,7 +44,7 @@ type Mesh = ref object
   rot: Quatf
   vao: VAO
   vert_vbo, color_vbo: VBO[cfloat]
-  elem_vbo: VBO[cushort]
+  elem_vbo: VBO[Ind]
   mvp: Mat4f
   model: Mat4f
   normal: Vec3f
@@ -202,6 +202,7 @@ var paused = false
 var following = true
 var frame_step = false
 var goal = false
+var wireframe = false
 
 proc toggle_pause(w: GLFWWindow) =
   paused = not paused
@@ -291,6 +292,9 @@ proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mod
   of GLFWKey.X:
     if action == GLFWPress:
       respawn()
+  of GLFWKey.W:
+    if action == GLFWPress:
+      wireframe = not wireframe
   of GLFWKey.Q, GLFWKey.Escape:
     window.setWindowShouldClose(true)
   else: discard
@@ -365,7 +369,7 @@ proc draw(vbo: VBO, kind: GLEnum = GL_TRIANGLES) {.inline.} =
 
 proc draw_elem(vbo: VBO, kind: GLEnum = GL_TRIANGLES) {.inline.} =
   glBindBuffer GL_ELEMENT_ARRAY_BUFFER, vbo.id
-  glDrawElements kind, vbo.n_verts, GL_UNSIGNED_SHORT, nil
+  glDrawElements kind, vbo.n_verts, GL_UNSIGNED_INT, nil
 
 var ig_context: ptr ImGuiContext
 var small_font: ptr ImFont
@@ -430,6 +434,7 @@ proc draw_imgui =
   igSliderFloat3("pan_acc"   , pan_acc.arr, -100f, 100f)
 
   igCheckBox("following", following.addr)
+  igCheckBox("wireframe", wireframe.addr)
   igSliderInt("current_level", current_level.addr, 1.int32, n_levels.int32 - 1)
 
   #igText("average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
@@ -516,7 +521,9 @@ proc main =
     else:
       traction = 1f
 
-    if ramp.length == 0 and fh > 0f and cur_mask == CliffMask.xx:
+    let flat = ramp.length == 0
+    let nonzero = point_height(x.floor, z.floor) > 0f
+    if flat and nonzero and cur_mask == CliffMask.xx and not icy:
       respawn_pos = vec3f(player.pos.x.floor, player.pos.y, player.pos.z.floor)
 
     var m = vec3f(0,0,0)
@@ -554,6 +561,7 @@ proc main =
 
     player.model = mat4(1.0f)
       .scale(2 * player_radius)
+      .translate(vec3f(0, 2 * player_radius,0))
       .translate(player.pos) * player.rot.mat4f
 
     if TU.around(x,z):
@@ -611,11 +619,12 @@ proc main =
 
     glClear            GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
 
-    glPolygonMode      GL_FRONT_AND_BACK, GL_FILL
-    glEnable           GL_POLYGON_OFFSET_FILL
-    glPolygonOffset 1f, 1f
-    floor_plane.render GL_TRIANGLE_STRIP
-    glDisable          GL_POLYGON_OFFSET_FILL
+    if not wireframe:
+      glPolygonMode      GL_FRONT_AND_BACK, GL_FILL
+      glEnable           GL_POLYGON_OFFSET_FILL
+      glPolygonOffset 1f, 1f
+      floor_plane.render GL_TRIANGLE_STRIP
+      glDisable          GL_POLYGON_OFFSET_FILL
 
     glPolygonMode      GL_FRONT_AND_BACK, GL_LINE
     floor_plane.render GL_TRIANGLE_STRIP
