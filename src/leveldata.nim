@@ -110,6 +110,23 @@ proc get_value[T](level: seq[T], x,z: int): T =
     return level[index]
   return EE
 
+proc xlat_coord(x,z: float): (int,int) =
+  return ((z.floor+oz.float).int, (x.floor+ox.float).int)
+
+proc mask*(x,z: float): CliffMask =
+  let (i,j) = xlat_coord(x,z)
+  if i < 0 or j < 0 or i >= h-1 or j >= w-1: return xx
+  return level_ref.mask[i * w + j]
+
+proc around*(m: CliffMask, x,z: float): bool =
+  if mask(x,z) == m:
+    return true
+  for i in -1..1:
+    for j in -1..1:
+      if mask(x,z) == m:
+        return true
+  return false
+
 proc setup_floor_verts[T](level: seq[T], level_mask: seq[CliffMask]): seq[cfloat] =
   const q = 0.5
   const dim = 3
@@ -188,13 +205,13 @@ proc setup_floor_colors[T](level_data: seq[T], level_mask: seq[CliffMask], level
         result[index+1] = 0.0
         result[index+2] = 0.0
         result[index+3] = 0.0
+      elif IC.around(x.float - ox, z.float - oz):
+        result[index+0] = 0.0
+        result[index+1] = 1.0
+        result[index+2] = 1.0
+        result[index+3] = 1.0
       else:
         case level_mask[level_index]
-        of IC:
-          result[index+0] = 0.0
-          result[index+1] = 1.0
-          result[index+2] = 1.0
-          result[index+3] = 1.0
         of GG:
           result[index+0] = 0.8
           result[index+1] = 0.8
@@ -333,9 +350,6 @@ proc setup_floor_index[T](level: seq[T]): Index =
       inc index
       V1 = V2 + N.cushort
 
-proc xlat_coord(x,z: float): (int,int) =
-  return ((z.floor+oz.float).int, (x.floor+ox.float).int)
-
 proc floor_height*(x,z: float): float =
   let (i,j) = xlat_coord(x,z)
   if i < 0 or j < 0 or i >= h-1 or j >= w-1: return EE.float
@@ -362,20 +376,6 @@ proc surface_normal*(x,z: float): Vec3f =
   let u = vec3f(1, p1-p0, 0)
   let v = vec3f(0, p2-p0, 1)
   result = v.cross(u).normalize()
-
-proc mask*(x,z: float): CliffMask =
-  let (i,j) = xlat_coord(x,z)
-  if i < 0 or j < 0 or i >= h-1 or j >= w-1: return xx
-  return level_ref.mask[i * w + j]
-
-proc around*(m: CliffMask, x,z: float): bool =
-  if mask(x,z) == m:
-    return true
-  for i in -1..1:
-    for j in -1..1:
-      if mask(x,z) == m:
-        return true
-  return false
 
 proc toString(x: float): string =
   x.formatFloat(ffDecimal,3)

@@ -151,9 +151,9 @@ let player_top = oy
 proc reset_view =
   let xlat = vec3f( oz*1.5, 0, oz*1.5 )
   view = lookAt(
-    vec3f( 0f,  sky*0.9f,        sky*0.9f ), # camera pos
-    vec3f( 0f,  0f,            0f ),     # target
-    vec3f( 0f,  level_squash,  0f ),     # up
+    vec3f( 0f,  sky*0.9f,      sky*0.9f ), # camera pos
+    vec3f( 0f,  0f,            0f ),       # target
+    vec3f( 0f,  level_squash,  0f ),       # up
   ).rotateY(radians(-45f)).translate( xlat )
   #pan = vec3f(0,0,0)
   pan_vel = vec3f(0,0,0)
