@@ -373,6 +373,8 @@ proc point_height*(level: Level, x,z: float): float =
   #stdout.write ", floor = ", result.formatFloat(ffDecimal, 3)
 
 proc average_height*(level: Level, x,z: float): float =
+  const max_cells = 9
+  const max_iters = 81
   var n = 1
   var sum = level.floor_height(x,z)
   proc accum(v: float) =
@@ -380,7 +382,7 @@ proc average_height*(level: Level, x,z: float): float =
       sum += v
       inc n
   var i = 0
-  while n < 100 and i < 200:
+  while n < max_cells and i < max_iters:
     inc i
     let ii = i.float
     accum level.floor_height(x+ii, z)

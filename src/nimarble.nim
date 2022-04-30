@@ -35,24 +35,32 @@ var pan: Vec3f
 var pan_target: Vec3f
 var player: Mesh
 var game_window: GLFWWindow
+var fov: float32 = 30f
+var zoom: float32 = 1.0f
 const level_squash = 0.5f
 
-proc reset_view =
+proc update_camera =
   let oz = get_current_level().origin.z
-  let xlat = vec3f( oz.float*1.5, 0, oz.float*1.5 )
+  let xlat = vec3f( oz.float, 0, oz.float )
   view = lookAt(
-    vec3f( 0f,  sky*0.9f,      sky*0.9f ), # camera pos
-    vec3f( 0f,  0f,            0f ),       # target
+    vec3f( 1f,1f,1f ) * 0.5f * sky * zoom, # camera pos
+    xlat * 1.0f,       # target
     vec3f( 0f,  level_squash,  0f ),       # up
-  ).rotateY(radians(-45f)).translate( xlat )
-  #pan = vec3f(0,0,0)
+  )
+
+proc reset_view =
+  update_camera()
   pan_vel = vec3f(0,0,0)
-  #pan_target = vec3f(0,0,0)
+
 
 const field_width = 10f
 let aspect: float32 = width / height
-var proj: Mat4f = perspective(radians(30.0f), aspect, 0.125, 150.0f)
-#var proj: Mat4f = ortho(aspect * -field_width, aspect * field_width, -field_width, field_width, 0f, sky) # In world coordinates
+var proj: Mat4f
+proc update_fov =
+  let r: float32 = radians(fov)
+  proj = perspective(r, aspect, 0.125f, 150.0f)
+  #proj = ortho(aspect * -field_width, aspect * field_width, -field_width, field_width, 0f, sky) # In world coordinates
+update_fov()
 reset_view()
 
 proc reset_player(press: bool) =
@@ -78,11 +86,12 @@ proc rotate_coord(v: Vec3f): Vec3f =
 
 proc follow_player =
   let level = get_current_level()
-  let target = player.pos.rotate_coord * vec3f(1,0,1)
-  let target_min = min(target.x, target.z)
-  pan_target.x = target_min
-  pan_target.z = target_min
-  pan_target.y = level.average_height(player.pos.x, player.pos.z) - level.origin.y.float
+  let coord = player.pos.rotate_coord
+  let target = player.pos * 0.5f
+  let target_xz = (target.x + target.z) / 2f
+  pan_target.x = target_xz
+  pan_target.z = target_xz
+  pan_target.y = level.average_height(coord.x, coord.z)
 
 proc display_size(): (int32, int32) =
   var monitor = glfwGetPrimaryMonitor()
@@ -135,22 +144,22 @@ proc pan_stop =
   pan_acc = vec3f(0f,0f,0f)
 
 proc pan_up(press: bool) =
-  if press: pan_acc = vec3f(-0.125f, 0f, -0.125)
+  if press: pan_acc.xz = vec2f(-0.125f, -0.125)
   else: pan_stop()
 proc pan_down(press: bool) =
-  if press: pan_acc = vec3f(+0.125, 0f, +0.125)
+  if press: pan_acc.xz = vec2f(+0.125, +0.125)
   else: pan_stop()
 proc pan_left(press: bool) =
-  if press: pan_acc = vec3f(-0.125, 0f, +0.125)
+  if press: pan_acc.xz = vec2f(-0.125, +0.125)
   else: pan_stop()
 proc pan_right(press: bool) =
-  if press: pan_acc = vec3f(+0.125, 0f, -0.125)
+  if press: pan_acc.xz = vec2f(+0.125, -0.125)
   else: pan_stop()
 proc pan_in(press: bool) =
-  if press: pan_acc = vec3f(0f, +0.125, 0f)
+  if press: pan_acc.y = +0.125
   else: pan_stop()
 proc pan_out(press: bool) =
-  if press: pan_acc = vec3f(0f, -0.125, 0f)
+  if press: pan_acc.y = -0.125
   else: pan_stop()
 proc step_frame(press: bool) =
   frame_step = true
@@ -218,6 +227,9 @@ proc mouseProc(window: GLFWWindow, xpos, ypos: cdouble): void {.cdecl.} =
 proc scrollProc(window: GLFWWindow, xoffset, yoffset: cdouble): void {.cdecl.} =
   #const wheel_ratio = 1.0 / 41.0
   mouse.z = yoffset #* wheel_ratio
+  fov -= mouse.z
+  #update_camera()
+  update_fov()
 
 proc setup_glfw(): GLFWWindow =
   doAssert glfwInit()
@@ -323,6 +335,7 @@ proc draw_imgui =
   igSliderFloat3("pan"       , pan.arr,     -100f, 100f)
   igSliderFloat3("pan_vel"   , pan_vel.arr, -100f, 100f)
   igSliderFloat3("pan_acc"   , pan_acc.arr, -100f, 100f)
+  igSliderFloat("fov", fov.addr, 0f, 360f)
 
   igCheckBox("following", following.addr)
   igCheckBox("wireframe", wireframe.addr)
@@ -387,10 +400,10 @@ proc main =
     const gravity = -49f
     const player_radius = 0.25f
     let level = get_current_level()
-    let coord = rotate_coord(player.pos)
+    let coord = player.pos.rotate_coord
     let x = coord.x
     let z = coord.z
-    let bh = player.pos.y / level_squash / 2f
+    let bh = player.pos.y
     let fh = level.point_height(x, z)
     let cur_mask = level.mask_at(x,z)
     #stdout.write "\27[K"
