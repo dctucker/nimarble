@@ -148,10 +148,10 @@ var pan_target: Vec3f
 var player: Mesh
 var game_window: GLFWWindow
 const level_squash = 0.5f
-let player_top = oy
 
 proc reset_view =
-  let xlat = vec3f( oz*1.5, 0, oz*1.5 )
+  let oz = get_current_level().origin.z
+  let xlat = vec3f( oz.float*1.5, 0, oz.float*1.5 )
   view = lookAt(
     vec3f( 0f,  sky*0.9f,      sky*0.9f ), # camera pos
     vec3f( 0f,  0f,            0f ),       # target
@@ -169,6 +169,7 @@ reset_view()
 
 proc reset_player(press: bool) =
   if press:
+    let player_top = get_current_level().origin.y.float
     player.pos = vec3f(0f, player_top, 0f)
     player.vel = vec3f(0,0,0)
     player.acc = vec3f(0,0,0)
@@ -188,11 +189,12 @@ proc rotate_coord(v: Vec3f): Vec3f =
   result = vec3f(v4.x, v4.y, v4.z)
 
 proc follow_player =
+  let level = get_current_level()
   let target = player.pos.rotate_coord * vec3f(1,0,1)
   let target_min = min(target.x, target.z)
   pan_target.x = target_min
   pan_target.z = target_min
-  pan_target.y = average_height(player.pos.x, player.pos.z) - oy
+  pan_target.y = level.average_height(player.pos.x, player.pos.z) - level.origin.y.float
 
 proc display_size(): (int32, int32) =
   var monitor = glfwGetPrimaryMonitor()
@@ -429,11 +431,12 @@ proc draw_imgui =
   igSliderFloat4 "rot"    , player.rot.arr ,  -sky, sky
   #igSliderFloat3("normal", player.normal.arr, -1.0, 1.0)
 
+  let level = get_current_level()
   let coord = player.pos.rotate_coord
-  var cur_mask = ($mask(coord.x, coord.z)).cstring
+  var cur_mask = ($level.mask_at(coord.x, coord.z)).cstring
   igInputText("cur_mask", curmask, 2)
 
-  var sl = slope(coord.x, coord.z)
+  var sl = level.slope(coord.x, coord.z)
   igSpacing()
   igSeparator()
   igSpacing()
@@ -505,18 +508,19 @@ proc main =
     const max_vel = 15.0f * vec3f( 1f, 1.616f, 1f )
     const gravity = -49f
     const player_radius = 0.25f
+    let level = get_current_level()
     let coord = rotate_coord(player.pos)
     let x = coord.x
     let z = coord.z
     let bh = player.pos.y / level_squash / 2f
-    let fh = point_height(x, z)
-    let cur_mask = mask(x,z)
+    let fh = level.point_height(x, z)
+    let cur_mask = level.mask_at(x,z)
     #stdout.write "\27[K"
 
     if cur_mask == GG:
       goal = true
 
-    let ramp = slope(x,z)
+    let ramp = level.slope(x,z)
     let thx = arctan(ramp.x * level_squash)
     let thz = arctan(ramp.z * level_squash)
     let cosx = cos(thx)
@@ -524,7 +528,7 @@ proc main =
     let sinx = sin(thx)
     let sinz = sin(thz)
     var ramp_a = vec3f( -ramp.x * level_squash, sinx + sinz, -ramp.z * level_squash ) * gravity
-    var icy = IC.around(x,z)
+    var icy = level.around(IC, x,z)
     var traction: float
     if bh - fh > 0.25:
       traction = 0f
@@ -532,7 +536,7 @@ proc main =
       traction = 1f
 
     let flat = ramp.length == 0
-    let nonzero = point_height(x.floor, z.floor) > 0f
+    let nonzero = level.point_height(x.floor, z.floor) > 0f
     if flat and nonzero and cur_mask == CliffMask.xx and not icy:
       respawn_pos = vec3f(player.pos.x.floor, player.pos.y, player.pos.z.floor)
 
@@ -574,7 +578,7 @@ proc main =
       .translate(vec3f(0, 2 * player_radius,0))
       .translate(player.pos) * player.rot.mat4f
 
-    if TU.around(x,z):
+    if level.around(TU,x,z):
       player.vel.y = clamp(player.vel.y, -max_vel.y, max_vel.y)
 
     if ((1f-traction) * player.vel.y) < -max_vel.y or player.pos.y < 1f:

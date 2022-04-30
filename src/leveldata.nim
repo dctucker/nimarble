@@ -27,7 +27,7 @@ type
 
   Level* = ref object
     width, height: int
-    origin: Vec3i
+    origin*: Vec3i
     data: seq[float]
     mask: seq[CliffMask]
     color: Vec3f
@@ -108,37 +108,27 @@ let levels = @[
   init_level(level_2_src, level_2_mask_src, vec3f(0f, 0.4f, 0.8f)),
   init_level(level_3_src, level_3_mask_src, vec3f(0.4f, 0.4f, 0.4f)),
 ]
-var level_ref: Level
 let n_levels* = levels.len()
-
-var w,h: int
-var ox*, oy*, oz*: float
 
 var floor_index*: Index
 var floor_verts* : seq[cfloat]
 var floor_colors*: seq[cfloat]
 var current_level*: int32
 
-proc get_value[T](level: seq[T], x,z: int): T =
-  let index = w * z + x
-  if index in level_ref.low..level_ref.high:
-    return level[index]
-  return EE
+proc xlat_coord(level: Level, x,z: float): (int,int) =
+  return ((z.floor+level.origin.z.float).int, (x.floor+level.origin.x.float).int)
 
-proc xlat_coord(x,z: float): (int,int) =
-  return ((z.floor+oz.float).int, (x.floor+ox.float).int)
+proc mask_at*(level: Level, x,z: float): CliffMask =
+  let (i,j) = level.xlat_coord(x,z)
+  if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return xx
+  return level.mask[i * level.width + j]
 
-proc mask*(x,z: float): CliffMask =
-  let (i,j) = xlat_coord(x,z)
-  if i < 0 or j < 0 or i >= h-1 or j >= w-1: return xx
-  return level_ref.mask[i * w + j]
-
-proc around*(m: CliffMask, x,z: float): bool =
-  if mask(x,z) == m:
+proc around*(level: Level, m: CliffMask, x,z: float): bool =
+  if level.mask_at(x,z) == m:
     return true
   for i in -1..1:
     for j in -1..1:
-      if mask(x+i.float,z+j.float) == m:
+      if level.mask_at(x+i.float,z+j.float) == m:
         return true
   return false
 
@@ -147,7 +137,7 @@ proc point_color(level: Level, i,j: int): Vec4f =
   let y = level.data[k]
   if y == EE:
     return vec4f(0,0,0,0)
-  elif IC.around(j.float - level.origin.x.float, i.float - level.origin.z.float):
+  elif level.around(IC, j.float - level.origin.x.float, i.float - level.origin.z.float):
     return vec4f( 0.0, 1.0, 1.0, 1.0)
   else:
     case level.mask[k]
@@ -172,9 +162,9 @@ proc point_color(level: Level, i,j: int): Vec4f =
 proc setup_floor(level: Level) =
   const nv = 8
   var lookup = newTable[(cfloat,cfloat,cfloat), Ind]()
-  var verts = newSeqOfCap[cfloat]( w * h)
-  var index = newSeqOfCap[Ind]( w * h * nv)
-  var colors = newSeqOfCap[cfloat](w * h * nv * 4)
+  var verts = newSeqOfCap[cfloat]( level.width * level.height)
+  var index = newSeqOfCap[Ind]( level.width * level.height * nv)
+  var colors = newSeqOfCap[cfloat](level.width * level.height * nv * 4)
   var n = 0.Ind
   var x,y,z: float
 
@@ -225,42 +215,20 @@ proc setup_floor(level: Level) =
       y = level.data[level.offset(i+1,j+1)]
       add_point(x+1,y,z+1,i+1,j+1)
 
-      #let left = ( get_value(x - 1, z).cfloat + y.cfloat ) / 2.cfloat
-      #if level_mask[offset] and LL: # left
-      #  discard
-      #else:
-      #  discard
-      #verts.add cfloat x - q
-      #verts.add cfloat left
-      #verts.add cfloat z - q
-
-      #if level_mask[offset] and JJ: # right
-      #  discard
-      #else:
-      #  discard
-      #if level_mask[offset] and AA: # up
-      #  discard
-      #else:
-      #  discard
-      #if level_mask[offset] and VV: # down
-      #  discard
-      #else:
-      #  discard
-
   floor_colors = colors
   floor_verts = verts
   floor_index = index
   echo index.len
 
-proc setup_floor_points[T](level_data: seq[T], level_mask: seq[CliffMask]): seq[cfloat] =
-  result = newSeq[cfloat](3 * w * h)
-  for z in 0..<h:
-    for x in 0..<w:
-      let index = 3 * (w * z + x)
-      let y = level_data[w * z + x]
-      result[index+0] = (x.cfloat-ox).cfloat
-      result[index+1] =  y.cfloat
-      result[index+2] = (z.cfloat-oz).cfloat
+#proc setup_floor_points[T](level_data: seq[T], level_mask: seq[CliffMask]): seq[cfloat] =
+#  result = newSeq[cfloat](3 * w * h)
+#  for z in 0..<h:
+#    for x in 0..<w:
+#      let index = 3 * (w * z + x)
+#      let y = level_data[w * z + x]
+#      result[index+0] = (x.cfloat-level.origin.x).cfloat
+#      result[index+1] =  y.cfloat
+#      result[index+2] = (z.cfloat-level.origin.z).cfloat
 
 
 const ch = 4
@@ -269,10 +237,10 @@ proc setup_floor_colors[T](level: Level): seq[cfloat] =
   #const COLOR_D = 56f - 44f
   const COLOR_H = 11f
   const COLOR_D = 99f - COLOR_H
-  result = newSeq[cfloat](ch * w * h)
-  for z in 0..<h:
-    for x in 0..<w:
-      let level_index = w * z + x
+  result = newSeq[cfloat](ch * level.width * level.height)
+  for z in 0..<level.height:
+    for x in 0..<level.width:
+      let level_index = level.width * z + x
       let index = ch * level_index
       let c = level.point_color[level_index]
       result[index+0] = c.x
@@ -304,8 +272,8 @@ type
 #
 # Translated from Kubota Graphics C to nim by dctucker
 proc setup_floor_index[T](level: seq[T]): Index =
-  let N: int = w
-  let M: int = h
+  let N: int = level.width
+  let M: int = level.height
   let patchtype = UpOut
   var Nverts: int
 
@@ -391,18 +359,18 @@ proc setup_floor_index[T](level: seq[T]): Index =
       inc index
       V1 = V2 + N.Ind
 
-proc floor_height*(x,z: float): float =
-  let (i,j) = xlat_coord(x,z)
-  if i < 0 or j < 0 or i >= h-1 or j >= w-1: return EE.float
-  return level_ref.data[i * w + j].float
+proc floor_height*(level: Level, x,z: float): float =
+  let (i,j) = level.xlat_coord(x,z)
+  if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return EE.float
+  return level.data[i * level.width + j].float
 
-proc slope*(x,z: float): Vec3f =
-  let p0 = floor_height(x+0,z+0)
-  let p1 = floor_height(x+1,z+0)
-  let p2 = floor_height(x+0,z+1)
+proc slope*(level: Level, x,z: float): Vec3f =
+  let p0 = level.floor_height(x+0,z+0)
+  let p1 = level.floor_height(x+1,z+0)
+  let p2 = level.floor_height(x+0,z+1)
   #if p0 == 0 and p1 == 0 and p2 == 0:
   #  return vec3f(0, -1, 0)
-  #let p3 = floor_height(x+1,z+1)
+  #let p3 = level.floor_height(x+1,z+1)
   #let dxz = p0 - p3
   let dx = p0 - p1
   let dz = p0 - p2
@@ -410,10 +378,10 @@ proc slope*(x,z: float): Vec3f =
   return vec3f( dx, 0f, dz )
   #return vec3f( 0.5 * ((p0-p1) + (p3-p1)), 0f , 0.5 * ((p0-p2) + (p3-p2)) )
 
-proc surface_normal*(x,z: float): Vec3f =
-  let p0 = floor_height(x,z)
-  let p1 = floor_height(x+1,z)
-  let p2 = floor_height(x,z+1)
+proc surface_normal*(level: Level, x,z: float): Vec3f =
+  let p0 = level.floor_height(x,z)
+  let p1 = level.floor_height(x+1,z)
+  let p2 = level.floor_height(x,z+1)
   let u = vec3f(1, p1-p0, 0)
   let v = vec3f(0, p2-p0, 1)
   result = v.cross(u).normalize()
@@ -421,11 +389,11 @@ proc surface_normal*(x,z: float): Vec3f =
 proc toString(x: float): string =
   x.formatFloat(ffDecimal,3)
 
-proc point_height*(x,z: float): float =
-  let h1 = floor_height( x+0, z+0 )
-  let h2 = floor_height( x+1, z+0 )
-  let h3 = floor_height( x+0, z+1 )
-  let h4 = floor_height( x+1, z+1 )
+proc point_height*(level: Level, x,z: float): float =
+  let h1 = level.floor_height( x+0, z+0 )
+  let h2 = level.floor_height( x+1, z+0 )
+  let h3 = level.floor_height( x+0, z+1 )
+  let h4 = level.floor_height( x+1, z+1 )
   let ux = x - x.floor
   let uz = z - z.floor
   result  = h1 * (1-ux) * (1-uz)
@@ -434,9 +402,9 @@ proc point_height*(x,z: float): float =
   result += h4 * ux * uz
   #stdout.write ", floor = ", result.formatFloat(ffDecimal, 3)
 
-proc average_height*(x,z: float): float =
+proc average_height*(level: Level, x,z: float): float =
   var n = 1
-  var sum = floor_height(x,z)
+  var sum = level.floor_height(x,z)
   proc accum(v: float) =
     if v != EE and v > 0:
       sum += v
@@ -445,32 +413,24 @@ proc average_height*(x,z: float): float =
   while n < 100 and i < 200:
     inc i
     let ii = i.float
-    accum floor_height(x+ii, z)
-    accum floor_height(x-ii, z)
-    accum floor_height(x  , z+ii)
-    accum floor_height(x  , z-ii)
+    accum level.floor_height(x+ii, z)
+    accum level.floor_height(x-ii, z)
+    accum level.floor_height(x  , z+ii)
+    accum level.floor_height(x  , z-ii)
     for j in 1..i:
       let jj = j.float
-      accum floor_height(x+ii, z+jj)
-      accum floor_height(x-ii, z-jj)
-      accum floor_height(x-ii, z+jj)
-      accum floor_height(x+ii, z-jj)
+      accum level.floor_height(x+ii, z+jj)
+      accum level.floor_height(x-ii, z-jj)
+      accum level.floor_height(x-ii, z+jj)
+      accum level.floor_height(x+ii, z-jj)
   return sum / n.float
 
 proc load_level*(n: int) =
   if 0 < n and n < levels.len:
-    level_ref = levels[n]
-    w = level_ref.width
-    h = level_ref.height
+    setup_floor levels[n]
 
-    ox = level_ref.origin.x.float
-    oy = level_ref.origin.y.float
-    oz = level_ref.origin.z.float
-
-    setup_floor level_ref
-    #floor_verts  = setup_floor_points(level_ref.data, level_ref.mask)
-    #floor_colors = setup_floor_colors(level_ref.data, level_ref.mask, level_ref.color)
-    #floor_index = setup_floor_index level_ref.data
+proc get_current_level*: Level =
+  return levels[current_level]
 
 current_level = 3
 load_level current_level
