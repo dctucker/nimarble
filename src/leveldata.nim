@@ -21,7 +21,9 @@ type
     GG,         # goal
     TU,         # tube
     IC,         # icy
+    SW,         # sine wave
     P1,         # player 1 start position
+    P2,         # player 2 start position
 
   Level* = ref object
     width, height: int
@@ -91,16 +93,20 @@ proc init_level(data_src, mask_src: string, color: Vec3f): Level =
     color: color,
   )
 
-const level_1_src = staticRead("../levels/1.tsv")
+const level_1_src      = staticRead("../levels/1.tsv")
 const level_1_mask_src = staticRead("../levels/1mask.tsv")
 
-const level_2_src = staticRead("../levels/2.tsv")
+const level_2_src      = staticRead("../levels/2.tsv")
 const level_2_mask_src = staticRead("../levels/2mask.tsv")
+
+const level_3_src      = staticRead("../levels/3.tsv")
+const level_3_mask_src = staticRead("../levels/3mask.tsv")
 
 let levels = @[
   Level(),
   init_level(level_1_src, level_1_mask_src, vec3f(1f, 0.8f, 0f)),
   init_level(level_2_src, level_2_mask_src, vec3f(0f, 0.4f, 0.8f)),
+  init_level(level_3_src, level_3_mask_src, vec3f(0.4f, 0.4f, 0.4f)),
 ]
 var level_ref: Level
 let n_levels* = levels.len()
@@ -157,6 +163,8 @@ proc point_color(level: Level, i,j: int): Vec4f =
        IH, II, HH:     return vec4f(level.color * 0.9, 0.5)
     of P1:
       return vec4f( 0.1, 0.1, 0.1, 1.0)
+    of SW:
+      return vec4f( 0.1, 0.6, 0.6, 1.0)
     else:
       return vec4f(0.7)
       #return vec4f(((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), 0.9)
@@ -464,6 +472,6 @@ proc load_level*(n: int) =
     #floor_colors = setup_floor_colors(level_ref.data, level_ref.mask, level_ref.color)
     #floor_index = setup_floor_index level_ref.data
 
-current_level = 2
+current_level = 3
 load_level current_level
 
