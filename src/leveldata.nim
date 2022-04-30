@@ -19,7 +19,7 @@ type
     II, IL, IJ, # I is top and bottom
     IH,         # oops! all cliffs
     GG,         # goal
-    TU,         # tube
+    TU, IN, OU, # tubes
     IC,         # icy
     SW,         # sine wave
     P1,         # player 1 start position

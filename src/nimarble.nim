@@ -271,7 +271,11 @@ proc next_level(press: bool) =
     inc current_level
     set_level()
 proc follow(press: bool) =
-  if press: following = not following
+  if press:
+    following = not following
+  if not following:
+    pan_target = pan
+    pan_vel *= 0
 proc do_goal(press: bool) =
   if press: goal = not goal
 proc toggle_wireframe(press: bool) =
