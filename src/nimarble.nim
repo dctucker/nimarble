@@ -27,6 +27,14 @@ var width, height: int32
 width = 1600
 height = 1200
 
+var mouse: Vec3f
+var paused = false
+var mouse_lock = true
+var following = true
+var frame_step = false
+var goal = false
+var wireframe = false
+
 var view: Mat4f
 var respawn_pos: Vec3f
 var pan_vel: Vec3f
@@ -35,7 +43,7 @@ var pan: Vec3f
 var pan_target: Vec3f
 var player: Mesh
 var game_window: GLFWWindow
-var fov: float32 = 30f
+var fov: float32 = 15f
 var zoom: float32 = 1.0f
 const level_squash = 0.5f
 
@@ -91,7 +99,10 @@ proc follow_player =
   let target_xz = (target.x + target.z) / 2f
   pan_target.x = target_xz
   pan_target.z = target_xz
-  pan_target.y = level.average_height(coord.x, coord.z)
+  pan_target.y = level.average_height(coord.x, coord.z) - 5f
+  if goal:
+    return
+  pan_target.y -= 5f
 
 proc display_size(): (int32, int32) =
   var monitor = glfwGetPrimaryMonitor()
@@ -100,22 +111,27 @@ proc display_size(): (int32, int32) =
 
 proc middle(): Vec2f = vec2f(width.float * 0.5f, height.float * 0.5f)
 
-var mouse: Vec3f
-var paused = false
-var following = true
-var frame_step = false
-var goal = false
-var wireframe = false
+
+proc update_mouse_lock =
+  if not mouse_lock:
+    game_window.setInputMode GLFW_CURSOR_SPECIAL, GLFWCursorNormal
+  else:
+    let mid = middle()
+    game_window.setCursorPos mid.x, mid.y
+    mouse *= 0
+    game_window.setInputMode GLFW_CURSOR_SPECIAL, GLFWCursorDisabled
+
+proc toggle_mouse_lock(press: bool) =
+  if not press:
+    return
+  mouse_lock = not mouse_lock
+  update_mouse_lock()
 
 proc toggle_pause(w: GLFWWindow) =
   paused = not paused
   if paused:
-    w.setInputMode GLFW_CURSOR_SPECIAL, GLFWCursorNormal
-  else:
-    let mid = middle()
-    w.setCursorPos mid.x, mid.y
-    mouse *= 0
-    w.setInputMode GLFW_CURSOR_SPECIAL, GLFWCursorDisabled
+    mouse_lock = false
+    update_mouse_lock()
 
 proc init_floor_plane =
   let level = get_current_level()
@@ -133,12 +149,17 @@ proc init_floor_plane =
   level.floor_plane.matrix = level.floor_plane.program.newMatrix(level.floor_plane.mvp, "MVP")
 
 proc set_level =
+  let f = following
   following = false
   goal = false
   reset_player(true)
   load_level current_level
   init_floor_plane()
+  reset_player(true)
+  pan_target = player.pos
+  pan = pan_target
   reset_view()
+  following = f
 
 proc pan_stop =
   pan_acc = vec3f(0f,0f,0f)
@@ -187,22 +208,23 @@ proc do_quit(press: bool) =
   game_window.setWindowShouldClose(true)
 
 const keymap = {
-  GLFWKey.R            : reset_player    ,
-  GLFWKey.Up           : pan_up          ,
-  GLFWKey.Down         : pan_down        ,
-  GLFWKey.Left         : pan_left        ,
-  GLFWKey.Right        : pan_right       ,
-  GLFWKey.PageUp       : pan_in          ,
-  GLFWKey.PageDown     : pan_out         ,
-  GLFWKey.S            : step_frame      ,
-  GLFWKey.LeftBracket  : prev_level      ,
-  GLFWKey.RightBracket : next_level      ,
-  GLFWKey.F            : follow          ,
-  GLFWKey.G            : do_goal         ,
-  GLFWKey.X            : respawn         ,
-  GLFWKey.W            : toggle_wireframe,
-  GLFWKey.P            : pause           ,
-  GLFWKey.Q            : do_quit         ,
+  GLFWKey.R            : reset_player      ,
+  GLFWKey.Up           : pan_up            ,
+  GLFWKey.Down         : pan_down          ,
+  GLFWKey.Left         : pan_left          ,
+  GLFWKey.Right        : pan_right         ,
+  GLFWKey.PageUp       : pan_in            ,
+  GLFWKey.PageDown     : pan_out           ,
+  GLFWKey.S            : step_frame        ,
+  GLFWKey.LeftBracket  : prev_level        ,
+  GLFWKey.RightBracket : next_level        ,
+  GLFWKey.F            : follow            ,
+  GLFWKey.G            : do_goal           ,
+  GLFWKey.X            : respawn           ,
+  GLFWKey.W            : toggle_wireframe  ,
+  GLFWKey.P            : pause             ,
+  GLFWKey.Q            : do_quit           ,
+  GLFWKey.L            : toggle_mouse_lock ,
 }.toTable
 
 proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mods: int32): void {.cdecl.} =
@@ -217,6 +239,8 @@ proc rotate_mouse(mouse: Vec3f): Vec3f =
   result = vec3f(m.x, m.y, mouse.z)
 
 proc mouseProc(window: GLFWWindow, xpos, ypos: cdouble): void {.cdecl.} =
+  if not mouse_lock:
+    return
   let mid = middle()
   if not paused:
     window.setCursorPos mid.x, mid.y
@@ -387,8 +411,8 @@ proc main =
   player.mvp    = proj * view.translate(-pan) * player.model
   player.matrix = player.program.newMatrix(player.mvp, "MVP")
 
-  #current_level = 1
-  #load_level current_level
+  current_level = 3
+  set_level()
   init_floor_plane()
 
   proc toString[T: float](f: T, prec: int = 8): string =
@@ -472,7 +496,7 @@ proc main =
     if level.around(TU,x,z):
       player.vel.y = clamp(player.vel.y, -max_vel.y, max_vel.y)
 
-    if ((1f-traction) * player.vel.y) < -max_vel.y or player.pos.y < 1f:
+    if player.acc.xz.length == 0f and ((1f-traction) * player.vel.y) < -max_vel.y or player.pos.y < 1f:
       respawn(true)
 
   proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
@@ -521,7 +545,6 @@ proc main =
         follow_player()
 
       camera_physics()
-
 
     glClear            GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
 
