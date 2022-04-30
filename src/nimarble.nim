@@ -108,19 +108,20 @@ proc toggle_pause(w: GLFWWindow) =
     mouse *= 0
     w.setInputMode GLFW_CURSOR_SPECIAL, GLFWCursorDisabled
 
-var floor_plane: Mesh
 proc init_floor_plane =
   let level = get_current_level()
-  floor_plane = Mesh(
+  if level.floor_plane != nil:
+    return
+  level.floor_plane = Mesh(
     vao: newVAO(),
     vert_vbo: newVBO(3, level.floor_verts),
     color_vbo: newVBO(4, level.floor_colors),
     elem_vbo: newElemVBO(level.floor_index),
     program: player.program,
   )
-  floor_plane.model = mat4(1.0f).scale(1f, level_squash, 1f)
-  floor_plane.mvp = proj * view.translate(-pan) * floor_plane.model
-  floor_plane.matrix = floor_plane.program.newMatrix(floor_plane.mvp, "MVP")
+  level.floor_plane.model = mat4(1.0f).scale(1f, level_squash, 1f)
+  level.floor_plane.mvp = proj * view.translate(-pan) * level.floor_plane.model
+  level.floor_plane.matrix = level.floor_plane.program.newMatrix(level.floor_plane.mvp, "MVP")
 
 proc set_level =
   following = false
@@ -491,6 +492,7 @@ proc main =
 
   # main loop
   while not w.windowShouldClose():
+    var floor_plane = get_current_level().floor_plane
     time = glfwGetTime()
     dt = time - t
     t = time

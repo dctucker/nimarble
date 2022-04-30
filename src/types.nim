@@ -161,4 +161,5 @@ type
     floor_colors*: seq[cfloat]
     floor_index*: seq[Ind]
     floor_verts*: seq[cfloat]
+    floor_plane*: Mesh
 
