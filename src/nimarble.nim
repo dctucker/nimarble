@@ -1,4 +1,5 @@
 import os
+import std/tables
 import strutils
 import nimgl/[glfw,opengl]
 import nimgl/imgui
@@ -145,6 +146,7 @@ var pan_acc: Vec3f
 var pan: Vec3f
 var pan_target: Vec3f
 var player: Mesh
+var game_window: GLFWWindow
 const level_squash = 0.5f
 let player_top = oy
 
@@ -165,19 +167,21 @@ var proj: Mat4f = perspective(radians(30.0f), aspect, 0.125, 150.0f)
 #var proj: Mat4f = ortho(aspect * -field_width, aspect * field_width, -field_width, field_width, 0f, sky) # In world coordinates
 reset_view()
 
-proc reset_player =
-  player.pos = vec3f(0f, player_top, 0f)
-  player.vel = vec3f(0,0,0)
-  player.acc = vec3f(0,0,0)
-  player.rot = quatf(vec3f(0,-1,0),0).normalize
-  player.normal = vec3f(0,-1,0)
-  #player.rvel = vec3f(0,0,0)
-  #player.racc = vec3f(0,0,0)
+proc reset_player(press: bool) =
+  if press:
+    player.pos = vec3f(0f, player_top, 0f)
+    player.vel = vec3f(0,0,0)
+    player.acc = vec3f(0,0,0)
+    player.rot = quatf(vec3f(0,-1,0),0).normalize
+    player.normal = vec3f(0,-1,0)
+    #player.rvel = vec3f(0,0,0)
+    #player.racc = vec3f(0,0,0)
 
-proc respawn =
-  reset_player()
-  player.pos = respawn_pos
-  reset_view()
+proc respawn(press: bool) =
+  if press:
+    reset_player(true)
+    player.pos = respawn_pos
+    reset_view()
 
 proc rotate_coord(v: Vec3f): Vec3f =
   let v4 = mat4f(1f).scale(0.5f).translate(v).rotateY(radians(45f))[3]
@@ -230,74 +234,76 @@ proc init_floor_plane =
 proc set_level =
   following = false
   goal = false
-  reset_player()
+  reset_player(true)
   load_level current_level
   init_floor_plane()
   reset_view()
 
+proc pan_stop =
+  pan_acc = vec3f(0f,0f,0f)
+
+proc pan_up(press: bool) =
+  if press: pan_acc = vec3f(-0.125f, 0f, -0.125)
+  else: pan_stop()
+proc pan_down(press: bool) =
+  if press: pan_acc = vec3f(+0.125, 0f, +0.125)
+  else: pan_stop()
+proc pan_left(press: bool) =
+  if press: pan_acc = vec3f(-0.125, 0f, +0.125)
+  else: pan_stop()
+proc pan_right(press: bool) =
+  if press: pan_acc = vec3f(+0.125, 0f, -0.125)
+  else: pan_stop()
+proc pan_in(press: bool) =
+  if press: pan_acc = vec3f(0f, +0.125, 0f)
+  else: pan_stop()
+proc pan_out(press: bool) =
+  if press: pan_acc = vec3f(0f, -0.125, 0f)
+  else: pan_stop()
+proc step_frame(press: bool) =
+  frame_step = true
+proc prev_level(press: bool) =
+  if press:
+    dec current_level
+    set_level()
+proc next_level(press: bool) =
+  if press:
+    inc current_level
+    set_level()
+proc follow(press: bool) =
+  if press: following = not following
+proc do_goal(press: bool) =
+  if press: goal = not goal
+proc toggle_wireframe(press: bool) =
+  if press: wireframe = not wireframe
+proc pause(press: bool) =
+  if press: game_window.toggle_pause()
+proc do_quit(press: bool) =
+  game_window.setWindowShouldClose(true)
+
+const keymap = {
+  GLFWKey.R            : reset_player    ,
+  GLFWKey.Up           : pan_up          ,
+  GLFWKey.Down         : pan_down        ,
+  GLFWKey.Left         : pan_left        ,
+  GLFWKey.Right        : pan_right       ,
+  GLFWKey.PageUp       : pan_in          ,
+  GLFWKey.PageDown     : pan_out         ,
+  GLFWKey.S            : step_frame      ,
+  GLFWKey.LeftBracket  : prev_level      ,
+  GLFWKey.RightBracket : next_level      ,
+  GLFWKey.F            : follow          ,
+  GLFWKey.G            : do_goal         ,
+  GLFWKey.X            : respawn         ,
+  GLFWKey.W            : toggle_wireframe,
+  GLFWKey.P            : pause           ,
+  GLFWKey.Q            : do_quit         ,
+}.toTable
+
 proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mods: int32): void {.cdecl.} =
-  case key
-  of GLFWKey.Up:
-    if action == GLFWPress:
-      pan_acc += vec3f(-0.125f, 0f, -0.125)
-    elif action == GLFWRelease:
-      pan_acc = vec3f(0f,0f,0f)
-  of GLFWKey.Down:
-    if action == GLFWPress:
-      pan_acc += vec3f(+0.125, 0f, +0.125)
-    elif action == GLFWRelease:
-      pan_acc = vec3f(0f,0f,0f)
-  of GLFWKey.Left:
-    if action == GLFWPress:
-      pan_acc += vec3f(-0.125, 0f, +0.125)
-    elif action == GLFWRelease:
-      pan_acc = vec3f(0f,0f,0f)
-  of GLFWKey.Right:
-    if action == GLFWPress:
-      pan_acc += vec3f(+0.125, 0f, -0.125)
-    elif action == GLFWRelease:
-      pan_acc = vec3f(0f,0f,0f)
-  of GLFWKey.PageUp:
-    if action == GLFWPress:
-      pan_acc += vec3f(0f, +0.125, 0f)
-    elif action == GLFWRelease:
-      pan_acc = vec3f(0f,0f,0f)
-  of GLFWKey.PageDown:
-    if action == GLFWPress:
-      pan_acc += vec3f(0f, -0.125, 0f)
-    elif action == GLFWRelease:
-      pan_acc = vec3f(0f,0f,0f)
-  of GLFWKey.P:
-    if action == GLFWPress:
-      window.toggle_pause()
-  of GLFWKey.R:
-    reset_player()
-  of GLFWKey.S:
-    if action != GLFWRelease:
-      frame_step = true
-  of GLFWKey.LeftBracket:
-    if action == GLFWPress:
-      dec current_level
-      set_level()
-  of GLFWKey.RightBracket:
-    if action == GLFWPress:
-      inc current_level
-      set_level()
-  of GLFWKey.F:
-    if action == GLFWPress:
-      following = not following
-  of GLFWKey.G:
-    if action == GLFWPress:
-      goal = not goal
-  of GLFWKey.X:
-    if action == GLFWPress:
-      respawn()
-  of GLFWKey.W:
-    if action == GLFWPress:
-      wireframe = not wireframe
-  of GLFWKey.Q, GLFWKey.Escape:
-    window.setWindowShouldClose(true)
-  else: discard
+  if keymap.hasKey key:
+    game_window = window
+    keymap[key](action != GLFWRelease)
 
 proc rotate_mouse(mouse: Vec3f): Vec3f =
   const th = radians(45f)
@@ -477,7 +483,7 @@ proc main =
     elem_vbo: newElemVBO(sphere_index),
     program: newProgram(frags, verts, geoms),
   )
-  reset_player()
+  reset_player(true)
 
   player.model  = mat4(1.0f).scale(0.5f)
   player.mvp    = proj * view.translate(-pan) * player.model
@@ -568,7 +574,7 @@ proc main =
       player.vel.y = clamp(player.vel.y, -max_vel.y, max_vel.y)
 
     if ((1f-traction) * player.vel.y) < -max_vel.y or player.pos.y < 1f:
-      respawn()
+      respawn(true)
 
   proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
     mesh.mvp = proj * view.translate(-pan) * mesh.model
