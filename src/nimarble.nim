@@ -6,6 +6,7 @@ import nimgl/imgui
 import nimgl/imgui/[impl_opengl, impl_glfw]
 import glm
 
+import types
 import models
 import leveldata
 import contrib/heightmap
@@ -21,119 +22,6 @@ var geoms = "".cstring
 
 if os.getEnv("CI") != "": quit()
 
-type
-  VAO = object
-    id: uint32
-  VBO[T] = object
-    id: uint32
-    dimensions: cint
-    n_verts: cint
-    data: seq[T]
-  Shader = object
-    id: uint32
-    code: cstring
-  Program = object
-    id: uint32
-    vertex: Shader
-    fragment: Shader
-  Matrix = object
-    id: GLint
-    matrix*: Mat4f
-
-type Mesh = ref object
-  pos, vel, acc: Vec3f
-  rot: Quatf
-  vao: VAO
-  vert_vbo, color_vbo: VBO[cfloat]
-  elem_vbo: VBO[Ind]
-  mvp: Mat4f
-  model: Mat4f
-  normal: Vec3f
-  matrix: Matrix
-  program: Program
-
-
-proc update(matrix: Matrix, value: var Mat4f) =
-  glUniformMatrix4fv matrix.id, 1, false, value.caddr
-
-proc newMatrix(program: Program, matrix: var Mat4f, name: string): Matrix =
-  result.matrix = matrix
-  result.id = glGetUniformLocation(program.id, name)
-  #result.update matrix
-
-proc newVAO(): VAO =
-  glGenVertexArrays(1, result.id.addr)
-  glBindVertexArray(result.id)
-
-proc newVBO[T](n: cint, data: var seq[T]): VBO[T] =
-  result.data = data
-  result.dimensions = n
-  result.n_verts = data.len.cint div n
-  glGenBuffers 1, result.id.addr
-  glBindBuffer GL_ARRAY_BUFFER, result.id
-  glBufferData GL_ARRAY_BUFFER, cint(T.sizeof * result.data.len), result.data[0].addr, GL_STATIC_DRAW
-
-proc newElemVBO[T](data: var seq[T]): VBO[T] =
-  result.data = data
-  result.dimensions = 1
-  result.n_verts = data.len.cint
-  glGenBuffers 1, result.id.addr
-  glBindBuffer GL_ELEMENT_ARRAY_BUFFER, result.id
-  glBufferData GL_ELEMENT_ARRAY_BUFFER, cint(T.sizeof * result.data.len), result.data[0].addr, GL_STATIC_DRAW
-
-proc check(shader: Shader) =
-  var status: int32
-  shader.id.glGetShaderiv GL_COMPILE_STATUS, status.addr
-  if status != GL_TRUE.ord:
-    var
-      log_length: int32
-      message = newSeq[char](1024)
-    shader.id.glGetShaderInfoLog 1024, log_length.addr, message[0].addr
-    for m in message:
-      stdout.write(m)
-    stdout.write("\n")
-
-proc check(program: Program) =
-  var
-    log_length: int32
-    message = newSeq[char](1024)
-    pLinked: int32
-  program.id.glGetProgramiv GL_LINK_STATUS, pLinked.addr
-  if pLinked != GL_TRUE.ord:
-    program.id.glGetProgramInfoLog 1024, log_length.addr, message[0].addr
-    for m in message:
-      stdout.write(m)
-    stdout.write("\n")
-
-proc newShader(kind: GLEnum, code: var cstring): Shader =
-  result.id = glCreateShader kind
-  result.id.glShaderSource 1'i32, code.addr, nil
-  result.id.glCompileShader
-  result.check
-
-proc `=destroy`(o: var VAO) = glDeleteVertexArrays 1, o.id.addr
-proc `=destroy`[T](o: var VBO[T]) = glDeleteBuffers 1, o.id.addr
-proc `=destroy`(shader: var Shader) = shader.id.glDeleteShader
-proc `=destroy`(program: var Program) = program.id.glDeleteProgram
-
-proc newProgram(frag_code, vert_code, geom_code: var cstring): Program =
-  var fragment, vertex, geometry: Shader
-  fragment = newShader(GL_FRAGMENT_SHADER, frag_code)
-  vertex = newShader(GL_VERTEX_SHADER, vert_code)
-  if geom_code.len > 2:
-    geometry = newShader(GL_GEOMETRY_SHADER, geom_code)
-
-  result.id = glCreateProgram()
-  result.id.glAttachShader fragment.id
-  result.id.glAttachShader vertex.id
-  if geometry.id != 0:
-    result.id.glAttachShader geometry.id
-  result.id.glLinkProgram
-  result.check
-  result.id.glDetachShader fragment.id
-  result.id.glDetachShader vertex.id
-  if geometry.id != 0:
-    result.id.glDetachShader geometry.id
 
 var width, height: int32
 width = 1600
@@ -222,11 +110,12 @@ proc toggle_pause(w: GLFWWindow) =
 
 var floor_plane: Mesh
 proc init_floor_plane =
+  let level = get_current_level()
   floor_plane = Mesh(
     vao: newVAO(),
-    vert_vbo: newVBO(3, floor_verts),
-    color_vbo: newVBO(4, floor_colors),
-    elem_vbo: newElemVBO(floor_index),
+    vert_vbo: newVBO(3, level.floor_verts),
+    color_vbo: newVBO(4, level.floor_colors),
+    elem_vbo: newElemVBO(level.floor_index),
     program: player.program,
   )
   floor_plane.model = mat4(1.0f).scale(1f, level_squash, 1f)
@@ -370,18 +259,6 @@ proc setup_opengl() =
 
   glEnable GL_BLEND
   glBlendFunc GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
-
-proc apply(vbo: VBO, n: GLuint) {.inline.} =
-  glEnableVertexAttribArray n
-  glBindBuffer GL_ARRAY_BUFFER, vbo.id
-  glVertexAttribPointer n, vbo.dimensions, EGL_FLOAT, false, 0, nil
-
-proc draw(vbo: VBO, kind: GLEnum = GL_TRIANGLES) {.inline.} =
-  glDrawArrays kind, 0, vbo.n_verts
-
-proc draw_elem(vbo: VBO, kind: GLEnum = GL_TRIANGLES) {.inline.} =
-  glBindBuffer GL_ELEMENT_ARRAY_BUFFER, vbo.id
-  glDrawElements kind, vbo.n_verts, GL_UNSIGNED_INT, nil
 
 var ig_context: ptr ImGuiContext
 var small_font: ptr ImFont
@@ -537,7 +414,7 @@ proc main =
 
     let flat = ramp.length == 0
     let nonzero = level.point_height(x.floor, z.floor) > 0f
-    if flat and nonzero and cur_mask == CliffMask.xx and not icy:
+    if flat and nonzero and cur_mask == XX and not icy:
       respawn_pos = vec3f(player.pos.x.floor, player.pos.y, player.pos.z.floor)
 
     var m = vec3f(0,0,0)
@@ -587,7 +464,7 @@ proc main =
   proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
     mesh.mvp = proj * view.translate(-pan) * mesh.model
     mesh.matrix.update mesh.mvp
-    glUseProgram mesh.program.id
+    mesh.program.use()
     mesh.vert_vbo.apply 0
     mesh.color_vbo.apply 1
     if mesh.elem_vbo.n_verts > 0:

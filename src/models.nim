@@ -1,5 +1,5 @@
 import glm
-from leveldata import Ind
+from types import Ind
 
 var cube* = @[
   -1.0f, -1.0f, -1.0f, # triangle 1 : begin

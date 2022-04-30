@@ -3,37 +3,10 @@ import sequtils
 import strutils
 import std/tables
 
+import types
+
 const EE = 0
 const sky* = 120f
-
-type
-  CliffMask* = enum
-    xx = 0,     # regulard slope
-    LL = 1,     # L is left
-    JJ = 2,     # J is right
-    HH,         # H is left and right
-    AA = 4,     # A is up
-    LA, AJ, AH,
-    VV = 8,     # V is down
-    LV, VJ, VH,
-    II, IL, IJ, # I is top and bottom
-    IH,         # oops! all cliffs
-    GG,         # goal
-    TU, IN, OU, # tubes
-    IC,         # icy
-    SW,         # sine wave
-    P1,         # player 1 start position
-    P2,         # player 2 start position
-
-  Level* = ref object
-    width, height: int
-    origin*: Vec3i
-    data: seq[float]
-    mask: seq[CliffMask]
-    color: Vec3f
-
-  Ind* = uint32
-  Index = seq[Ind]
 
 proc flatten[T](input: seq[seq[T]]): seq[T] =
   for row in input:
@@ -61,7 +34,7 @@ proc parse_mask(s: string): CliffMask =
     if s.len > 0 and s != "0":
       if not s.is_numeric():
         echo "Unrecognized mask: " & s
-    result = xx
+    result = CliffMask.XX
 
 proc tsv_masks(line: string): seq[CliffMask] =
   var j = 0
@@ -110,9 +83,6 @@ let levels = @[
 ]
 let n_levels* = levels.len()
 
-var floor_index*: Index
-var floor_verts* : seq[cfloat]
-var floor_colors*: seq[cfloat]
 var current_level*: int32
 
 proc xlat_coord(level: Level, x,z: float): (int,int) =
@@ -120,7 +90,7 @@ proc xlat_coord(level: Level, x,z: float): (int,int) =
 
 proc mask_at*(level: Level, x,z: float): CliffMask =
   let (i,j) = level.xlat_coord(x,z)
-  if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return xx
+  if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return XX
   return level.mask[i * level.width + j]
 
 proc around*(level: Level, m: CliffMask, x,z: float): bool =
@@ -215,9 +185,9 @@ proc setup_floor(level: Level) =
       y = level.data[level.offset(i+1,j+1)]
       add_point(x+1,y,z+1,i+1,j+1)
 
-  floor_colors = colors
-  floor_verts = verts
-  floor_index = index
+  level.floor_colors = colors
+  level.floor_verts = verts
+  level.floor_index = index
   echo index.len
 
 #proc setup_floor_points[T](level_data: seq[T], level_mask: seq[CliffMask]): seq[cfloat] =
@@ -271,7 +241,7 @@ type
 # successfully return, 'Nverts' will be 0 and 'vertices' will be null. 
 #
 # Translated from Kubota Graphics C to nim by dctucker
-proc setup_floor_index[T](level: seq[T]): Index =
+proc setup_floor_index[T](level: seq[T]): seq[Ind] =
   let N: int = level.width
   let M: int = level.height
   let patchtype = UpOut
