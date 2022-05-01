@@ -145,8 +145,8 @@ proc uvSphereColors*(segments, rings: int): seq[cfloat] =
 
 proc uvSphereEnemy(nseg, nrings: int): seq[cfloat] =
   const opacity = 0.8
-  for a in 0..<nseg:
-    for b in 0..<nrings:
+  for a in 0..nseg:
+    for b in 0..nrings:
       result.add 0.3
       result.add 0.7
       result.add 0.0

@@ -33,6 +33,7 @@ var mouse_lock = true
 var following = true
 var frame_step = false
 var goal = false
+var dead = false
 var wireframe = false
 
 var view: Mat4f
@@ -44,17 +45,18 @@ var pan_target: Vec3f
 var player: Mesh
 var actors: seq[Mesh]
 var game_window: GLFWWindow
-var fov: float32 = 15f
-var zoom: float32 = 1.0f
+var fov: float32 = 45f
+var zoom: float32 = sky * 0.25
 const level_squash = 0.5f
+const start_level = 1
 
 proc update_camera =
-  let oz = get_current_level().origin.z
-  let xlat = vec3f( oz.float, 0, oz.float )
+  let level = get_current_level()
+  let xlat = vec3f( level.origin.z.float, 0, level.origin.z.float )
   view = lookAt(
-    vec3f( 1f,1f,1f ) * 0.5f * sky * zoom, # camera pos
-    xlat * 1.0f,       # target
-    vec3f( 0f,  level_squash,  0f ),       # up
+    vec3f( zoom, zoom * 0.5, zoom ), # camera pos
+    xlat,
+    vec3f( 0f,  1.0f,  0f ),        # up
   )
 
 proc reset_view =
@@ -101,13 +103,18 @@ proc follow_player =
   let level = get_current_level()
   let coord = player.pos.rotate_coord
   let target = player.pos# * 0.5f
-  let target_xz = (target.x + target.z) / 2f
-  pan_target.x = target_xz
-  pan_target.z = target_xz
+  #let target_xz = (target.x + target.z)# / 2f
+  #pan_target.x = target_xz
+  #pan_target.z = target_xz
+  #pan_target.y = level.average_height(coord.x, coord.z) - 5f
+  #pan_target.x = target_xz
+  #pan_target.z = target_xz
+
+  pan_target = vec3f( coord.x, 0, coord.z )
   pan_target.y = level.average_height(coord.x, coord.z) - 5f
   if goal:
     return
-  pan_target.y -= 5f
+  #pan_target.y -= 5f
 
 proc display_size(): (int32, int32) =
   var monitor = glfwGetPrimaryMonitor()
@@ -185,7 +192,8 @@ proc set_level =
   init_floor_plane()
   init_actors()
   reset_player(true)
-  pan_target = player.pos
+  follow_player()
+  #pan_target = player.pos
   pan = pan_target
   reset_view()
   following = f
@@ -278,11 +286,17 @@ proc mouseProc(window: GLFWWindow, xpos, ypos: cdouble): void {.cdecl.} =
   #echo mouse.x, "\r" #, ",", mouse.y
 
 proc scrollProc(window: GLFWWindow, xoffset, yoffset: cdouble): void {.cdecl.} =
-  #const wheel_ratio = 1.0 / 41.0
-  mouse.z = yoffset #* wheel_ratio
-  fov -= mouse.z
+  const wheel_ratio = 1.0 / 41.0
+  mouse.z = yoffset * wheel_ratio
+
+  #var dir = vec3f(0,0,1)
+  #var axis = player.normal.cross(dir).normalize()
+  #let angle = mouse.z
+  #player.rot = normalize(quatf(axis, angle) * player.rot)
+
+  #fov -= mouse.z
   #update_camera()
-  update_fov()
+  #update_fov()
 
 proc setup_glfw(): GLFWWindow =
   doAssert glfwInit()
@@ -427,6 +441,7 @@ proc cleanup(w: GLFWWindow) {.inline.} =
 var t  = 0.0f
 var dt = 0.0f
 var time = 0.0f
+var event_time = 0.0f
 
 proc main =
   let w = setup_glfw()
@@ -449,7 +464,7 @@ proc main =
   player.mvp    = proj * view.translate(-pan) * player.model
   player.matrix = player.program.newMatrix(player.mvp, "MVP")
 
-  current_level = 3
+  current_level = start_level
   set_level()
   init_floor_plane()
   init_actors()
@@ -459,8 +474,8 @@ proc main =
 
   proc physics(player: var Mesh) =
     const mass = player_radius
-    const gravity = -39f
-    const max_vel = vec3f( 15f, -gravity, 15f )
+    const gravity = -49f
+    const max_vel = vec3f( 15f, -gravity * 0.5f, 15f )
     let level = get_current_level()
     level.clock += 1
     level.clock = level.clock mod 3600
@@ -472,8 +487,8 @@ proc main =
     let cur_mask = level.mask_at(x,z)
     #stdout.write "\27[K"
 
-    if cur_mask == GG:
-      goal = true
+    goal = goal or cur_mask == GG
+    dead = player.pos.y < 10f or player.vel.y <= -max_vel.y
 
     let ramp = level.slope(x,z) * level_squash * level_squash
     let thx = arctan(ramp.x)
@@ -513,9 +528,10 @@ proc main =
       if vel > 0f:
         player.vel = player.vel.normalize() * vel
 
-    player.pos += player.vel * dt #player.vel.y * dt # hack to keep ball in place
+    player.pos += player.vel * dt
     player.pos.y = clamp(player.pos.y, fh, sky)
 
+    # rotation animation
     if (player.vel * vec3f(1,0,1)).length > 0:
       var dir = -player.vel.normalize()
       var axis = player.normal.cross(dir).normalize()
@@ -535,8 +551,17 @@ proc main =
     if level.around(TU,x,z):
       player.vel.y = clamp(player.vel.y, -max_vel.y, max_vel.y)
 
-    if player.acc.xz.length == 0f and ((1f-traction) * player.vel.y) < -max_vel.y or player.pos.y < 1f:
+    if dead:
       respawn(true)
+
+    if goal:
+      player.vel *= 0.97f
+      if event_time == 0:
+        event_time = time
+      if time - event_time > 3.0f:
+        goal = false
+        event_time = 0
+        next_level(true)
 
   proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
     mesh.mvp = proj * view.translate(-pan) * mesh.model

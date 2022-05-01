@@ -81,6 +81,9 @@ proc init_level(data_src, mask_src: string, color: Vec3f): Level =
   result.origin = data.find_p1(mask, width, height)
   result.actors = data.find_actors(mask, width, height)
 
+const level_0_src      = staticRead("../levels/0.tsv")
+const level_0_mask_src = staticRead("../levels/0mask.tsv")
+
 const level_1_src      = staticRead("../levels/1.tsv")
 const level_1_mask_src = staticRead("../levels/1mask.tsv")
 
@@ -92,6 +95,7 @@ const level_3_mask_src = staticRead("../levels/3mask.tsv")
 
 let levels = @[
   Level(),
+  init_level(level_0_src, level_0_mask_src, vec3f(1f, 0.0f, 1f)),
   init_level(level_1_src, level_1_mask_src, vec3f(1f, 0.8f, 0f)),
   init_level(level_2_src, level_2_mask_src, vec3f(0f, 0.4f, 0.8f)),
   init_level(level_3_src, level_3_mask_src, vec3f(0.4f, 0.4f, 0.4f)),
@@ -432,8 +436,12 @@ proc load_level*(n: int) =
     setup_floor levels[n]
 
 proc get_current_level*: Level =
+  while current_level > levels.high:
+    dec current_level
+  while current_level < 1:
+    inc current_level
   return levels[current_level]
 
-current_level = 3
+current_level = 0
 load_level current_level
 
