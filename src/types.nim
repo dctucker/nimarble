@@ -145,12 +145,21 @@ type
     LV, VJ, VH,
     II, IL, IJ, # I is top and bottom
     IH,         # oops! all cliffs
+    RI, RH,     # ramps up/down, left/right
     GG,         # goal
     TU, IN, OU, # tubes
     IC,         # icy
     SW,         # sine wave
     P1,         # player 1 start position
     P2,         # player 2 start position
+    EM,         # enemy: marble
+    EY,         # enemy: yum
+    EA,         # enemy: acid
+
+  Actor* = ref object
+    kind*: CliffMask
+    origin*: Vec3i
+    mesh*: Mesh
 
   Level* = ref object
     width*, height*: int
@@ -162,4 +171,8 @@ type
     floor_index*: seq[Ind]
     floor_verts*: seq[cfloat]
     floor_plane*: Mesh
+    clock*: int
+    actors*: seq[Actor]
+
+
 

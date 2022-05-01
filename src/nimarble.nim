@@ -42,6 +42,7 @@ var pan_acc: Vec3f
 var pan: Vec3f
 var pan_target: Vec3f
 var player: Mesh
+var actors: seq[Mesh]
 var game_window: GLFWWindow
 var fov: float32 = 15f
 var zoom: float32 = 1.0f
@@ -71,16 +72,20 @@ proc update_fov =
 update_fov()
 reset_view()
 
+proc reset_mesh(mesh: Mesh) =
+  mesh.pos = vec3f(0f, 0f, 0f)
+  mesh.vel = vec3f(0,0,0)
+  mesh.acc = vec3f(0,0,0)
+  mesh.rot = quatf(vec3f(0,-1,0),0).normalize
+  mesh.normal = vec3f(0,-1,0)
+  #mesh.rvel = vec3f(0,0,0)
+  #mesh.racc = vec3f(0,0,0)
+
 proc reset_player(press: bool) =
   if press:
     let player_top = get_current_level().origin.y.float
-    player.pos = vec3f(0f, player_top, 0f)
-    player.vel = vec3f(0,0,0)
-    player.acc = vec3f(0,0,0)
-    player.rot = quatf(vec3f(0,-1,0),0).normalize
-    player.normal = vec3f(0,-1,0)
-    #player.rvel = vec3f(0,0,0)
-    #player.racc = vec3f(0,0,0)
+    player.reset_mesh()
+    player.pos.y = player_top
 
 proc respawn(press: bool) =
   if press:
@@ -148,6 +153,29 @@ proc init_floor_plane =
   level.floor_plane.mvp = proj * view.translate(-pan) * level.floor_plane.model
   level.floor_plane.matrix = level.floor_plane.program.newMatrix(level.floor_plane.mvp, "MVP")
 
+proc init_actors =
+  let level = get_current_level()
+  for actor in level.actors.mitems:
+    if actor.mesh != nil:
+      continue
+    actor.mesh = Mesh(
+      vao       : newVAO(),
+      vert_vbo  : newVBO(3, sphere),
+      color_vbo : newVBO(4, sphere_enemy_colors),
+      elem_vbo  : newElemVBO(sphere_index),
+      program   : player.program,
+      model     : mat4(1.0f).scale(0.5f),
+    )
+    actor.mesh.reset_mesh()
+    let x = (actor.origin.x - level.origin.x).float * 2f # TODO figure this doubling shit out
+    let y = actor.origin.y.float
+    let z = (actor.origin.z - level.origin.z).float * 2f
+
+    actor.mesh.pos    = vec3f(x, y, z)
+    actor.mesh.mvp    = proj * view.translate(-pan) * actor.mesh.model
+    actor.mesh.matrix = player.program.newMatrix(actor.mesh.mvp, "MVP")
+
+
 proc set_level =
   let f = following
   following = false
@@ -155,6 +183,7 @@ proc set_level =
   reset_player(true)
   load_level current_level
   init_floor_plane()
+  init_actors()
   reset_player(true)
   pan_target = player.pos
   pan = pan_target
@@ -337,13 +366,13 @@ proc draw_imgui =
 
   #igText("Player vectors")
   #var lateral = player.pos.xz.length()
-  #igSliderFloat("lateral_d", lateral.addr, -sky, sky)
-  igSliderFloat3 "respawn", respawn_pos.arr, -100f, 100f
-  igSliderFloat3 "pos"    , player.pos.arr ,  -sky, sky
-  igSliderFloat3 "vel"    , player.vel.arr ,  -sky, sky
-  igSliderFloat3 "acc"    , player.acc.arr ,  -sky, sky
-  igSliderFloat4 "rot"    , player.rot.arr ,  -sky, sky
-  #igSliderFloat3("normal", player.normal.arr, -1.0, 1.0)
+  #igSliderFloat "lateral_d", lateral.addr     , -sky, sky
+  igSliderFloat3 "respawn" , respawn_pos.arr  , -sky, sky
+  igSliderFloat3 "pos"     , player.pos.arr   , -sky, sky
+  igSliderFloat3 "vel"     , player.vel.arr   , -sky, sky
+  igSliderFloat3 "acc"     , player.acc.arr   , -sky, sky
+  igSliderFloat4 "rot"     , player.rot.arr   , -sky, sky
+  #igSliderFloat3 "normal" , player.normal.arr, -1.0, 1.0
 
   let level = get_current_level()
   let coord = player.pos.rotate_coord
@@ -354,18 +383,27 @@ proc draw_imgui =
   igSpacing()
   igSeparator()
   igSpacing()
-  igSliderFloat3("slope", sl.arr, -100f, 100f)
-  igSliderFloat3("pan_target", pan_target.arr, -100f, 100f)
-  igSliderFloat3("pan"       , pan.arr,     -100f, 100f)
-  igSliderFloat3("pan_vel"   , pan_vel.arr, -100f, 100f)
-  igSliderFloat3("pan_acc"   , pan_acc.arr, -100f, 100f)
-  igSliderFloat("fov", fov.addr, 0f, 360f)
+  igSliderFloat3 "slope"     , sl.arr         , -sky, sky
+  igSliderFloat3 "pan_target", pan_target.arr , -sky, sky
+  igSliderFloat3 "pan"       , pan.arr        , -sky, sky
+  igSliderFloat3 "pan_vel"   , pan_vel.arr    , -sky, sky
+  igSliderFloat3 "pan_acc"   , pan_acc.arr    , -sky, sky
+  igSliderFloat  "fov"       , fov.addr       ,   0f, 360f
 
-  igCheckBox("following", following.addr)
-  igCheckBox("wireframe", wireframe.addr)
-  igSliderInt("current_level", current_level.addr, 1.int32, n_levels.int32 - 1)
+  igCheckBox     "following"    , following.addr
+  igCheckBox     "wireframe"    , wireframe.addr
+  igSliderInt    "current_level", current_level.addr, 1.int32, n_levels.int32 - 1
 
   #igText("average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
+  igPopFont()
+  igEnd()
+
+  igSetNextWindowPos(ImVec2(x:500, y:5))
+  igBegin("actor 0")
+  igPushFont( small_font )
+  if level.actors.len > 0:
+    var actor0 = level.actors[0].mesh
+    igSliderFloat3 "pos"     , actor0.pos.arr   , -sky, sky
   igPopFont()
   igEnd()
 
@@ -414,6 +452,7 @@ proc main =
   current_level = 3
   set_level()
   init_floor_plane()
+  init_actors()
 
   proc toString[T: float](f: T, prec: int = 8): string =
     result = f.formatFloat(ffDecimal, prec)
@@ -422,8 +461,9 @@ proc main =
     const mass = 1.0f
     const max_vel = 15.0f * vec3f( 1f, 1.616f, 1f )
     const gravity = -49f
-    const player_radius = 0.25f
     let level = get_current_level()
+    level.clock += 1
+    level.clock = level.clock mod 3600
     let coord = player.pos.rotate_coord
     let x = coord.x
     let z = coord.z
@@ -479,7 +519,7 @@ proc main =
     if (player.vel * vec3f(1,0,1)).length > 0:
       var dir = -player.vel.normalize()
       var axis = player.normal.cross(dir).normalize()
-      let angle = player.vel.xz.length * dt / player_radius / Pi
+      let angle = player.vel.xz.length * dt / 0.5f / Pi
       player.rot = normalize(quatf(axis, angle) * player.rot)
 
     const brake = 0.986
@@ -489,8 +529,8 @@ proc main =
     mouse *= 0
 
     player.model = mat4(1.0f)
-      .scale(2 * player_radius)
-      .translate(vec3f(0, 2 * player_radius,0))
+      .scale(0.5f)
+      .translate(vec3f(0, player_radius,0))
       .translate(player.pos) * player.rot.mat4f
 
     if level.around(TU,x,z):
@@ -530,6 +570,7 @@ proc main =
   # main loop
   while not w.windowShouldClose():
     var floor_plane = get_current_level().floor_plane
+    var actors = get_current_level().actors
     time = glfwGetTime()
     dt = time - t
     t = time
@@ -560,6 +601,17 @@ proc main =
 
     glPolygonMode      GL_FRONT_AND_BACK, GL_FILL
     player.render
+
+    for a in actors.low..actors.high:
+      var mesh = actors[a].mesh
+
+      mesh.model = mat4(1.0f)
+        .scale(0.5f)
+        .translate(vec3f(0, player_radius, 0))
+        .translate(mesh.pos) * mesh.rot.mat4f
+
+      glPolygonMode      GL_FRONT_AND_BACK, GL_FILL
+      mesh.render        GL_TRIANGLE_STRIP
 
     imgui_frame()
 

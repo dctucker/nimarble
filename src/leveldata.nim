@@ -44,10 +44,24 @@ proc tsv_masks(line: string): seq[CliffMask] =
   )
 
 proc find_p1(data: seq[float], mask: seq[CliffMask], w,h: int): Vec3i =
-  for i in 0..h:
-    for j in 0..w:
+  for i in 0..<h:
+    for j in 0..<w:
       if mask[i*w+j] == P1:
         return Vec3i(arr: [j.int32, data[i*w+j].int32, i.int32])
+
+proc find_actors(data: seq[float], mask: seq[CliffMask], w,h: int): seq[Actor] =
+  for i in 0..<h:
+    for j in 0..<w:
+      let mask = mask[i * w + j]
+      if mask in {EY, EM, EA}:
+        result.add Actor(
+          origin: vec3i(
+            j.int32,
+            data[i*w+j].int32,
+            i.int32,
+          ),
+          kind: mask,
+        )
 
 proc init_level(data_src, mask_src: string, color: Vec3f): Level =
   var i,j: int
@@ -62,9 +76,10 @@ proc init_level(data_src, mask_src: string, color: Vec3f): Level =
     width: width,
     data: data,
     mask: mask,
-    origin: data.find_p1(mask, width, height),
     color: color,
   )
+  result.origin = data.find_p1(mask, width, height)
+  result.actors = data.find_actors(mask, width, height)
 
 const level_1_src      = staticRead("../levels/1.tsv")
 const level_1_mask_src = staticRead("../levels/1mask.tsv")
@@ -113,7 +128,7 @@ proc point_color(level: Level, i,j: int): Vec4f =
     case level.mask[k]
     of GG:
       return vec4f( 0.8, 0.8, 0.8, 1.0)
-    of TU:
+    of TU, IN, OU:
       return vec4f( level.color.x * 0.5, level.color.y * 0.5, level.color.z * 0.5, 1.0)
     of AA, JJ: return vec4f(level.color * 0.2, 0.5)
     of LL, VV: return vec4f(level.color * 0.5, 0.5)
@@ -122,7 +137,11 @@ proc point_color(level: Level, i,j: int): Vec4f =
     of AH, VH, IL, IJ,
        IH, II, HH:     return vec4f(level.color * 0.9, 0.5)
     of P1:
+      return vec4f( 0.0, 0.0, 0.5, 0.8)
+    of EM:
       return vec4f( 0.1, 0.1, 0.1, 1.0)
+    of EY, EA:
+      return vec4f( 0.4, 9.0, 0.0, 1.0)
     of SW:
       return vec4f( 0.1, 0.6, 0.6, 1.0)
     else:
@@ -188,17 +207,7 @@ proc setup_floor(level: Level) =
   level.floor_colors = colors
   level.floor_verts = verts
   level.floor_index = index
-  echo index.len
-
-#proc setup_floor_points[T](level_data: seq[T], level_mask: seq[CliffMask]): seq[cfloat] =
-#  result = newSeq[cfloat](3 * w * h)
-#  for z in 0..<h:
-#    for x in 0..<w:
-#      let index = 3 * (w * z + x)
-#      let y = level_data[w * z + x]
-#      result[index+0] = (x.cfloat-level.origin.x).cfloat
-#      result[index+1] =  y.cfloat
-#      result[index+2] = (z.cfloat-level.origin.z).cfloat
+  #echo "Index length: ", index.len
 
 
 const ch = 4
@@ -227,6 +236,17 @@ type
   DiagDirection = enum
     Up
     Down
+
+#[
+proc setup_floor_points[T](level_data: seq[T], level_mask: seq[CliffMask]): seq[cfloat] =
+  result = newSeq[cfloat](3 * w * h)
+  for z in 0..<h:
+    for x in 0..<w:
+      let index = 3 * (w * z + x)
+      let y = level_data[w * z + x]
+      result[index+0] = (x.cfloat-level.origin.x).cfloat
+      result[index+1] =  y.cfloat
+      result[index+2] = (z.cfloat-level.origin.z).cfloat
 
 # This procedure generates the vertex sequence for a triangle strip that
 # covers the given quadrilaterally-gridded surface.  The parameters 'N' and
@@ -328,11 +348,21 @@ proc setup_floor_index[T](level: seq[T]): seq[Ind] =
       result[index] = V2 + N.Ind
       inc index
       V1 = V2 + N.Ind
+]#
 
-proc floor_height*(level: Level, x,z: float): float =
+proc data_at(level: Level, x,z: float): float =
   let (i,j) = level.xlat_coord(x,z)
   if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return EE.float
   return level.data[i * level.width + j].float
+
+proc floor_height*(level: Level, x,z: float): float =
+  result = level.data_at(x,z)
+  if level.mask_at(x,z) == SW:
+    let phase = 15f * -x + level.clock.float
+    result += 3.0f * (1f + sin(phase.radians))
+    #let (i,j) = level.xlat_coord(x,z)
+    #if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return
+    #level.floor_verts[4 * (i * level.width + j)] = result
 
 proc slope*(level: Level, x,z: float): Vec3f =
   let p0 = level.floor_height(x+0,z+0)

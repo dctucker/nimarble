@@ -54,6 +54,7 @@ for i in 0..<cube_index.len:
   cube_colors[ch*i+2] = 1.0f * (1.0-phase)
   cube_colors[ch*i+3] = 0.5f
 
+const player_radius* = 1.25f
 proc uvSphereVerts*(segments, rings: int): seq[cfloat] =
   result = newSeqOfCap[cfloat](3 * (segments+1) * rings)
 
@@ -69,9 +70,9 @@ proc uvSphereVerts*(segments, rings: int): seq[cfloat] =
         h = cos(alpha).float32
         r = sin(alpha).float32
 
-      result.add x * r
-      result.add y * r
-      result.add h
+      result.add player_radius * x * r
+      result.add player_radius * y * r
+      result.add player_radius * h
 proc uvSphereElements*(segments, rings: int): seq[Ind] =
   result = newSeqOfCap[Ind]((segments+1) * rings)
 
@@ -142,8 +143,18 @@ proc uvSphereColors*(segments, rings: int): seq[cfloat] =
           result.add 1.0
           result.add opacity
 
+proc uvSphereEnemy(nseg, nrings: int): seq[cfloat] =
+  const opacity = 0.8
+  for a in 0..<nseg:
+    for b in 0..<nrings:
+      result.add 0.3
+      result.add 0.7
+      result.add 0.0
+      result.add opacity
+
 const nseg = 32
 const nrings = 16
 var sphere* = uvSphereVerts(nseg,nrings)
 var sphere_index* = uvSphereElements(nseg,nrings)
 var sphere_colors* = uvSphereColors(nseg,nrings)
+var sphere_enemy_colors* = uvSphereEnemy(nseg,nrings)
