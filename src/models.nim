@@ -54,7 +54,7 @@ for i in 0..<cube_index.len:
   cube_colors[ch*i+2] = 1.0f * (1.0-phase)
   cube_colors[ch*i+3] = 0.5f
 
-const player_radius* = 1.25f
+const player_radius* = 0.625f
 proc uvSphereVerts*(segments, rings: int): seq[cfloat] =
   result = newSeqOfCap[cfloat](3 * (segments+1) * rings)
 

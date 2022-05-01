@@ -94,13 +94,13 @@ proc respawn(press: bool) =
     reset_view()
 
 proc rotate_coord(v: Vec3f): Vec3f =
-  let v4 = mat4f(1f).scale(0.5f).translate(v).rotateY(radians(45f))[3]
+  let v4 = mat4f(1f).translate(v).rotateY(radians(45f))[3]
   result = vec3f(v4.x, v4.y, v4.z)
 
 proc follow_player =
   let level = get_current_level()
   let coord = player.pos.rotate_coord
-  let target = player.pos * 0.5f
+  let target = player.pos# * 0.5f
   let target_xz = (target.x + target.z) / 2f
   pan_target.x = target_xz
   pan_target.z = target_xz
@@ -164,12 +164,12 @@ proc init_actors =
       color_vbo : newVBO(4, sphere_enemy_colors),
       elem_vbo  : newElemVBO(sphere_index),
       program   : player.program,
-      model     : mat4(1.0f).scale(0.5f),
+      model     : mat4(1.0f),
     )
     actor.mesh.reset_mesh()
-    let x = (actor.origin.x - level.origin.x).float * 2f # TODO figure this doubling shit out
+    let x = (actor.origin.x - level.origin.x).float
     let y = actor.origin.y.float
-    let z = (actor.origin.z - level.origin.z).float * 2f
+    let z = (actor.origin.z - level.origin.z).float
 
     actor.mesh.pos    = vec3f(x, y, z)
     actor.mesh.mvp    = proj * view.translate(-pan) * actor.mesh.model
@@ -379,7 +379,7 @@ proc draw_imgui =
   var cur_mask = ($level.mask_at(coord.x, coord.z)).cstring
   igInputText("cur_mask", curmask, 2)
 
-  var sl = level.slope(coord.x, coord.z)
+  var sl = level.slope(coord.x, coord.z) * 0.5f
   igSpacing()
   igSeparator()
   igSpacing()
@@ -445,7 +445,7 @@ proc main =
   )
   reset_player(true)
 
-  player.model  = mat4(1.0f).scale(0.5f)
+  player.model  = mat4(1.0f)
   player.mvp    = proj * view.translate(-pan) * player.model
   player.matrix = player.program.newMatrix(player.mvp, "MVP")
 
@@ -458,9 +458,9 @@ proc main =
     result = f.formatFloat(ffDecimal, prec)
 
   proc physics(player: var Mesh) =
-    const mass = 1.0f
-    const max_vel = 15.0f * vec3f( 1f, 1.616f, 1f )
-    const gravity = -49f
+    const mass = player_radius
+    const gravity = -39f
+    const max_vel = vec3f( 15f, -gravity, 15f )
     let level = get_current_level()
     level.clock += 1
     level.clock = level.clock mod 3600
@@ -475,14 +475,14 @@ proc main =
     if cur_mask == GG:
       goal = true
 
-    let ramp = level.slope(x,z)
-    let thx = arctan(ramp.x * level_squash)
-    let thz = arctan(ramp.z * level_squash)
+    let ramp = level.slope(x,z) * level_squash * level_squash
+    let thx = arctan(ramp.x)
+    let thz = arctan(ramp.z)
     let cosx = cos(thx)
     let cosz = cos(thz)
     let sinx = sin(thx)
     let sinz = sin(thz)
-    var ramp_a = vec3f( -ramp.x * level_squash, sinx + sinz, -ramp.z * level_squash ) * gravity
+    var ramp_a = vec3f( -ramp.x, sinx + sinz, -ramp.z ) * gravity
     var icy = level.around(IC, x,z)
     var traction: float
     if bh - fh > 0.25:
@@ -519,7 +519,7 @@ proc main =
     if (player.vel * vec3f(1,0,1)).length > 0:
       var dir = -player.vel.normalize()
       var axis = player.normal.cross(dir).normalize()
-      let angle = player.vel.xz.length * dt / 0.5f / Pi
+      let angle = player.vel.xz.length * dt / 0.5f / Pi / player_radius
       player.rot = normalize(quatf(axis, angle) * player.rot)
 
     const brake = 0.986
@@ -529,9 +529,8 @@ proc main =
     mouse *= 0
 
     player.model = mat4(1.0f)
-      .scale(0.5f)
       .translate(vec3f(0, player_radius,0))
-      .translate(player.pos) * player.rot.mat4f
+      .translate(player.pos * vec3f(1,level_squash,1)) * player.rot.mat4f
 
     if level.around(TU,x,z):
       player.vel.y = clamp(player.vel.y, -max_vel.y, max_vel.y)
@@ -606,9 +605,8 @@ proc main =
       var mesh = actors[a].mesh
 
       mesh.model = mat4(1.0f)
-        .scale(0.5f)
         .translate(vec3f(0, player_radius, 0))
-        .translate(mesh.pos) * mesh.rot.mat4f
+        .translate(mesh.pos * vec3f(1,level_squash,1)) * mesh.rot.mat4f
 
       glPolygonMode      GL_FRONT_AND_BACK, GL_FILL
       mesh.render        GL_TRIANGLE_STRIP
