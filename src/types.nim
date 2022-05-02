@@ -194,6 +194,7 @@ type
     hourglass*: float
     level*: int32
     player*: Player
+    proj*: Mat4f
     view*: Mat4f
     respawn_pos*: Vec3f
     pan_vel*: Vec3f

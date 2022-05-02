@@ -433,7 +433,8 @@ proc average_height*(level: Level, x,z: float): float =
 
 proc load_level*(n: int) =
   if 0 < n and n < levels.len:
-    setup_floor levels[n]
+    if levels[n].floor_index.len == 0:
+      setup_floor levels[n]
 
 proc get_level*(game: Game): Level =
   while game.level > levels.high:
