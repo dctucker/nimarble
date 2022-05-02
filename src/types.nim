@@ -1,4 +1,4 @@
-import nimgl/opengl
+import nimgl/[glfw,opengl]
 import glm
 
 type
@@ -194,4 +194,15 @@ type
     hourglass*: float
     level*: int
     player*: Player
+    view*: Mat4f
+    respawn_pos*: Vec3f
+    pan_vel*: Vec3f
+    pan_acc*: Vec3f
+    pan*: Vec3f
+    pan_target*: Vec3f
+    #actors: seq[Mesh]
+    window*: GLFWWindow
+    fov*: float32
+    #zoom: float32 = sky * 0.5
+    camera_target*, camera_pos*, camera_up*: Vec3f
 

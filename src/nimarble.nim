@@ -37,45 +37,33 @@ var goal = false
 var dead = false
 var wireframe = false
 
-var view: Mat4f
-var respawn_pos: Vec3f
-var pan_vel: Vec3f
-var pan_acc: Vec3f
-var pan: Vec3f
-var pan_target: Vec3f
-var actors: seq[Mesh]
-var game_window: GLFWWindow
-var fov: float32 = 45f
-var zoom: float32 = sky * 0.5
-var camera_target, camera_pos, camera_up: Vec3f
 const level_squash = 0.5f
 const start_level = 1
 
 proc update_camera =
   let level = get_current_level()
 
-  camera_target = vec3f( 0, level.origin.y.float * level_squash, 0 )
-  camera_pos = vec3f( 20, camera_target.y + 20, 20 )
-  camera_up = vec3f( 0f,  1.0f,  0f )
+  game.camera_target = vec3f( 0, level.origin.y.float * level_squash, 0 )
+  game.camera_pos = vec3f( 20, game.camera_target.y + 20, 20 )
+  game.camera_up = vec3f( 0f,  1.0f,  0f )
   #let target = vec3f( 10, 0, 10 )
   #let pos = vec3f( level.origin.z.float * 2, 0, level.origin.z.float * 2)
-  echo camera_target
-  view = lookAt( camera_pos, camera_target, camera_up )
-
-proc reset_view =
-  update_camera()
-  pan_vel = vec3f(0,0,0)
+  echo game.camera_target
+  game.view = lookAt( game.camera_pos, game.camera_target, game.camera_up )
 
 
 const field_width = 10f
 let aspect: float32 = width / height
 var proj: Mat4f
 proc update_fov =
-  let r: float32 = radians(fov)
+  let r: float32 = radians(game.fov)
   proj = perspective(r, aspect, 0.125f, sky)
   #proj = ortho(aspect * -field_width, aspect * field_width, -field_width, field_width, 0f, sky) # In world coordinates
-update_fov()
-reset_view()
+
+proc reset_view =
+  update_fov()
+  update_camera()
+  game.pan_vel = vec3f(0,0,0)
 
 proc reset_mesh(mesh: Mesh) =
   mesh.pos = vec3f(0f, 0f, 0f)
@@ -95,7 +83,7 @@ proc reset_player(press: bool) =
 proc respawn(press: bool) =
   if press:
     reset_player(true)
-    game.player.mesh.pos = respawn_pos
+    game.player.mesh.pos = game.respawn_pos
     reset_view()
 
 proc rotate_coord(v: Vec3f): Vec3f =
@@ -107,18 +95,18 @@ proc follow_player =
   let coord = game.player.mesh.pos.rotate_coord
   let target = game.player.mesh.pos# * 0.5f
   #let target_xz = (target.x + target.z)# / 2f
-  #pan_target.x = target_xz
-  #pan_target.z = target_xz
-  #pan_target.y = level.average_height(coord.x, coord.z) - 5f
-  #pan_target.x = target_xz
-  #pan_target.z = target_xz
+  #game.pan_target.x = target_xz
+  #game.pan_target.z = target_xz
+  #game.pan_target.y = level.average_height(coord.x, coord.z) - 5f
+  #game.pan_target.x = target_xz
+  #game.pan_target.z = target_xz
 
   let y = (game.player.mesh.pos.y - level.origin.y.float) * 0.5
-  pan_target = vec3f( coord.x, y, coord.z )
-  #pan_target.y = level.average_height(coord.x, coord.z) - 5f
+  game.pan_target = vec3f( coord.x, y, coord.z )
+  #game.pan_target.y = level.average_height(coord.x, coord.z) - 5f
   if goal:
     return
-  #pan_target.y -= 5f
+  #game.pan_target.y -= 5f
 
 proc display_size(): (int32, int32) =
   var monitor = glfwGetPrimaryMonitor()
@@ -130,12 +118,12 @@ proc middle(): Vec2f = vec2f(width.float * 0.5f, height.float * 0.5f)
 
 proc update_mouse_lock =
   if not mouse_lock:
-    game_window.setInputMode GLFW_CURSOR_SPECIAL, GLFWCursorNormal
+    game.window.setInputMode GLFW_CURSOR_SPECIAL, GLFWCursorNormal
   else:
     let mid = middle()
-    game_window.setCursorPos mid.x, mid.y
+    game.window.setCursorPos mid.x, mid.y
     mouse *= 0
-    game_window.setInputMode GLFW_CURSOR_SPECIAL, GLFWCursorDisabled
+    game.window.setInputMode GLFW_CURSOR_SPECIAL, GLFWCursorDisabled
 
 proc toggle_mouse_lock(press: bool) =
   if not press:
@@ -161,7 +149,7 @@ proc init_floor_plane =
     program: game.player.mesh.program,
   )
   level.floor_plane.model = mat4(1.0f).scale(1f, level_squash, 1f)
-  level.floor_plane.mvp = proj * view.translate(-pan) * level.floor_plane.model
+  level.floor_plane.mvp = proj * game.view.translate(-game.pan) * level.floor_plane.model
   level.floor_plane.matrix = level.floor_plane.program.newMatrix(level.floor_plane.mvp, "MVP")
 
 proc init_actors =
@@ -183,7 +171,7 @@ proc init_actors =
     let z = (actor.origin.z - level.origin.z).float
 
     actor.mesh.pos    = vec3f(x, y, z)
-    actor.mesh.mvp    = proj * view.translate(-pan) * actor.mesh.model
+    actor.mesh.mvp    = proj * game.view.translate(-game.pan) * actor.mesh.model
     actor.mesh.matrix = game.player.mesh.program.newMatrix(actor.mesh.mvp, "MVP")
 
 
@@ -197,31 +185,31 @@ proc set_level =
   init_actors()
   reset_player(true)
   follow_player()
-  #pan_target = player.pos
-  pan = pan_target
+  #game.pan_target = player.pos
+  game.pan = game.pan_target
   reset_view()
   following = f
 
 proc pan_stop =
-  pan_acc = vec3f(0f,0f,0f)
+  game.pan_acc = vec3f(0f,0f,0f)
 
 proc pan_up(press: bool) =
-  if press: pan_acc.xz = vec2f(-0.125f, -0.125)
+  if press: game.pan_acc.xz = vec2f(-0.125f, -0.125)
   else: pan_stop()
 proc pan_down(press: bool) =
-  if press: pan_acc.xz = vec2f(+0.125, +0.125)
+  if press: game.pan_acc.xz = vec2f(+0.125, +0.125)
   else: pan_stop()
 proc pan_left(press: bool) =
-  if press: pan_acc.xz = vec2f(-0.125, +0.125)
+  if press: game.pan_acc.xz = vec2f(-0.125, +0.125)
   else: pan_stop()
 proc pan_right(press: bool) =
-  if press: pan_acc.xz = vec2f(+0.125, -0.125)
+  if press: game.pan_acc.xz = vec2f(+0.125, -0.125)
   else: pan_stop()
 proc pan_in(press: bool) =
-  if press: pan_acc.y = +0.125
+  if press: game.pan_acc.y = +0.125
   else: pan_stop()
 proc pan_out(press: bool) =
-  if press: pan_acc.y = -0.125
+  if press: game.pan_acc.y = -0.125
   else: pan_stop()
 proc step_frame(press: bool) =
   frame_step = true
@@ -237,16 +225,16 @@ proc follow(press: bool) =
   if press:
     following = not following
   if not following:
-    pan_target = pan
-    pan_vel *= 0
+    game.pan_target = game.pan
+    game.pan_vel *= 0
 proc do_goal(press: bool) =
   if press: goal = not goal
 proc toggle_wireframe(press: bool) =
   if press: wireframe = not wireframe
 proc pause(press: bool) =
-  if press: game_window.toggle_pause()
+  if press: game.window.toggle_pause()
 proc do_quit(press: bool) =
-  game_window.setWindowShouldClose(true)
+  game.window.setWindowShouldClose(true)
 
 const keymap = {
   GLFWKey.R            : reset_player      ,
@@ -270,7 +258,7 @@ const keymap = {
 
 proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mods: int32): void {.cdecl.} =
   if keymap.hasKey key:
-    game_window = window
+    game.window = window
     keymap[key](action != GLFWRelease)
 
 proc rotate_mouse(mouse: Vec3f): Vec3f =
@@ -298,7 +286,7 @@ proc scrollProc(window: GLFWWindow, xoffset, yoffset: cdouble): void {.cdecl.} =
   #let angle = mouse.z
   #game.player.mesh.rot = normalize(quatf(axis, angle) * game.player.mesh.rot)
 
-  #fov -= mouse.z
+  #game.fov -= mouse.z
   #update_camera()
   #update_fov()
 
@@ -397,7 +385,7 @@ proc draw_imgui =
   #igText("Player vectors")
   #var lateral = player.pos.xz.length()
   #igSliderFloat "lateral_d", lateral.addr     , -sky, sky
-  igSliderFloat3 "respawn" , respawn_pos.arr  , -sky, sky
+  igSliderFloat3 "respawn" , game.respawn_pos.arr  , -sky, sky
   igSliderFloat3 "pos"     , game.player.mesh.pos.arr   , -sky, sky
   igSliderFloat3 "vel"     , game.player.mesh.vel.arr   , -sky, sky
   igSliderFloat3 "acc"     , game.player.mesh.acc.arr   , -sky, sky
@@ -414,11 +402,11 @@ proc draw_imgui =
   igSeparator()
   igSpacing()
   igSliderFloat3 "slope"     , sl.arr         , -sky, sky
-  igSliderFloat3 "pan_target", pan_target.arr , -sky, sky
-  igSliderFloat3 "pan"       , pan.arr        , -sky, sky
-  igSliderFloat3 "pan_vel"   , pan_vel.arr    , -sky, sky
-  igSliderFloat3 "pan_acc"   , pan_acc.arr    , -sky, sky
-  igSliderFloat  "fov"       , fov.addr       ,   0f, 360f
+  igSliderFloat3 "pan_target", game.pan_target.arr , -sky, sky
+  igSliderFloat3 "pan"       , game.pan.arr        , -sky, sky
+  igSliderFloat3 "pan_vel"   , game.pan_vel.arr    , -sky, sky
+  igSliderFloat3 "pan_acc"   , game.pan_acc.arr    , -sky, sky
+  igSliderFloat  "fov"       , game.fov.addr       ,   0f, 360f
 
   igCheckBox     "following"    , following.addr
   igCheckBox     "wireframe"    , wireframe.addr
@@ -436,10 +424,10 @@ proc draw_imgui =
 
   #igSetNextWindowPos(ImVec2(x:5, y:500))
   igBegin("camera")
-  igSliderFloat3 "pos"   , camera_pos.arr   , -sky, sky
-  igSliderFloat3 "target", camera_target.arr, -sky, sky
-  igSliderFloat3 "up"    , camera_up.arr    , -sky, sky
-  view = lookAt( camera_pos, camera_target, camera_up )
+  igSliderFloat3 "pos"   , game.camera_pos.arr   , -sky, sky
+  igSliderFloat3 "target", game.camera_target.arr, -sky, sky
+  igSliderFloat3 "up"    , game.camera_up.arr    , -sky, sky
+  game.view = lookAt( game.camera_pos, game.camera_target, game.camera_up )
   igEnd()
 
   igPopFont()
@@ -472,7 +460,8 @@ proc main =
   game = Game(
     state: ATTRACT,
     level: start_level,
-    player: Player()
+    player: Player(),
+    fov: 45f,
   )
   let w = setup_glfw()
 
@@ -491,7 +480,7 @@ proc main =
   reset_player(true)
 
   game.player.mesh.model  = mat4(1.0f)
-  game.player.mesh.mvp    = proj * view.translate(-pan) * game.player.mesh.model
+  game.player.mesh.mvp    = proj * game.view.translate(-game.pan) * game.player.mesh.model
   game.player.mesh.matrix = game.player.mesh.program.newMatrix(game.player.mesh.mvp, "MVP")
 
   current_level = start_level
@@ -538,7 +527,7 @@ proc main =
     let flat = ramp.length == 0
     let nonzero = level.point_height(x.floor, z.floor) > 0f
     if flat and nonzero and cur_mask == XX and not icy:
-      respawn_pos = vec3f(mesh.pos.x.floor, mesh.pos.y, mesh.pos.z.floor)
+      game.respawn_pos = vec3f(mesh.pos.x.floor, mesh.pos.y, mesh.pos.z.floor)
 
     var m = vec3f(0,0,0)
     if not paused and not goal and not icy:
@@ -594,7 +583,7 @@ proc main =
         next_level(true)
 
   proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
-    mesh.mvp = proj * view.translate(-pan) * mesh.model
+    mesh.mvp = proj * game.view.translate(-game.pan) * mesh.model
     mesh.matrix.update mesh.mvp
     mesh.program.use()
     mesh.vert_vbo.apply 0
@@ -607,19 +596,19 @@ proc main =
     glDisableVertexAttribArray 1
 
   proc camera_physics {.inline.} =
-    pan_target += pan_acc
-    pan_vel = (pan_vel + pan_acc).clamp(-0.125, 0.125)
-    pan += pan_vel
+    game.pan_target += game.pan_acc
+    game.pan_vel = (game.pan_vel + game.pan_acc).clamp(-0.125, 0.125)
+    game.pan += game.pan_vel
 
     const camera_maxvel = 1f/20f
-    let pan_delta = pan_target - pan
+    let pan_delta = game.pan_target - game.pan
     if pan_delta.length > 0f:
       if pan_delta.length < camera_maxvel:
-        pan = pan_target
-        pan_vel *= 0
+        game.pan = game.pan_target
+        game.pan_vel *= 0
       else:
-        pan_vel = pan_delta * dt
-        pan_vel = clamp(pan_vel, -camera_maxvel, +camera_maxvel)
+        game.pan_vel = pan_delta * dt
+        game.pan_vel = clamp(game.pan_vel, -camera_maxvel, +camera_maxvel)
 
   # main loop
   while not w.windowShouldClose():
