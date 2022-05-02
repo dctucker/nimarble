@@ -174,5 +174,24 @@ type
     clock*: int
     actors*: seq[Actor]
 
+type
+  GameState* = enum
+    ATTRACT,
+    READY,
+    PLAY,
+    GOAL,
+    GAME_OVER,
+    INITIALS,
+    HALL_OF_FAME,
 
+  Player* = ref object
+    mesh*: Mesh
+
+  Game* = ref object
+    state*: GameState
+    score*: int
+    respawns*: uint
+    hourglass*: float
+    level*: int
+    player*: Player
 

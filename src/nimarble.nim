@@ -27,6 +27,7 @@ var width, height: int32
 width = 1600
 height = 1200
 
+var game: Game
 var mouse: Vec3f
 var paused = false
 var mouse_lock = true
@@ -42,7 +43,6 @@ var pan_vel: Vec3f
 var pan_acc: Vec3f
 var pan: Vec3f
 var pan_target: Vec3f
-var player: Mesh
 var actors: seq[Mesh]
 var game_window: GLFWWindow
 var fov: float32 = 45f
@@ -89,13 +89,13 @@ proc reset_mesh(mesh: Mesh) =
 proc reset_player(press: bool) =
   if press:
     let player_top = get_current_level().origin.y.float
-    player.reset_mesh()
-    player.pos.y = player_top
+    game.player.mesh.reset_mesh()
+    game.player.mesh.pos.y = player_top
 
 proc respawn(press: bool) =
   if press:
     reset_player(true)
-    player.pos = respawn_pos
+    game.player.mesh.pos = respawn_pos
     reset_view()
 
 proc rotate_coord(v: Vec3f): Vec3f =
@@ -104,8 +104,8 @@ proc rotate_coord(v: Vec3f): Vec3f =
 
 proc follow_player =
   let level = get_current_level()
-  let coord = player.pos.rotate_coord
-  let target = player.pos# * 0.5f
+  let coord = game.player.mesh.pos.rotate_coord
+  let target = game.player.mesh.pos# * 0.5f
   #let target_xz = (target.x + target.z)# / 2f
   #pan_target.x = target_xz
   #pan_target.z = target_xz
@@ -113,7 +113,7 @@ proc follow_player =
   #pan_target.x = target_xz
   #pan_target.z = target_xz
 
-  let y = (player.pos.y - level.origin.y.float) * 0.5
+  let y = (game.player.mesh.pos.y - level.origin.y.float) * 0.5
   pan_target = vec3f( coord.x, y, coord.z )
   #pan_target.y = level.average_height(coord.x, coord.z) - 5f
   if goal:
@@ -158,7 +158,7 @@ proc init_floor_plane =
     vert_vbo: newVBO(3, level.floor_verts),
     color_vbo: newVBO(4, level.floor_colors),
     elem_vbo: newElemVBO(level.floor_index),
-    program: player.program,
+    program: game.player.mesh.program,
   )
   level.floor_plane.model = mat4(1.0f).scale(1f, level_squash, 1f)
   level.floor_plane.mvp = proj * view.translate(-pan) * level.floor_plane.model
@@ -174,7 +174,7 @@ proc init_actors =
       vert_vbo  : newVBO(3, sphere),
       color_vbo : newVBO(4, sphere_enemy_colors),
       elem_vbo  : newElemVBO(sphere_index),
-      program   : player.program,
+      program   : game.player.mesh.program,
       model     : mat4(1.0f),
     )
     actor.mesh.reset_mesh()
@@ -184,7 +184,7 @@ proc init_actors =
 
     actor.mesh.pos    = vec3f(x, y, z)
     actor.mesh.mvp    = proj * view.translate(-pan) * actor.mesh.model
-    actor.mesh.matrix = player.program.newMatrix(actor.mesh.mvp, "MVP")
+    actor.mesh.matrix = game.player.mesh.program.newMatrix(actor.mesh.mvp, "MVP")
 
 
 proc set_level =
@@ -294,9 +294,9 @@ proc scrollProc(window: GLFWWindow, xoffset, yoffset: cdouble): void {.cdecl.} =
   mouse.z = yoffset * wheel_ratio
 
   #var dir = vec3f(0,0,1)
-  #var axis = player.normal.cross(dir).normalize()
+  #var axis = game.player.mesh.normal.cross(dir).normalize()
   #let angle = mouse.z
-  #player.rot = normalize(quatf(axis, angle) * player.rot)
+  #game.player.mesh.rot = normalize(quatf(axis, angle) * game.player.mesh.rot)
 
   #fov -= mouse.z
   #update_camera()
@@ -367,6 +367,17 @@ proc str(v: Vec3f): string =
 proc str(v: Vec4f): string =
   return "x=" & v.x.str & ", y=" & v.y.str & ", z=" & v.z.str & ", w=" & v.w.str
 
+proc draw_clock =
+  let level = get_current_level()
+  let mid = middle()
+  igSetNextWindowPos(ImVec2(x:mid.x - 30, y: 0))
+  igSetNextWindowSize(ImVec2(x:300f, y:48))
+  igPushFont( large_font )
+  igBegin("CLOCK", nil, ImGuiWindowFlags.NoDecoration)
+  igText( $level.clock )
+  igEnd()
+  igPopFont()
+
 proc draw_goal =
   let mid = middle()
   igSetNextWindowPos(ImVec2(x:mid.x - 150, y:mid.y))
@@ -387,14 +398,14 @@ proc draw_imgui =
   #var lateral = player.pos.xz.length()
   #igSliderFloat "lateral_d", lateral.addr     , -sky, sky
   igSliderFloat3 "respawn" , respawn_pos.arr  , -sky, sky
-  igSliderFloat3 "pos"     , player.pos.arr   , -sky, sky
-  igSliderFloat3 "vel"     , player.vel.arr   , -sky, sky
-  igSliderFloat3 "acc"     , player.acc.arr   , -sky, sky
-  igSliderFloat4 "rot"     , player.rot.arr   , -sky, sky
-  #igSliderFloat3 "normal" , player.normal.arr, -1.0, 1.0
+  igSliderFloat3 "pos"     , game.player.mesh.pos.arr   , -sky, sky
+  igSliderFloat3 "vel"     , game.player.mesh.vel.arr   , -sky, sky
+  igSliderFloat3 "acc"     , game.player.mesh.acc.arr   , -sky, sky
+  igSliderFloat4 "rot"     , game.player.mesh.rot.arr   , -sky, sky
+  #igSliderFloat3 "normal" , game.player.mesh.normal.arr, -1.0, 1.0
 
   let level = get_current_level()
-  let coord = player.pos.rotate_coord
+  let coord = game.player.mesh.pos.rotate_coord
   var cur_mask = ($level.mask_at(coord.x, coord.z)).cstring
   igInputText("cur_mask", curmask, 2)
 
@@ -442,6 +453,8 @@ proc imgui_frame =
 
   if goal:
     draw_goal()
+  else:
+    draw_clock()
 
   igRender()
   igOpenGL3RenderDrawData(igGetDrawData())
@@ -456,6 +469,11 @@ var time = 0.0f
 var event_time = 0.0f
 
 proc main =
+  game = Game(
+    state: ATTRACT,
+    level: start_level,
+    player: Player()
+  )
   let w = setup_glfw()
 
   ## chapter 1
@@ -463,7 +481,7 @@ proc main =
   setup_imgui(w)
 
   ## chapter 2
-  player = Mesh(
+  game.player.mesh = Mesh(
     vao: newVAO(),
     vert_vbo: newVBO(3, sphere),
     color_vbo: newVBO(4, sphere_colors),
@@ -472,9 +490,9 @@ proc main =
   )
   reset_player(true)
 
-  player.model  = mat4(1.0f)
-  player.mvp    = proj * view.translate(-pan) * player.model
-  player.matrix = player.program.newMatrix(player.mvp, "MVP")
+  game.player.mesh.model  = mat4(1.0f)
+  game.player.mesh.mvp    = proj * view.translate(-pan) * game.player.mesh.model
+  game.player.mesh.matrix = game.player.mesh.program.newMatrix(game.player.mesh.mvp, "MVP")
 
   current_level = start_level
   set_level()
@@ -484,23 +502,23 @@ proc main =
   proc toString[T: float](f: T, prec: int = 8): string =
     result = f.formatFloat(ffDecimal, prec)
 
-  proc physics(player: var Mesh) =
+  proc physics(mesh: var Mesh) =
     const mass = player_radius
     const gravity = -49f
     const max_vel = vec3f( 15f, -gravity * 0.5f, 15f )
     let level = get_current_level()
     level.clock += 1
     level.clock = level.clock mod 3600
-    let coord = player.pos.rotate_coord
+    let coord = mesh.pos.rotate_coord
     let x = coord.x
     let z = coord.z
-    let bh = player.pos.y
+    let bh = mesh.pos.y
     let fh = level.point_height(x, z)
     let cur_mask = level.mask_at(x,z)
     #stdout.write "\27[K"
 
     goal = goal or cur_mask == GG
-    dead = player.pos.y < 10f or (player.acc.xz.length == 0f and player.vel.y <= -max_vel.y)
+    dead = mesh.pos.y < 10f or (mesh.acc.xz.length == 0f and mesh.vel.y <= -max_vel.y)
 
     let ramp = level.slope(x,z) * level_squash * level_squash
     let thx = arctan(ramp.x)
@@ -520,54 +538,54 @@ proc main =
     let flat = ramp.length == 0
     let nonzero = level.point_height(x.floor, z.floor) > 0f
     if flat and nonzero and cur_mask == XX and not icy:
-      respawn_pos = vec3f(player.pos.x.floor, player.pos.y, player.pos.z.floor)
+      respawn_pos = vec3f(mesh.pos.x.floor, mesh.pos.y, mesh.pos.z.floor)
 
     var m = vec3f(0,0,0)
     if not paused and not goal and not icy:
       m = rotate_mouse(mouse)
 
-    player.acc *= 0
-    player.acc += mass * vec3f(m.x, 0, -m.y) * traction  # mouse motion
-    player.acc += vec3f(0, (1f-traction) * gravity, 0)   # free fall
-    player.acc += ramp_a
+    mesh.acc *= 0
+    mesh.acc += mass * vec3f(m.x, 0, -m.y) * traction  # mouse motion
+    mesh.acc += vec3f(0, (1f-traction) * gravity, 0)   # free fall
+    mesh.acc += ramp_a
 
-    let vel = player.vel.length()
+    let vel = mesh.vel.length()
 
-    player.vel.x = clamp(player.vel.x + dt * player.acc.x, -max_vel.x, max_vel.x)
-    player.vel.y = clamp(player.vel.y + dt * player.acc.y, -max_vel.y * 1.5f, max_vel.y)
-    player.vel.z = clamp(player.vel.z + dt * player.acc.z, -max_vel.z, max_vel.z)
+    mesh.vel.x = clamp(mesh.vel.x + dt * mesh.acc.x, -max_vel.x, max_vel.x)
+    mesh.vel.y = clamp(mesh.vel.y + dt * mesh.acc.y, -max_vel.y * 1.5f, max_vel.y)
+    mesh.vel.z = clamp(mesh.vel.z + dt * mesh.acc.z, -max_vel.z, max_vel.z)
     if icy:
       if vel > 0f:
-        player.vel = player.vel.normalize() * vel
+        mesh.vel = mesh.vel.normalize() * vel
 
-    player.pos += player.vel * dt
-    player.pos.y = clamp(player.pos.y, fh, sky)
+    mesh.pos += mesh.vel * dt
+    mesh.pos.y = clamp(mesh.pos.y, fh, sky)
 
     # rotation animation
-    if (player.vel * vec3f(1,0,1)).length > 0:
-      var dir = -player.vel.normalize()
-      var axis = player.normal.cross(dir).normalize()
-      let angle = player.vel.xz.length * dt / 0.5f / Pi / player_radius
-      player.rot = normalize(quatf(axis, angle) * player.rot)
+    if (mesh.vel * vec3f(1,0,1)).length > 0:
+      var dir = -mesh.vel.normalize()
+      var axis = mesh.normal.cross(dir).normalize()
+      let angle = mesh.vel.xz.length * dt / 0.5f / Pi / player_radius
+      mesh.rot = normalize(quatf(axis, angle) * mesh.rot)
 
     const brake = 0.986
     if not icy:
-      player.vel  *= brake
+      mesh.vel  *= brake
 
     mouse *= 0
 
-    player.model = mat4(1.0f)
+    mesh.model = mat4(1.0f)
       .translate(vec3f(0, player_radius,0))
-      .translate(player.pos * vec3f(1,level_squash,1)) * player.rot.mat4f
+      .translate(mesh.pos * vec3f(1,level_squash,1)) * mesh.rot.mat4f
 
     if level.around(TU,x,z):
-      player.vel.y = clamp(player.vel.y, -max_vel.y, max_vel.y)
+      mesh.vel.y = clamp(mesh.vel.y, -max_vel.y, max_vel.y)
 
     if dead:
       respawn(true)
 
     if goal:
-      player.vel *= 0.97f
+      mesh.vel *= 0.97f
       if event_time == 0:
         event_time = time
       if time - event_time > 3.0f:
@@ -593,7 +611,7 @@ proc main =
     pan_vel = (pan_vel + pan_acc).clamp(-0.125, 0.125)
     pan += pan_vel
 
-    const camera_maxvel = 1f/24f
+    const camera_maxvel = 1f/20f
     let pan_delta = pan_target - pan
     if pan_delta.length > 0f:
       if pan_delta.length < camera_maxvel:
@@ -612,10 +630,10 @@ proc main =
     t = time
 
     if paused and frame_step:
-      player.physics()
+      game.player.mesh.physics()
       frame_step = false
     elif not paused:
-      player.physics()
+      game.player.mesh.physics()
 
     if not paused:
       if following:
@@ -636,7 +654,7 @@ proc main =
     floor_plane.render GL_TRIANGLE_STRIP
 
     glPolygonMode      GL_FRONT_AND_BACK, GL_FILL
-    player.render
+    game.player.mesh.render
 
     for a in actors.low..actors.high:
       var mesh = actors[a].mesh
