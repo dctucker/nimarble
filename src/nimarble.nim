@@ -28,6 +28,8 @@ width = 1600
 height = 1200
 var aspect: float32 = width / height
 
+proc middle(): Vec2f = vec2f(width.float * 0.5f, height.float * 0.5f)
+
 var game: Game
 var mouse: Vec3f
 
@@ -93,14 +95,6 @@ proc follow_player(game: Game) =
   game.pan_target = vec3f( coord.x, y, coord.z )
   if game.goal:
     return
-
-proc display_size(): (int32, int32) =
-  var monitor = glfwGetPrimaryMonitor()
-  var videoMode = monitor.getVideoMode()
-  return (videoMode.width, videoMode.height)
-
-proc middle(): Vec2f = vec2f(width.float * 0.5f, height.float * 0.5f)
-
 
 proc update_mouse_lock =
   if not game.mouse_lock:
@@ -299,6 +293,11 @@ proc scrollProc(window: GLFWWindow, xoffset, yoffset: cdouble): void {.cdecl.} =
   #game.update_camera()
   #game.update_fov()
 
+proc display_size(): (int32, int32) =
+  var monitor = glfwGetPrimaryMonitor()
+  var videoMode = monitor.getVideoMode()
+  return (videoMode.width, videoMode.height)
+
 proc setup_glfw(): GLFWWindow =
   doAssert glfwInit()
 
@@ -364,14 +363,16 @@ proc str(v: Vec3f): string =
 proc str(v: Vec4f): string =
   return "x=" & v.x.str & ", y=" & v.y.str & ", z=" & v.z.str & ", w=" & v.w.str
 
-proc draw_clock =
+proc draw_clock(game: Game) =
   let level = game.get_level()
   let mid = middle()
-  igSetNextWindowPos(ImVec2(x:mid.x - 30, y: 0))
-  igSetNextWindowSize(ImVec2(x:300f, y:48))
+  igSetNextWindowPos(ImVec2(x:mid.x - 28, y: 0))
+  igSetNextWindowSize(ImVec2(x:56, y:48))
   igPushFont( large_font )
-  igBegin("CLOCK", nil, ImGuiWindowFlags.NoDecoration)
-  igText( $level.clock )
+  igBegin("CLOCK", nil, ImGuiWindowFlags(171))
+  var clk = $(level.clock / 100).int
+  if clk.len < 2: clk = "0" & clk
+  igText clk
   igEnd()
   igPopFont()
 
@@ -451,7 +452,7 @@ proc imgui_frame =
   if game.goal:
     draw_goal()
   else:
-    draw_clock()
+    game.draw_clock()
 
   igRender()
   igOpenGL3RenderDrawData(igGetDrawData())
