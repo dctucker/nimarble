@@ -6,7 +6,7 @@ import std/tables
 import types
 
 const EE = 0
-const sky* = 120f
+const sky* = 200f
 
 proc flatten[T](input: seq[seq[T]]): seq[T] =
   for row in input:

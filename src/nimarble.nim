@@ -46,18 +46,21 @@ var player: Mesh
 var actors: seq[Mesh]
 var game_window: GLFWWindow
 var fov: float32 = 45f
-var zoom: float32 = sky * 0.25
+var zoom: float32 = sky * 0.5
+var camera_target, camera_pos, camera_up: Vec3f
 const level_squash = 0.5f
 const start_level = 1
 
 proc update_camera =
   let level = get_current_level()
-  let xlat = vec3f( level.origin.z.float, 0, level.origin.z.float )
-  view = lookAt(
-    vec3f( zoom, zoom * 0.5, zoom ), # camera pos
-    xlat,
-    vec3f( 0f,  1.0f,  0f ),        # up
-  )
+
+  camera_target = vec3f( 0, level.origin.y.float * level_squash, 0 )
+  camera_pos = vec3f( 20, camera_target.y + 20, 20 )
+  camera_up = vec3f( 0f,  1.0f,  0f )
+  #let target = vec3f( 10, 0, 10 )
+  #let pos = vec3f( level.origin.z.float * 2, 0, level.origin.z.float * 2)
+  echo camera_target
+  view = lookAt( camera_pos, camera_target, camera_up )
 
 proc reset_view =
   update_camera()
@@ -69,7 +72,7 @@ let aspect: float32 = width / height
 var proj: Mat4f
 proc update_fov =
   let r: float32 = radians(fov)
-  proj = perspective(r, aspect, 0.125f, 150.0f)
+  proj = perspective(r, aspect, 0.125f, sky)
   #proj = ortho(aspect * -field_width, aspect * field_width, -field_width, field_width, 0f, sky) # In world coordinates
 update_fov()
 reset_view()
@@ -110,8 +113,9 @@ proc follow_player =
   #pan_target.x = target_xz
   #pan_target.z = target_xz
 
-  pan_target = vec3f( coord.x, 0, coord.z )
-  pan_target.y = level.average_height(coord.x, coord.z) - 5f
+  let y = (player.pos.y - level.origin.y.float) * 0.5
+  pan_target = vec3f( coord.x, y, coord.z )
+  #pan_target.y = level.average_height(coord.x, coord.z) - 5f
   if goal:
     return
   #pan_target.y -= 5f
@@ -376,6 +380,7 @@ proc draw_goal =
 proc draw_imgui =
   igSetNextWindowSize(ImVec2(x:300f, y:400f))
   igPushFont( small_font )
+
   igBegin("Player vectors")
 
   #igText("Player vectors")
@@ -409,17 +414,24 @@ proc draw_imgui =
   igSliderInt    "current_level", current_level.addr, 1.int32, n_levels.int32 - 1
 
   #igText("average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
-  igPopFont()
   igEnd()
 
-  igSetNextWindowPos(ImVec2(x:500, y:5))
+  #igSetNextWindowPos(ImVec2(x:500, y:5))
   igBegin("actor 0")
-  igPushFont( small_font )
   if level.actors.len > 0:
     var actor0 = level.actors[0].mesh
     igSliderFloat3 "pos"     , actor0.pos.arr   , -sky, sky
-  igPopFont()
   igEnd()
+
+  #igSetNextWindowPos(ImVec2(x:5, y:500))
+  igBegin("camera")
+  igSliderFloat3 "pos"   , camera_pos.arr   , -sky, sky
+  igSliderFloat3 "target", camera_target.arr, -sky, sky
+  igSliderFloat3 "up"    , camera_up.arr    , -sky, sky
+  view = lookAt( camera_pos, camera_target, camera_up )
+  igEnd()
+
+  igPopFont()
 
 proc imgui_frame =
   igOpenGL3NewFrame()
@@ -488,7 +500,7 @@ proc main =
     #stdout.write "\27[K"
 
     goal = goal or cur_mask == GG
-    dead = player.pos.y < 10f or player.vel.y <= -max_vel.y
+    dead = player.pos.y < 10f or (player.acc.xz.length == 0f and player.vel.y <= -max_vel.y)
 
     let ramp = level.slope(x,z) * level_squash * level_squash
     let thx = arctan(ramp.x)
