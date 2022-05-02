@@ -1,5 +1,6 @@
 import os
 import std/tables
+import std/with
 import strutils
 import nimgl/[glfw,opengl]
 import nimgl/imgui
@@ -141,6 +142,7 @@ proc init_floor_plane(game: Game) =
   let level = game.get_level()
   if level.floor_plane != nil:
     return
+  load_level game.level
   level.floor_plane = Mesh(
     vao: newVAO(),
     vert_vbo: newVBO(3, level.floor_verts),
@@ -176,25 +178,26 @@ proc init_actors(game: Game) =
 
 proc set_level(game: Game) =
   let f = game.following
-  game.following = false
-  game.goal = false
-  game.hourglass = 0
-  game.reset_player()
-  load_level game.level
-  game.init_floor_plane()
-  game.init_actors()
-  game.reset_player()
-  game.follow_player()
-  game.pan = game.pan_target
-  game.reset_view()
-  game.following = f
+  with game:
+    following = false
+    goal = false
+    hourglass = 0
+    reset_player()
+    init_floor_plane()
+    init_actors()
+    reset_player()
+    follow_player()
+    pan = game.pan_target
+    reset_view()
+    following = f
 
 proc init(game: var Game) =
-  game.init_player()
-  game.level = start_level
-  game.set_level()
-  game.init_floor_plane()
-  game.init_actors()
+  with game:
+    init_player()
+    level = start_level
+    set_level()
+    init_floor_plane()
+    init_actors()
 
 proc pan_stop =
   game.pan_acc = vec3f(0f,0f,0f)
