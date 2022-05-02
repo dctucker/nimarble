@@ -192,7 +192,7 @@ type
     score*: int
     respawns*: uint
     hourglass*: float
-    level*: int
+    level*: int32
     player*: Player
     view*: Mat4f
     respawn_pos*: Vec3f
@@ -200,9 +200,28 @@ type
     pan_acc*: Vec3f
     pan*: Vec3f
     pan_target*: Vec3f
-    #actors: seq[Mesh]
     window*: GLFWWindow
     fov*: float32
-    #zoom: float32 = sky * 0.5
     camera_target*, camera_pos*, camera_up*: Vec3f
+    paused*: bool
+    mouse_lock*: bool
+    following*: bool
+    frame_step*: bool
+    goal*: bool
+    dead*: bool
+    wireframe*: bool
 
+proc newGame*: Game =
+  Game(
+    state: ATTRACT,
+    level: 1,
+    player: Player(),
+    fov: 45f,
+    paused : false,
+    mouse_lock : true,
+    following : true,
+    frame_step : false,
+    goal : false,
+    dead : false,
+    wireframe : false,
+  )

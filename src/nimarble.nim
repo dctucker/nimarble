@@ -22,26 +22,18 @@ var geoms = "".cstring
 
 if os.getEnv("CI") != "": quit()
 
-
 var width, height: int32
 width = 1600
 height = 1200
 
 var game: Game
 var mouse: Vec3f
-var paused = false
-var mouse_lock = true
-var following = true
-var frame_step = false
-var goal = false
-var dead = false
-var wireframe = false
 
 const level_squash = 0.5f
 const start_level = 1
 
 proc update_camera =
-  let level = get_current_level()
+  let level = game.get_level()
 
   game.camera_target = vec3f( 0, level.origin.y.float * level_squash, 0 )
   game.camera_pos = vec3f( 20, game.camera_target.y + 20, 20 )
@@ -76,7 +68,7 @@ proc reset_mesh(mesh: Mesh) =
 
 proc reset_player(press: bool) =
   if press:
-    let player_top = get_current_level().origin.y.float
+    let player_top = game.get_level().origin.y.float
     game.player.mesh.reset_mesh()
     game.player.mesh.pos.y = player_top
 
@@ -91,7 +83,7 @@ proc rotate_coord(v: Vec3f): Vec3f =
   result = vec3f(v4.x, v4.y, v4.z)
 
 proc follow_player =
-  let level = get_current_level()
+  let level = game.get_level()
   let coord = game.player.mesh.pos.rotate_coord
   let target = game.player.mesh.pos# * 0.5f
   #let target_xz = (target.x + target.z)# / 2f
@@ -104,7 +96,7 @@ proc follow_player =
   let y = (game.player.mesh.pos.y - level.origin.y.float) * 0.5
   game.pan_target = vec3f( coord.x, y, coord.z )
   #game.pan_target.y = level.average_height(coord.x, coord.z) - 5f
-  if goal:
+  if game.goal:
     return
   #game.pan_target.y -= 5f
 
@@ -117,7 +109,7 @@ proc middle(): Vec2f = vec2f(width.float * 0.5f, height.float * 0.5f)
 
 
 proc update_mouse_lock =
-  if not mouse_lock:
+  if not game.mouse_lock:
     game.window.setInputMode GLFW_CURSOR_SPECIAL, GLFWCursorNormal
   else:
     let mid = middle()
@@ -128,17 +120,17 @@ proc update_mouse_lock =
 proc toggle_mouse_lock(press: bool) =
   if not press:
     return
-  mouse_lock = not mouse_lock
+  game.mouse_lock = not game.mouse_lock
   update_mouse_lock()
 
 proc toggle_pause(w: GLFWWindow) =
-  paused = not paused
-  if paused:
-    mouse_lock = false
+  game.paused = not game.paused
+  if game.paused:
+    game.mouse_lock = false
     update_mouse_lock()
 
 proc init_floor_plane =
-  let level = get_current_level()
+  let level = game.get_level()
   if level.floor_plane != nil:
     return
   level.floor_plane = Mesh(
@@ -153,7 +145,7 @@ proc init_floor_plane =
   level.floor_plane.matrix = level.floor_plane.program.newMatrix(level.floor_plane.mvp, "MVP")
 
 proc init_actors =
-  let level = get_current_level()
+  let level = game.get_level()
   for actor in level.actors.mitems:
     if actor.mesh != nil:
       continue
@@ -176,11 +168,11 @@ proc init_actors =
 
 
 proc set_level =
-  let f = following
-  following = false
-  goal = false
+  let f = game.following
+  game.following = false
+  game.goal = false
   reset_player(true)
-  load_level current_level
+  load_level game.level
   init_floor_plane()
   init_actors()
   reset_player(true)
@@ -188,7 +180,7 @@ proc set_level =
   #game.pan_target = player.pos
   game.pan = game.pan_target
   reset_view()
-  following = f
+  game.following = f
 
 proc pan_stop =
   game.pan_acc = vec3f(0f,0f,0f)
@@ -212,25 +204,25 @@ proc pan_out(press: bool) =
   if press: game.pan_acc.y = -0.125
   else: pan_stop()
 proc step_frame(press: bool) =
-  frame_step = true
+  game.frame_step = true
 proc prev_level(press: bool) =
   if press:
-    dec current_level
+    dec game.level
     set_level()
 proc next_level(press: bool) =
   if press:
-    inc current_level
+    inc game.level
     set_level()
 proc follow(press: bool) =
   if press:
-    following = not following
-  if not following:
+    game.following = not game.following
+  if not game.following:
     game.pan_target = game.pan
     game.pan_vel *= 0
 proc do_goal(press: bool) =
-  if press: goal = not goal
+  if press: game.goal = not game.goal
 proc toggle_wireframe(press: bool) =
-  if press: wireframe = not wireframe
+  if press: game.wireframe = not game.wireframe
 proc pause(press: bool) =
   if press: game.window.toggle_pause()
 proc do_quit(press: bool) =
@@ -268,10 +260,10 @@ proc rotate_mouse(mouse: Vec3f): Vec3f =
   result = vec3f(m.x, m.y, mouse.z)
 
 proc mouseProc(window: GLFWWindow, xpos, ypos: cdouble): void {.cdecl.} =
-  if not mouse_lock:
+  if not game.mouse_lock:
     return
   let mid = middle()
-  if not paused:
+  if not game.paused:
     window.setCursorPos mid.x, mid.y
   mouse.x = -(mid.x - xpos)
   mouse.y =  (mid.y - ypos)
@@ -356,7 +348,7 @@ proc str(v: Vec4f): string =
   return "x=" & v.x.str & ", y=" & v.y.str & ", z=" & v.z.str & ", w=" & v.w.str
 
 proc draw_clock =
-  let level = get_current_level()
+  let level = game.get_level()
   let mid = middle()
   igSetNextWindowPos(ImVec2(x:mid.x - 30, y: 0))
   igSetNextWindowSize(ImVec2(x:300f, y:48))
@@ -392,7 +384,7 @@ proc draw_imgui =
   igSliderFloat4 "rot"     , game.player.mesh.rot.arr   , -sky, sky
   #igSliderFloat3 "normal" , game.player.mesh.normal.arr, -1.0, 1.0
 
-  let level = get_current_level()
+  let level = game.get_level()
   let coord = game.player.mesh.pos.rotate_coord
   var cur_mask = ($level.mask_at(coord.x, coord.z)).cstring
   igInputText("cur_mask", curmask, 2)
@@ -408,9 +400,9 @@ proc draw_imgui =
   igSliderFloat3 "pan_acc"   , game.pan_acc.arr    , -sky, sky
   igSliderFloat  "fov"       , game.fov.addr       ,   0f, 360f
 
-  igCheckBox     "following"    , following.addr
-  igCheckBox     "wireframe"    , wireframe.addr
-  igSliderInt    "current_level", current_level.addr, 1.int32, n_levels.int32 - 1
+  igCheckBox     "following"    , game.following.addr
+  igCheckBox     "wireframe"    , game.wireframe.addr
+  igSliderInt    "current_level", game.level.addr, 1.int32, n_levels.int32 - 1
 
   #igText("average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
   igEnd()
@@ -439,7 +431,7 @@ proc imgui_frame =
 
   draw_imgui()
 
-  if goal:
+  if game.goal:
     draw_goal()
   else:
     draw_clock()
@@ -457,12 +449,7 @@ var time = 0.0f
 var event_time = 0.0f
 
 proc main =
-  game = Game(
-    state: ATTRACT,
-    level: start_level,
-    player: Player(),
-    fov: 45f,
-  )
+  game = newGame()
   let w = setup_glfw()
 
   ## chapter 1
@@ -483,7 +470,7 @@ proc main =
   game.player.mesh.mvp    = proj * game.view.translate(-game.pan) * game.player.mesh.model
   game.player.mesh.matrix = game.player.mesh.program.newMatrix(game.player.mesh.mvp, "MVP")
 
-  current_level = start_level
+  game.level = start_level
   set_level()
   init_floor_plane()
   init_actors()
@@ -495,7 +482,7 @@ proc main =
     const mass = player_radius
     const gravity = -49f
     const max_vel = vec3f( 15f, -gravity * 0.5f, 15f )
-    let level = get_current_level()
+    let level = game.get_level()
     level.clock += 1
     level.clock = level.clock mod 3600
     let coord = mesh.pos.rotate_coord
@@ -506,8 +493,8 @@ proc main =
     let cur_mask = level.mask_at(x,z)
     #stdout.write "\27[K"
 
-    goal = goal or cur_mask == GG
-    dead = mesh.pos.y < 10f or (mesh.acc.xz.length == 0f and mesh.vel.y <= -max_vel.y)
+    game.goal = game.goal or cur_mask == GG
+    game.dead = mesh.pos.y < 10f or (mesh.acc.xz.length == 0f and mesh.vel.y <= -max_vel.y)
 
     let ramp = level.slope(x,z) * level_squash * level_squash
     let thx = arctan(ramp.x)
@@ -530,7 +517,7 @@ proc main =
       game.respawn_pos = vec3f(mesh.pos.x.floor, mesh.pos.y, mesh.pos.z.floor)
 
     var m = vec3f(0,0,0)
-    if not paused and not goal and not icy:
+    if not game.paused and not game.goal and not icy:
       m = rotate_mouse(mouse)
 
     mesh.acc *= 0
@@ -570,15 +557,15 @@ proc main =
     if level.around(TU,x,z):
       mesh.vel.y = clamp(mesh.vel.y, -max_vel.y, max_vel.y)
 
-    if dead:
+    if game.dead:
       respawn(true)
 
-    if goal:
+    if game.goal:
       mesh.vel *= 0.97f
       if event_time == 0:
         event_time = time
       if time - event_time > 3.0f:
-        goal = false
+        game.goal = false
         event_time = 0
         next_level(true)
 
@@ -612,27 +599,27 @@ proc main =
 
   # main loop
   while not w.windowShouldClose():
-    var floor_plane = get_current_level().floor_plane
-    var actors = get_current_level().actors
+    var floor_plane = game.get_level().floor_plane
+    var actors = game.get_level().actors
     time = glfwGetTime()
     dt = time - t
     t = time
 
-    if paused and frame_step:
+    if game.paused and game.frame_step:
       game.player.mesh.physics()
-      frame_step = false
-    elif not paused:
+      game.frame_step = false
+    elif not game.paused:
       game.player.mesh.physics()
 
-    if not paused:
-      if following:
+    if not game.paused:
+      if game.following:
         follow_player()
 
       camera_physics()
 
     glClear            GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
 
-    if not wireframe:
+    if not game.wireframe:
       glPolygonMode      GL_FRONT_AND_BACK, GL_FILL
       glEnable           GL_POLYGON_OFFSET_FILL
       glPolygonOffset 1f, 1f

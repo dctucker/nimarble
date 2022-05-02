@@ -435,13 +435,10 @@ proc load_level*(n: int) =
   if 0 < n and n < levels.len:
     setup_floor levels[n]
 
-proc get_current_level*: Level =
-  while current_level > levels.high:
-    dec current_level
-  while current_level < 1:
-    inc current_level
-  return levels[current_level]
-
-current_level = 0
-load_level current_level
+proc get_level*(game: Game): Level =
+  while game.level > levels.high:
+    dec game.level
+  while game.level < 1:
+    inc game.level
+  return levels[game.level]
 
