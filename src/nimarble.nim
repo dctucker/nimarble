@@ -215,6 +215,23 @@ proc pan_in(press: bool) =
 proc pan_out(press: bool) =
   if press: game.pan_acc.y = -0.125
   else: pan_stop()
+
+proc pan_cw(press: bool) =
+  if press:
+    let y = game.camera_pos.y
+    let pos = game.camera_pos.xz
+    let distance = game.camera_pos.xz.length
+    let xz = distance * normalize(pos + vec2f(1,-1))
+    game.camera_pos = vec3f(xz.x, y, xz.y)
+
+proc pan_ccw(press: bool) =
+  if press:
+    let y = game.camera_pos.y
+    let pos = game.camera_pos.xz
+    let distance = game.camera_pos.xz.length
+    let xz = distance * normalize(pos + vec2f(-1,1))
+    game.camera_pos = vec3f(xz.x, y, xz.y)
+
 proc step_frame(press: bool) =
   if press: game.frame_step = true
 proc prev_level(press: bool) =
@@ -258,6 +275,8 @@ const keymap = {
   GLFWKey.P            : pause             ,
   GLFWKey.Q            : do_quit           ,
   GLFWKey.L            : toggle_mouse_lock ,
+  GLFWKey.Home         : pan_ccw           ,
+  GLFWKey.End          : pan_cw            ,
 }.toTable
 
 proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mods: int32): void {.cdecl.} =

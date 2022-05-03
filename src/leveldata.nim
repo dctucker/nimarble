@@ -215,8 +215,8 @@ proc setup_floor(level: Level) =
       add_index()
       add_color(i,j)
 
-  for i in  0..<level.height-1:
-    for j in 0..<level.width-1:
+  for i in  1..<level.height-1:
+    for j in 1..<level.width-1:
       x = (j - level.origin.x).float
       z = (i - level.origin.z).float
 
@@ -227,20 +227,29 @@ proc setup_floor(level: Level) =
       y2 = level.data[level.offset(i+1,j+0)]
       y3 = level.data[level.offset(i+1,j+1)]
 
-      add_point(x+0, y0, z+0, i+0, j+0)
-      add_point(x+1, y1, z+0, i+0, j+1)
+      add_point x+0, y0, z+0, i+0, j+0
+      add_point x+1, y1, z+0, i+0, j+1
 
-      if level.mask[level.offset(i,j)].has VV:
-        add_point(x+0, y0, z+1, i+1, j+0)
-        add_point(x+1, y1, z+1, i+1, j+1)
+      if level.mask[level.offset(i+1,j+0)].has AA:
+        add_point x+0, y2, z+0, i+0, j+0
+        add_point x+1, y3, z+0, i+0, j+1
 
-      add_point(x+0, y2, z+1, i+1, j+0)
-      add_point(x+1, y3, z+1, i+1, j+1)
 
-      if level.mask[level.offset(i,j+1)].has VV:
-        add_point(x+1, y1, z+1, i+1, j+1)
-        add_point(x+1, y1, z+1, i+1, j+1)
-        add_point(x+1, y1, z+0, i+0, j+1)
+      if level.mask[level.offset(i+0,j+0)].has VV:
+        add_point x+0, y2, z+0, i+0, j+0
+        add_point x+1, y3, z+0, i+0, j+1
+        add_point x+0, y2, z+0, i+1, j+0
+        add_point x+1, y3, z+0, i+1, j+1
+
+
+      add_point x+0, y2, z+1, i+1, j+0
+      add_point x+1, y3, z+1, i+1, j+1
+
+      if level.mask[level.offset(i+0,j+1)].has VV:
+        add_point x+1, y3, z+0, i+0, j+1
+        add_point x+1, y3, z+0, i+0, j+1
+        add_point x+1, y1, z+0, i+0, j+1
+
 
 
       #if level.mask[level.offset(i,j)].has JJ:
