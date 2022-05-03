@@ -174,6 +174,11 @@ type
     clock*: int
     actors*: seq[Actor]
 
+proc has*(a,b: CliffMask): bool =
+  result = a == b
+  if a.ord < GG.ord:
+    return (a.ord and b.ord) != 0
+
 type
   GameState* = enum
     ATTRACT,

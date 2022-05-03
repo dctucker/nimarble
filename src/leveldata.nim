@@ -63,6 +63,27 @@ proc find_actors(data: seq[float], mask: seq[CliffMask], w,h: int): seq[Actor] =
           kind: mask,
         )
 
+proc validate(level: Level) =
+  let w = level.width
+  for i in 0..<level.height:
+    for j in 0..<w:
+      proc unsloped(mask: CliffMask) =
+        echo $mask & " without slope at ", i, ",", j
+      let data = level.data[i*w+j]
+      let mask = level.mask[i*w+j]
+      if mask.has LL:
+        if level.data[i*w+j-1] == data:
+          mask.unsloped()
+      if mask.has AA:
+        if level.data[(i-1)*w+j] == data:
+          mask.unsloped()
+      if mask.has VV:
+        if level.data[(i+1)*w+j] == data:
+          mask.unsloped()
+      if mask.has JJ:
+        if level.data[i*w+j+1] == data:
+          mask.unsloped()
+
 proc init_level(data_src, mask_src: string, color: Vec3f): Level =
   var i,j: int
 
@@ -101,6 +122,10 @@ let levels = @[
   init_level(level_3_src, level_3_mask_src, vec3f(0.4f, 0.4f, 0.4f)),
 ]
 let n_levels* = levels.len()
+
+for l in 1..levels.high:
+  echo "Level ", $l
+  levels[l].validate()
 
 var current_level*: int32
 
@@ -231,129 +256,6 @@ proc setup_floor_colors[T](level: Level): seq[cfloat] =
       result[index+2] = c.z
       result[index+3] = c.w
 
-type
-  PatchKind = enum
-    UpIn
-    UpOut
-    DownIn
-    DownOut
-  DiagDirection = enum
-    Up
-    Down
-
-#[
-proc setup_floor_points[T](level_data: seq[T], level_mask: seq[CliffMask]): seq[cfloat] =
-  result = newSeq[cfloat](3 * w * h)
-  for z in 0..<h:
-    for x in 0..<w:
-      let index = 3 * (w * z + x)
-      let y = level_data[w * z + x]
-      result[index+0] = (x.cfloat-level.origin.x).cfloat
-      result[index+1] =  y.cfloat
-      result[index+2] = (z.cfloat-level.origin.z).cfloat
-
-# This procedure generates the vertex sequence for a triangle strip that
-# covers the given quadrilaterally-gridded surface.  The parameters 'N' and
-# 'M' define the number of rows and columns of the grid, respectively.  The
-# vertices are assumed to be in the positions given in the comment for the
-# CheckGrid routine.  The 'patchtype' parameter determines which of four
-# patche types to use - the normal vector can go into our out of the
-# surface, and the diagonal can slope up or down going from left to right.
-# On successful calculation, the routine will load 'Nverts' with the number
-# of vertices in the triangle strip, and 'vertices' will contain the vertex
-# indices (NOT geometry) of the triangle strip.  If this routine does not
-# successfully return, 'Nverts' will be 0 and 'vertices' will be null. 
-#
-# Translated from Kubota Graphics C to nim by dctucker
-proc setup_floor_index[T](level: seq[T]): seq[Ind] =
-  let N: int = level.width
-  let M: int = level.height
-  let patchtype = UpOut
-  var Nverts: int
-
-  var column: int
-  var index: int
-  var diagdir: DiagDirection  # Slope Direction of Patch Diagonal */
-  var V1, V2: Ind         # Left & Right Vertex Indices */
-
-
-  case patchtype
-  of   UpIn :  diagdir = Up
-  of   UpOut:  diagdir = Up
-  of DownIn :  diagdir = Down
-  of DownOut:  diagdir = Down
-  #else:
-  #  return newSeq[Ind](0)
-
-  # Calculate the total number of vertices in the resultant triangle
-  # strip.  This is equal to the number of vertices for each column
-  # strip (2N(M-1)), plus the "filler" vertices to set up for the next
-  # column strip (2(M-2)).  This is equal to 2[(N+1)(M-1) - 1].
-
-  Nverts = 2 * ((N+1) * (M-1) - 1)
-
-  # If the patch diagonal orientation and normal vector direction are
-  # in conflict, then we specify the first vertex twice to reverse the
-  # "out" direction of the triangle strip.  */
-
-  if (patchtype == UpOut) or (patchtype == DownIn):
-    inc Nverts
-
-  result = newSeq[Ind](Nverts)
-
-  # If the grid normal direction is opposite what is "natural" for the
-  # triangle strip, then reverse the normal sense by specifying the first
-  # vertex twice.
-
-  index = 0
-
-  if patchtype == UpOut:
-    result[index] = N.Ind
-    inc index
-  elif patchtype == DownIn:
-    result[index] = 0
-    inc index
-
-  # Generate the triangle strip by looping over each column.
-  if diagdir == Up:
-    V1 = N.Ind ; V2 = 0
-  else:
-    V1 = 0 ; V2 = N.Ind
-
-  for column in 0..<M-1:
-    if (column mod 2) == 0:
-      for row in 0..<N:
-        result[index] = V1
-        inc index
-        result[index] = V2
-        inc index
-        inc V1 ; inc V2
-      dec V1 ; dec V2
-    else:
-      for row in 0..<N:
-        result[index] = V1
-        inc index
-        result[index] = V2
-        inc index
-        dec V1 ; dec V2
-      inc V1 ; inc V2
-
-    if column == M-2: continue
-
-    if (((column mod 2) == 0) and (diagdir == Up)) or (((column mod 2) == 1) and (diagdir == Down)):
-      result[index] = V1
-      inc index
-      result[index] = V1
-      inc index
-      V2 = V1 + N.Ind
-    else:
-      result[index] = V2
-      inc index
-      result[index] = V2 + N.Ind
-      inc index
-      V1 = V2 + N.Ind
-]#
-
 proc data_at(level: Level, x,z: float): float =
   let (i,j) = level.xlat_coord(x,z)
   if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return EE.float
@@ -368,20 +270,6 @@ proc floor_height*(level: Level, x,z: float): float =
     #if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return
     #level.floor_verts[4 * (i * level.width + j)] = result
 
-proc slope*(level: Level, x,z: float): Vec3f =
-  let p0 = level.floor_height(x+0,z+0)
-  let p1 = level.floor_height(x+1,z+0)
-  let p2 = level.floor_height(x+0,z+1)
-  #if p0 == 0 and p1 == 0 and p2 == 0:
-  #  return vec3f(0, -1, 0)
-  #let p3 = level.floor_height(x+1,z+1)
-  #let dxz = p0 - p3
-  let dx = p0 - p1
-  let dz = p0 - p2
-
-  return vec3f( dx, 0f, dz )
-  #return vec3f( 0.5 * ((p0-p1) + (p3-p1)), 0f , 0.5 * ((p0-p2) + (p3-p2)) )
-
 proc surface_normal*(level: Level, x,z: float): Vec3f =
   let p0 = level.floor_height(x,z)
   let p1 = level.floor_height(x+1,z)
@@ -393,6 +281,33 @@ proc surface_normal*(level: Level, x,z: float): Vec3f =
 proc toString(x: float): string =
   x.formatFloat(ffDecimal,3)
 
+proc slope*(level: Level, x,z: float): Vec3f =
+  let m0 = level.mask_at(x+0,z+0)
+  let m1 = level.mask_at(x+1,z+0)
+  let m2 = level.mask_at(x+0,z+1)
+  let p0 = level.floor_height(x+0,z+0)
+  let p1 = level.floor_height(x+1,z+0)
+  let p2 = level.floor_height(x+0,z+1)
+  var dx = p0 - p1
+  var dz = p0 - p2
+
+  const pushback = 55
+  if (m0 == XX) and (m2.has AA):
+    dz = -pushback
+
+  if (m2 == XX) and (m0.has VV):
+    dz = +pushback
+
+  if (m0 == XX) and (m1.has LL):
+    dx = -pushback
+
+  if (m1 == XX) and (m0.has JJ):
+    dx = +pushback
+
+  result = vec3f( dx, 0f, dz )
+  if result.length > pushback:
+    result = result.normalize() * pushback
+
 proc point_height*(level: Level, x,z: float): float =
   let h1 = level.floor_height( x+0, z+0 )
   let h2 = level.floor_height( x+1, z+0 )
@@ -402,8 +317,8 @@ proc point_height*(level: Level, x,z: float): float =
   let uz = z - z.floor
   result  = h1 * (1-ux) * (1-uz)
   result += h2 *    ux  * (1-uz)
-  result += h3 * (1-ux) * uz
-  result += h4 * ux * uz
+  result += h3 * (1-ux) *    uz
+  result += h4 *    ux  *    uz
   #stdout.write ", floor = ", result.formatFloat(ffDecimal, 3)
 
 proc average_height*(level: Level, x,z: float): float =

@@ -399,7 +399,7 @@ proc draw_imgui =
   igText("player")
   #var lateral = player.pos.xz.length()
   #igSliderFloat "lateral_d", lateral.addr     , -sky, sky
-  igSliderFloat3 "respawn_pos" , game.respawn_pos.arr  , -sky, sky
+  #igSliderFloat3 "respawn_pos" , game.respawn_pos.arr  , -sky, sky
   igSliderFloat3 "pos"     , game.player.mesh.pos.arr   , -sky, sky
   igSliderFloat3 "vel"     , game.player.mesh.vel.arr   , -sky, sky
   igSliderFloat3 "acc"     , game.player.mesh.acc.arr   , -sky, sky
@@ -409,13 +409,20 @@ proc draw_imgui =
   let level = game.get_level()
   let coord = game.player.mesh.pos.rotate_coord
 
-  var sl = level.slope(coord.x, coord.z) * 0.5f
   igSpacing()
   igSeparator()
   igSpacing()
 
-  var cur_mask = ($level.mask_at(coord.x, coord.z)).cstring
-  igInputText("cur_mask", curmask, 2)
+  var m0 = ($level.mask_at(coord.x, coord.z)).cstring
+  var m1 = ($level.mask_at(coord.x+1, coord.z)).cstring
+  var m2 = ($level.mask_at(coord.x, coord.z+1)).cstring
+  igText(m0, 2)
+  igSameLine()
+  igText(m1)
+  igSameLine()
+  igText(m2)
+
+  var sl = level.slope(coord.x, coord.z)
   igSliderFloat3 "slope"     , sl.arr         , -sky, sky
 
   var respawns = game.respawns.int32
@@ -488,7 +495,7 @@ proc main =
 
   proc physics(game: var Game, mesh: var Mesh) {.inline.} =
     const mass = player_radius
-    const gravity = -49f
+    const gravity = -98f
     const max_vel = vec3f( 15f, -gravity * 0.5f, 15f )
     let level = game.get_level()
     if not game.goal:
@@ -535,16 +542,20 @@ proc main =
     mesh.acc *= 0
     mesh.acc += mass * vec3f(m.x, 0, -m.y) * traction  # mouse motion
     mesh.acc += vec3f(0, (1f-traction) * gravity, 0)   # free fall
-    mesh.acc += ramp_a
+    mesh.acc += ramp_a * traction
 
-    let vel = mesh.vel.length()
+    let lateral_dir = mesh.vel.xz.normalize()
+    let lateral_vel = mesh.vel.xz.length()
+    let vertical_vel = mesh.vel.y
 
     mesh.vel.x = clamp(mesh.vel.x + dt * mesh.acc.x, -max_vel.x, max_vel.x)
     mesh.vel.y = clamp(mesh.vel.y + dt * mesh.acc.y, -max_vel.y * 1.5f, max_vel.y)
     mesh.vel.z = clamp(mesh.vel.z + dt * mesh.acc.z, -max_vel.z, max_vel.z)
     if icy:
-      if vel > 0f:
-        mesh.vel = mesh.vel.normalize() * vel
+      if mesh.vel.length * lateral_vel > 0f:
+        let dir = normalize(mesh.vel.xz.normalize() + lateral_dir)
+        mesh.vel = vec3f(dir.x, 0, dir.y) * lateral_vel
+        mesh.vel.y = max_vel.y * -0.5
 
     mesh.pos += mesh.vel * dt
     mesh.pos.y = clamp(mesh.pos.y, fh, sky)
