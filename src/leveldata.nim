@@ -185,6 +185,7 @@ proc setup_floor(level: Level) =
   var colors = newSeqOfCap[cfloat](level.width * level.height * nv * 4)
   var n = 0.Ind
   var x,y,z: float
+  var y0, y1, y2, y3: float
 
   proc offset[T:Ordinal](level: Level, i,j: T): T =
     if j >= level.width or j < 0: return 0
@@ -221,17 +222,40 @@ proc setup_floor(level: Level) =
 
       if j < i - 4 or j > i + 44: continue
 
-      y = level.data[level.offset(i,j)]
-      add_point(x,y,z,i,j)
+      y0 = level.data[level.offset(i+0,j+0)]
+      y1 = level.data[level.offset(i+0,j+1)]
+      y2 = level.data[level.offset(i+1,j+0)]
+      y3 = level.data[level.offset(i+1,j+1)]
 
-      y = level.data[level.offset(i,j+1)]
-      add_point(x+1,y,z,i,j+1)
+      add_point(x+0, y0, z+0, i+0, j+0)
+      add_point(x+1, y1, z+0, i+0, j+1)
 
-      y = level.data[level.offset(i+1,j)]
-      add_point(x,y,z+1,i+1,j)
+      if level.mask[level.offset(i,j)].has VV:
+        add_point(x+0, y0, z+1, i+1, j+0)
+        add_point(x+1, y1, z+1, i+1, j+1)
 
-      y = level.data[level.offset(i+1,j+1)]
-      add_point(x+1,y,z+1,i+1,j+1)
+      add_point(x+0, y2, z+1, i+1, j+0)
+      add_point(x+1, y3, z+1, i+1, j+1)
+
+      if level.mask[level.offset(i,j+1)].has VV:
+        add_point(x+1, y1, z+1, i+1, j+1)
+        add_point(x+1, y1, z+1, i+1, j+1)
+        add_point(x+1, y1, z+0, i+0, j+1)
+
+
+      #if level.mask[level.offset(i,j)].has JJ:
+      #  add_point(x,y,z,i,j)
+
+      #if level.mask[level.offset(i,j)].has AA:
+      #  y = level.data[level.offset(i-1,j)]
+      #  add_point(x,y,z,i,j)
+      #if level.mask[level.offset(i,j)].has LL:
+      #  y = level.data[level.offset(i,j-1)]
+      #  add_point(x,y,z,i,j)
+      #if level.mask[level.offset(i,j)].has JJ:
+      #  y = level.data[level.offset(i,j+1)]
+      #  add_point(x,y,z,i,j)
+
 
   level.floor_colors = colors
   level.floor_verts = verts
