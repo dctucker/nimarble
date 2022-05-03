@@ -81,6 +81,7 @@ proc respawn(press: bool) =
     game.reset_player()
     game.player.mesh.pos = game.respawn_pos
     game.reset_view()
+    inc game.respawns
 
 proc rotate_coord(v: Vec3f): Vec3f =
   let v4 = mat4f(1f).translate(v).rotateY(radians(45f))[3]
@@ -370,9 +371,12 @@ proc draw_clock(game: Game) =
   igSetNextWindowSize(ImVec2(x:56, y:48))
   igPushFont( large_font )
   igBegin("CLOCK", nil, ImGuiWindowFlags(171))
-  var clk = $(level.clock / 100).int
+  let clk_value = 60 - (level.clock / 100)
+  var clk = $clk_value.int
   if clk.len < 2: clk = "0" & clk
+  igPushStyleColor(ImGuiCol.Text, ImVec4(x:0.5,y:0.1,z:0.1, w:1.0))
   igText clk
+  igPopStyleColor()
   igEnd()
   igPopFont()
 
@@ -390,12 +394,12 @@ proc draw_imgui =
   igSetNextWindowSize(ImVec2(x:300f, y:400f))
   igPushFont( small_font )
 
-  igBegin("Player vectors")
+  igBegin("vectors")
 
-  #igText("Player vectors")
+  igText("player")
   #var lateral = player.pos.xz.length()
   #igSliderFloat "lateral_d", lateral.addr     , -sky, sky
-  igSliderFloat3 "respawn" , game.respawn_pos.arr  , -sky, sky
+  igSliderFloat3 "respawn_pos" , game.respawn_pos.arr  , -sky, sky
   igSliderFloat3 "pos"     , game.player.mesh.pos.arr   , -sky, sky
   igSliderFloat3 "vel"     , game.player.mesh.vel.arr   , -sky, sky
   igSliderFloat3 "acc"     , game.player.mesh.acc.arr   , -sky, sky
@@ -404,20 +408,18 @@ proc draw_imgui =
 
   let level = game.get_level()
   let coord = game.player.mesh.pos.rotate_coord
-  var cur_mask = ($level.mask_at(coord.x, coord.z)).cstring
-  igInputText("cur_mask", curmask, 2)
 
   var sl = level.slope(coord.x, coord.z) * 0.5f
   igSpacing()
   igSeparator()
   igSpacing()
-  igSliderFloat3 "slope"     , sl.arr         , -sky, sky
-  igSliderFloat3 "pan_target", game.pan_target.arr , -sky, sky
-  igSliderFloat3 "pan"       , game.pan.arr        , -sky, sky
-  igSliderFloat3 "pan_vel"   , game.pan_vel.arr    , -sky, sky
-  igSliderFloat3 "pan_acc"   , game.pan_acc.arr    , -sky, sky
-  igSliderFloat  "fov"       , game.fov.addr       ,   0f, 360f
 
+  var cur_mask = ($level.mask_at(coord.x, coord.z)).cstring
+  igInputText("cur_mask", curmask, 2)
+  igSliderFloat3 "slope"     , sl.arr         , -sky, sky
+
+  var respawns = game.respawns.int32
+  igSliderInt    "respawns"     , respawns.addr, 0.int32, 10.int32
   igCheckBox     "following"    , game.following.addr
   igCheckBox     "wireframe"    , game.wireframe.addr
   igSliderInt    "current_level", game.level.addr, 1.int32, n_levels.int32 - 1
@@ -437,6 +439,12 @@ proc draw_imgui =
   igSliderFloat3 "pos"   , game.camera_pos.arr   , -sky, sky
   igSliderFloat3 "target", game.camera_target.arr, -sky, sky
   igSliderFloat3 "up"    , game.camera_up.arr    , -sky, sky
+  igSeparator()
+  igSliderFloat3 "pan_target", game.pan_target.arr , -sky, sky
+  igSliderFloat3 "pan"       , game.pan.arr        , -sky, sky
+  igSliderFloat3 "pan_vel"   , game.pan_vel.arr    , -sky, sky
+  igSliderFloat3 "pan_acc"   , game.pan_acc.arr    , -sky, sky
+  igSliderFloat  "fov"       , game.fov.addr       ,   0f, 360f
   game.view = lookAt( game.camera_pos, game.camera_target, game.camera_up )
   igEnd()
 
@@ -451,8 +459,8 @@ proc imgui_frame =
 
   if game.goal:
     draw_goal()
-  else:
-    game.draw_clock()
+
+  game.draw_clock()
 
   igRender()
   igOpenGL3RenderDrawData(igGetDrawData())
@@ -483,8 +491,9 @@ proc main =
     const gravity = -49f
     const max_vel = vec3f( 15f, -gravity * 0.5f, 15f )
     let level = game.get_level()
-    level.clock += 1
-    level.clock = level.clock mod 3600
+    if not game.goal:
+      level.clock += 1
+      level.clock = level.clock mod 3600
     let coord = mesh.pos.rotate_coord
     let x = coord.x
     let z = coord.z
@@ -516,9 +525,12 @@ proc main =
     if flat and nonzero and cur_mask == XX and not icy:
       game.respawn_pos = vec3f(mesh.pos.x.floor, mesh.pos.y, mesh.pos.z.floor)
 
+    const max_acc = 50f
     var m = vec3f(0,0,0)
     if not game.paused and not game.goal and not icy:
       m = rotate_mouse(mouse)
+      if m.length > max_acc:
+        m = m.normalize() * max_acc
 
     mesh.acc *= 0
     mesh.acc += mass * vec3f(m.x, 0, -m.y) * traction  # mouse motion
@@ -587,7 +599,7 @@ proc main =
     game.pan_vel = (game.pan_vel + game.pan_acc).clamp(-0.125, 0.125)
     game.pan += game.pan_vel
 
-    const camera_maxvel = 1f/20f
+    const camera_maxvel = 1f/10f
     let pan_delta = game.pan_target - game.pan
     if pan_delta.length > 0f:
       if pan_delta.length < camera_maxvel:
