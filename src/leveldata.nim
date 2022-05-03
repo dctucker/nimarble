@@ -146,6 +146,30 @@ proc around*(level: Level, m: CliffMask, x,z: float): bool =
         return true
   return false
 
+proc mask_color(level: Level, mask: CliffMask): Vec4f =
+  case mask:
+  of GG:
+    return vec4f( 0.8, 0.8, 0.8, 1.0)
+  of TU, IN, OU:
+    return vec4f( level.color.x * 0.5, level.color.y * 0.5, level.color.z * 0.5, 1.0)
+  of AA, JJ: return vec4f(level.color * 0.2, 0.5)
+  of LL, VV: return vec4f(level.color * 0.5, 0.5)
+  of LV, VJ: return vec4f(level.color * 0.7, 1.0)
+  of LA, AJ: return vec4f(level.color * 0.2, 1.0)
+  of AH, VH, IL, IJ,
+     IH, II, HH:     return vec4f(level.color * 0.9, 0.5)
+  of P1:
+    return vec4f( 0.0, 0.0, 0.5, 0.8)
+  of EM:
+    return vec4f( 0.1, 0.1, 0.1, 1.0)
+  of EY, EA:
+    return vec4f( 0.4, 9.0, 0.0, 1.0)
+  of SW:
+    return vec4f( 0.1, 0.6, 0.6, 1.0)
+  else:
+    return vec4f(0.7)
+    #return vec4f(((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), 0.9)
+
 proc point_color(level: Level, i,j: int): Vec4f =
   let k = level.width * i + j
   let y = level.data[k]
@@ -154,28 +178,7 @@ proc point_color(level: Level, i,j: int): Vec4f =
   elif level.around(IC, j.float - level.origin.x.float, i.float - level.origin.z.float):
     return vec4f( 0.0, 1.0, 1.0, 1.0)
   else:
-    case level.mask[k]
-    of GG:
-      return vec4f( 0.8, 0.8, 0.8, 1.0)
-    of TU, IN, OU:
-      return vec4f( level.color.x * 0.5, level.color.y * 0.5, level.color.z * 0.5, 1.0)
-    of AA, JJ: return vec4f(level.color * 0.2, 0.5)
-    of LL, VV: return vec4f(level.color * 0.5, 0.5)
-    of LV, VJ: return vec4f(level.color * 0.7, 1.0)
-    of LA, AJ: return vec4f(level.color * 0.2, 1.0)
-    of AH, VH, IL, IJ,
-       IH, II, HH:     return vec4f(level.color * 0.9, 0.5)
-    of P1:
-      return vec4f( 0.0, 0.0, 0.5, 0.8)
-    of EM:
-      return vec4f( 0.1, 0.1, 0.1, 1.0)
-    of EY, EA:
-      return vec4f( 0.4, 9.0, 0.0, 1.0)
-    of SW:
-      return vec4f( 0.1, 0.6, 0.6, 1.0)
-    else:
-      return vec4f(0.7)
-      #return vec4f(((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), 0.9)
+    return level.mask_color(level.mask[k])
 
 proc setup_floor(level: Level) =
   const nv = 8
@@ -186,11 +189,19 @@ proc setup_floor(level: Level) =
   var n = 0.Ind
   var x,y,z: float
   var y0, y1, y2, y3: float
+  var m0, m1, m2, m3: CliffMask
+  var c0, c1, c2, c3: Vec4f
 
   proc offset[T:Ordinal](level: Level, i,j: T): T =
     if j >= level.width or j < 0: return 0
     if i >= level.height or i < 0: return 0
     result = level.width * i + j
+
+  proc add_color(c: Vec4f) =
+    colors.add c.x
+    colors.add c.y
+    colors.add c.z
+    colors.add c.w
 
   proc add_color(i,j:int) =
     let c = level.point_color(i,j)
@@ -215,6 +226,16 @@ proc setup_floor(level: Level) =
       add_index()
       add_color(i,j)
 
+  proc add_point(x,y,z: cfloat, c: Vec4f) =
+    if lookup.hasKey((x,y,z)):
+      index.add lookup[(x,y,z)]
+    else:
+      verts.add x
+      verts.add y
+      verts.add z
+      add_index()
+      add_color(c)
+
   for i in  1..<level.height-1:
     for j in 1..<level.width-1:
       x = (j - level.origin.x).float
@@ -222,34 +243,45 @@ proc setup_floor(level: Level) =
 
       if j < i - 4 or j > i + 44: continue
 
+      m0 = level.mask[level.offset(i+0,j+0)]
+      m1 = level.mask[level.offset(i+0,j+1)]
+      m2 = level.mask[level.offset(i+1,j+0)]
+      m3 = level.mask[level.offset(i+1,j+1)]
+
+      c0 = level.point_color(i+0,j+0)
+      c1 = level.point_color(i+0,j+1)
+      c2 = level.point_color(i+1,j+0)
+      c3 = level.point_color(i+1,j+1)
+
       y0 = level.data[level.offset(i+0,j+0)]
       y1 = level.data[level.offset(i+0,j+1)]
       y2 = level.data[level.offset(i+1,j+0)]
       y3 = level.data[level.offset(i+1,j+1)]
 
-      add_point x+0, y0, z+0, i+0, j+0
-      add_point x+1, y1, z+0, i+0, j+1
-
-      if level.mask[level.offset(i+1,j+0)].has AA:
-        add_point x+0, y2, z+0, i+0, j+0
-        add_point x+1, y3, z+0, i+0, j+1
+      add_point x+0, y0, z+0, c0
 
 
-      if level.mask[level.offset(i+0,j+0)].has VV:
-        add_point x+0, y2, z+0, i+0, j+0
-        add_point x+1, y3, z+0, i+0, j+1
-        add_point x+0, y2, z+0, i+1, j+0
-        add_point x+1, y3, z+0, i+1, j+1
+      add_point x+1, y1, z+0, c1
 
+      if m2.has AA:
+        add_point x+0, y0, z+0, c2
+        add_point x+1, y1, z+0, c3
+        add_point x+0, y2, z+0, c2
+        add_point x+1, y3, z+0, c3
 
-      add_point x+0, y2, z+1, i+1, j+0
-      add_point x+1, y3, z+1, i+1, j+1
+      if m0.has VV:
+        add_point x+0, y2, z+0, c0
+        add_point x+1, y3, z+0, c1
+        add_point x+0, y2, z+0, c2
+        add_point x+1, y3, z+0, c3
 
-      if level.mask[level.offset(i+0,j+1)].has VV:
-        add_point x+1, y3, z+0, i+0, j+1
-        add_point x+1, y3, z+0, i+0, j+1
-        add_point x+1, y1, z+0, i+0, j+1
+      add_point x+0, y2, z+1, c2
+      add_point x+1, y3, z+1, c3
 
+      if m1.has VV:
+        add_point x+1, y3, z+0, c1
+        add_point x+1, y3, z+0, c1
+        add_point x+1, y1, z+0, c1
 
 
       #if level.mask[level.offset(i,j)].has JJ:
