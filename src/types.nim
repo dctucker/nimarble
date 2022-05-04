@@ -16,21 +16,25 @@ type
     id: uint32
     code: cstring
   Program = object
-    id: uint32
+    id*: uint32
     vertex: Shader
     fragment: Shader
   Matrix = object
     id: int32
-    matrix*: Mat4f
+    mat*: Mat4f
 
 proc update*(matrix: var Matrix) =
-  var mat = matrix.matrix
+  var mat = matrix.mat
   glUniformMatrix4fv matrix.id, 1, false, mat.caddr
 
-proc newMatrix*(program: Program, matrix: var Mat4f, name: string): Matrix =
-  result.matrix = matrix
+proc update*(matrix: var Matrix, value: Mat4f) =
+  matrix.mat = value
+  matrix.update()
+
+
+proc newMatrix*(program: Program, mat: var Mat4f, name: string): Matrix =
+  result.mat = mat
   result.id = glGetUniformLocation(program.id, name)
-  #result.update matrix
 
 proc newVAO*(): VAO =
   glGenVertexArrays(1, result.id.addr)
@@ -129,7 +133,7 @@ type Mesh* = ref object
   vert_vbo*, color_vbo*: VBO[cfloat]
   elem_vbo*: VBO[Ind]
   norm_vbo*: VBO[cfloat]
-  model*: Mat4f
+  model*: Matrix
   normal*: Vec3f
   mvp*: Matrix
   program*: Program
@@ -206,7 +210,7 @@ type
     level*: int32
     player*: Player
     proj*: Mat4f
-    view*: Mat4f
+    view*: Matrix
     respawn_pos*: Vec3f
     pan_vel*: Vec3f
     pan_acc*: Vec3f
@@ -215,6 +219,7 @@ type
     window*: GLFWWindow
     fov*: float32
     camera_target*, camera_pos*, camera_up*: Vec3f
+    light_pos*: Vec3f
     paused*: bool
     mouse_lock*: bool
     following*: bool
@@ -228,7 +233,7 @@ proc newGame*: Game =
     state: ATTRACT,
     level: 1,
     player: Player(),
-    fov: 45f,
+    fov: 60f,
     paused : false,
     mouse_lock : true,
     following : true,
@@ -236,4 +241,5 @@ proc newGame*: Game =
     goal : false,
     dead : false,
     wireframe : false,
+    light_pos: vec3f(4,4,4),
   )

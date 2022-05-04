@@ -535,7 +535,7 @@ proc slope*(level: Level, x,z: float): Vec3f =
   var dx = p0 - p1
   var dz = p0 - p2
 
-  const pushback = 55
+  const pushback = 45
   if (m0 == XX) and (m2.has AA):
     dz = -pushback
 

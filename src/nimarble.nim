@@ -39,13 +39,15 @@ const start_level = 1
 proc update_camera(game: Game) =
   let level = game.get_level()
 
+  const distance = 15
   game.camera_target = vec3f( 0, level.origin.y.float * level_squash, 0 )
-  game.camera_pos = vec3f( 20, game.camera_target.y + 20, 20 )
+  game.camera_pos = vec3f( distance, game.camera_target.y + distance, distance )
   game.camera_up = vec3f( 0f,  1.0f,  0f )
   #let target = vec3f( 10, 0, 10 )
   #let pos = vec3f( level.origin.z.float * 2, 0, level.origin.z.float * 2)
   echo game.camera_target
-  game.view = lookAt( game.camera_pos, game.camera_target, game.camera_up )
+  game.view.mat = lookAt( game.camera_pos, game.camera_target, game.camera_up )
+  game.view.update()
 
 const field_width = 10f
 proc update_fov(game: Game) =
@@ -128,8 +130,9 @@ proc init_player(game: var Game) =
   )
   game.reset_player()
 
-  game.player.mesh.model  = mat4(1.0f)
-  var mvp = game.proj * game.view.translate(-game.pan) * game.player.mesh.model
+  var modelmat = mat4(1.0f)
+  game.player.mesh.model = game.player.mesh.program.newMatrix(modelmat, "M")
+  var mvp = game.proj * game.view.mat.translate(-game.pan) * game.player.mesh.model.mat
   game.player.mesh.mvp = game.player.mesh.program.newMatrix(mvp, "MVP")
 
 
@@ -146,8 +149,9 @@ proc init_floor_plane(game: Game) =
     norm_vbo: newVBO(3, level.floor_normals),
     program: game.player.mesh.program,
   )
-  level.floor_plane.model = mat4(1.0f).scale(1f, level_squash, 1f)
-  var mvp = game.proj * game.view.translate(-game.pan) * level.floor_plane.model
+  var modelmat = mat4(1.0f).scale(1f, level_squash, 1f)
+  level.floor_plane.model = game.player.mesh.program.newMatrix(modelmat, "M")
+  var mvp = game.proj * game.view.mat.translate(-game.pan) * level.floor_plane.model.mat
   level.floor_plane.mvp = level.floor_plane.program.newMatrix(mvp, "MVP")
 
 proc init_actors(game: Game) =
@@ -155,13 +159,14 @@ proc init_actors(game: Game) =
   for actor in level.actors.mitems:
     if actor.mesh != nil:
       continue
+    var modelmat = mat4(1.0f)
     actor.mesh = Mesh(
       vao       : newVAO(),
       vert_vbo  : newVBO(3, sphere),
       color_vbo : newVBO(4, sphere_enemy_colors),
       elem_vbo  : newElemVBO(sphere_index),
       program   : game.player.mesh.program,
-      model     : mat4(1.0f),
+      model     : game.player.mesh.program.newMatrix(modelmat, "M"),
     )
     actor.mesh.reset_mesh()
     let x = (actor.origin.x - level.origin.x).float
@@ -169,7 +174,7 @@ proc init_actors(game: Game) =
     let z = (actor.origin.z - level.origin.z).float
 
     actor.mesh.pos    = vec3f(x, y, z)
-    var mvp = game.proj * game.view.translate(-game.pan) * actor.mesh.model
+    var mvp = game.proj * game.view.mat.translate(-game.pan) * actor.mesh.model.mat
     actor.mesh.mvp = game.player.mesh.program.newMatrix(mvp, "MVP")
 
 proc set_level(game: Game) =
@@ -188,8 +193,11 @@ proc set_level(game: Game) =
     following = f
 
 proc init(game: var Game) =
+  game.init_player()
+  var viewmat = game.view.mat
+  game.view = game.player.mesh.program.newMatrix(viewmat, "V")
+
   with game:
-    init_player()
     level = start_level
     set_level()
     init_floor_plane()
@@ -473,7 +481,7 @@ proc draw_imgui =
   igSliderFloat3 "pan_vel"   , game.pan_vel.arr    , -sky, sky
   igSliderFloat3 "pan_acc"   , game.pan_acc.arr    , -sky, sky
   igSliderFloat  "fov"       , game.fov.addr       ,   0f, 360f
-  game.view = lookAt( game.camera_pos, game.camera_target, game.camera_up )
+  game.view.mat = lookAt( game.camera_pos, game.camera_target, game.camera_up )
   igEnd()
 
   igPopFont()
@@ -510,6 +518,8 @@ proc main =
   setup_imgui(w)
 
   game.init()
+  var light_id = glGetUniformLocation(game.player.mesh.program.id, "LightPosition_worldspace")
+  glUniform3f light_id, game.light_pos.x, game.light_pos.y, game.light_pos.z
 
   proc toString[T: float](f: T, prec: int = 8): string =
     result = f.formatFloat(ffDecimal, prec)
@@ -594,7 +604,7 @@ proc main =
 
     mouse *= 0
 
-    mesh.model = mat4(1.0f)
+    mesh.model.mat = mat4(1.0f)
       .translate(vec3f(0, player_radius,0))
       .translate(mesh.pos * vec3f(1,level_squash,1)) * mesh.rot.mat4f
 
@@ -614,8 +624,7 @@ proc main =
         next_level(true)
 
   proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
-    mesh.mvp.matrix = game.proj * game.view.translate(-game.pan) * mesh.model
-    mesh.mvp.update
+    mesh.mvp.update game.proj * game.view.mat.translate(-game.pan) * mesh.model.mat
     mesh.program.use()
     mesh.vert_vbo.apply 0
     mesh.color_vbo.apply 1
@@ -680,7 +689,7 @@ proc main =
     for a in actors.low..actors.high:
       var mesh = actors[a].mesh
 
-      mesh.model = mat4(1.0f)
+      mesh.model.mat = mat4(1.0f)
         .translate(vec3f(0, player_radius, 0))
         .translate(mesh.pos * vec3f(1,level_squash,1)) * mesh.rot.mat4f
 
