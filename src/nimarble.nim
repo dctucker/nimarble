@@ -129,8 +129,8 @@ proc init_player(game: var Game) =
   game.reset_player()
 
   game.player.mesh.model  = mat4(1.0f)
-  game.player.mesh.mvp    = game.proj * game.view.translate(-game.pan) * game.player.mesh.model
-  game.player.mesh.matrix = game.player.mesh.program.newMatrix(game.player.mesh.mvp, "MVP")
+  var mvp = game.proj * game.view.translate(-game.pan) * game.player.mesh.model
+  game.player.mesh.mvp = game.player.mesh.program.newMatrix(mvp, "MVP")
 
 
 proc init_floor_plane(game: Game) =
@@ -143,11 +143,12 @@ proc init_floor_plane(game: Game) =
     vert_vbo: newVBO(3, level.floor_verts),
     color_vbo: newVBO(4, level.floor_colors),
     elem_vbo: newElemVBO(level.floor_index),
+    norm_vbo: newVBO(3, level.floor_normals),
     program: game.player.mesh.program,
   )
   level.floor_plane.model = mat4(1.0f).scale(1f, level_squash, 1f)
-  level.floor_plane.mvp = game.proj * game.view.translate(-game.pan) * level.floor_plane.model
-  level.floor_plane.matrix = level.floor_plane.program.newMatrix(level.floor_plane.mvp, "MVP")
+  var mvp = game.proj * game.view.translate(-game.pan) * level.floor_plane.model
+  level.floor_plane.mvp = level.floor_plane.program.newMatrix(mvp, "MVP")
 
 proc init_actors(game: Game) =
   let level = game.get_level()
@@ -168,8 +169,8 @@ proc init_actors(game: Game) =
     let z = (actor.origin.z - level.origin.z).float
 
     actor.mesh.pos    = vec3f(x, y, z)
-    actor.mesh.mvp    = game.proj * game.view.translate(-game.pan) * actor.mesh.model
-    actor.mesh.matrix = game.player.mesh.program.newMatrix(actor.mesh.mvp, "MVP")
+    var mvp = game.proj * game.view.translate(-game.pan) * actor.mesh.model
+    actor.mesh.mvp = game.player.mesh.program.newMatrix(mvp, "MVP")
 
 proc set_level(game: Game) =
   let f = game.following
@@ -359,6 +360,7 @@ proc setup_opengl() =
 
   glEnable GL_BLEND
   glBlendFunc GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
+  glShadeModel GL_FLAT
 
 var ig_context: ptr ImGuiContext
 var small_font: ptr ImFont
@@ -612,11 +614,12 @@ proc main =
         next_level(true)
 
   proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
-    mesh.mvp = game.proj * game.view.translate(-game.pan) * mesh.model
-    mesh.matrix.update mesh.mvp
+    mesh.mvp.matrix = game.proj * game.view.translate(-game.pan) * mesh.model
+    mesh.mvp.update
     mesh.program.use()
     mesh.vert_vbo.apply 0
     mesh.color_vbo.apply 1
+    mesh.norm_vbo.apply 2
     if mesh.elem_vbo.n_verts > 0:
       mesh.elem_vbo.draw_elem kind
     else:

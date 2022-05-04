@@ -3,13 +3,18 @@
 
 layout (location = 0) in vec3 vertexPosition_modelspace;
 layout (location = 1) in vec4 vertexColor;
+layout (location = 2) in vec3 vertexNormal;
 
 out vec4 fragmentColor;
 uniform mat4 MVP;
+uniform mat4 M;
+uniform mat4 V;
 
 void main() {
 	gl_Position = MVP * vec4(vertexPosition_modelspace,1);
-	fragmentColor = vertexColor;
+	
+	// float cosTheta = clamp( dot( n,l
+	fragmentColor = vertexColor; // * cosTheta;
 }
 //*/
 

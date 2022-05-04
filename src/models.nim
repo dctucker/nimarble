@@ -2,21 +2,26 @@ import glm
 from types import Ind
 
 
-var cube_verts* = @[
-  vec3i( 1, 1, 1 ), #0
-  vec3i( 0, 1, 1 ), #1
-  vec3i( 1, 1, 0 ), #2
-  vec3i( 0, 1, 0 ), #3
-  vec3i( 1, 0, 1 ), #4
-  vec3i( 0, 0, 1 ), #5
-  vec3i( 0, 0, 0 ), #6
-  vec3i( 1, 0, 0 ), #7
+let cube_verts* = @[
+  vec3i( 0, 0, 0 ), #0
+  vec3i( 0, 0, 1 ), #1
+  vec3i( 0, 1, 0 ), #2
+  vec3i( 0, 1, 1 ), #3
+  vec3i( 1, 0, 0 ), #4
+  vec3i( 1, 0, 1 ), #5
+  vec3i( 1, 1, 0 ), #6
+  vec3i( 1, 1, 1 ), #7
+]
+echo cube_verts.len
+
+let cube_index* = @[
+  4, 4, 2, 6, 0, 4, 5, 6, 7,
+  2, 3, 0, 1, 5, 6, 7, 4, 4,
 ]
 
-var cube_index* = @[
-  7, 7, 3, 2, 6, 7, 4, 2, 0,
-  3, 1, 6, 5, 4, 1, 0, 7, 7,
-]
+var cube_normals*: seq[Vec3f]
+for v in cube_verts:
+  cube_normals.add vec3f(v.x.float - 0.5, v.y.float - 0.5, v.z.float - 0.5).normalize()
 
 iterator cube_vert*(): Vec3i =
   for i in cube_index:

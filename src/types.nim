@@ -23,8 +23,9 @@ type
     id: int32
     matrix*: Mat4f
 
-proc update*(matrix: Matrix, value: var Mat4f) =
-  glUniformMatrix4fv matrix.id, 1, false, value.caddr
+proc update*(matrix: var Matrix) =
+  var mat = matrix.matrix
+  glUniformMatrix4fv matrix.id, 1, false, mat.caddr
 
 proc newMatrix*(program: Program, matrix: var Mat4f, name: string): Matrix =
   result.matrix = matrix
@@ -127,10 +128,10 @@ type Mesh* = ref object
   vao*: VAO
   vert_vbo*, color_vbo*: VBO[cfloat]
   elem_vbo*: VBO[Ind]
-  mvp*: Mat4f
+  norm_vbo*: VBO[cfloat]
   model*: Mat4f
   normal*: Vec3f
-  matrix*: Matrix
+  mvp*: Matrix
   program*: Program
 
 type
@@ -170,6 +171,7 @@ type
     floor_colors*: seq[cfloat]
     floor_index*: seq[Ind]
     floor_verts*: seq[cfloat]
+    floor_normals*: seq[cfloat]
     floor_plane*: Mesh
     clock*: int
     actors*: seq[Actor]

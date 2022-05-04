@@ -5,7 +5,7 @@ import std/tables
 
 import types
 
-from models import cube_vert
+from models import cube_vert, cube_normals
 
 const EE = 0
 const sky* = 200f
@@ -200,6 +200,7 @@ proc point_color(level: Level, i,j: int): Vec4f =
 proc setup_floor(level: Level) =
   const nv = 8
   var cx: Vec4f
+  var normals = newSeqOfCap[cfloat]( level.width * level.height )
   var lookup = newTable[(cfloat,cfloat,cfloat), Ind]()
   var verts = newSeqOfCap[cfloat]( level.width * level.height)
   var index = newSeqOfCap[Ind]( level.width * level.height * nv)
@@ -218,6 +219,11 @@ proc setup_floor(level: Level) =
     if j >= level.width or j < 0: return 0
     if i >= level.height or i < 0: return 0
     result = level.width * i + j
+
+  proc add_normal(n: Vec3f) =
+    normals.add n.x
+    normals.add n.y
+    normals.add n.z
 
   proc add_color(c: Vec4f) =
     colors.add c.x
@@ -287,29 +293,34 @@ proc setup_floor(level: Level) =
       for vert in cube_vert():
         y = level.data[level.offset(i+vert.z, j+vert.x)]
         m = level.mask[level.offset(i+vert.z, j+vert.x)]
-        if vert.x == 0 and vert.z == 0:
-          if m.has AA: y = y0
-          if m.has VV: y = y2
-          if m.has LL: y = y0
-          if m.has JJ: y = y1
-        elif vert.x == 0 and vert.z == 1:
-          if m.has AA: y = y0
-          if m.has VV: y = y2
-          if m.has LL: y = y2
-          if m.has JJ: y = y3
-        elif vert.x == 1 and vert.z == 0:
-          if m.has AA: y = y1
-          if m.has VV: y = y3
-          if m.has LL: y = y0
-          if m.has JJ: y = y3
-        elif vert.x == 1 and vert.z == 1:
-          if m.has AA: y = y1
-          if m.has VV: y = y3
-          if m.has LL: y = y2
-          if m.has JJ: y = y3
+        if vert.y == 1:
+          if vert.x == 0 and vert.z == 0:
+            if m.has AA: y = y0
+            if m.has VV: y = y2
+            if m.has LL: y = y0
+            if m.has JJ: y = y1
+          elif vert.x == 0 and vert.z == 1:
+            if m.has AA: y = y0
+            if m.has VV: y = y2
+            if m.has LL: y = y2
+            if m.has JJ: y = y3
+          elif vert.x == 1 and vert.z == 0:
+            if m.has AA: y = y1
+            if m.has VV: y = y3
+            if m.has LL: y = y0
+            if m.has JJ: y = y3
+          elif vert.x == 1 and vert.z == 1:
+            if m.has AA: y = y1
+            if m.has VV: y = y3
+            if m.has LL: y = y2
+            if m.has JJ: y = y3
+        else:
+          y = 0
 
         c = if y == 1: cx else: c0
-        add_point x + vert.x.float * 0.8, vert.y.float + y - 0.2, z + vert.z.float * 0.8, c
+        add_point x + vert.x.float * 0.8, y, z + vert.z.float * 0.8, c
+        let n = vert.x * 4 + vert.y * 2 + vert.z
+        add_normal cube_normals[n]
 
       #[
       v00 = vec3f( x+0, y0, z+0 )
@@ -468,6 +479,7 @@ proc setup_floor(level: Level) =
   level.floor_colors = colors
   level.floor_verts = verts
   level.floor_index = index
+  level.floor_normals = normals
   #echo "Index length: ", index.len
 
 
