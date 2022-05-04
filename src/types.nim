@@ -174,10 +174,14 @@ type
     clock*: int
     actors*: seq[Actor]
 
+proc cliff*(a: CliffMask): bool =
+  return a.ord < GG.ord
+
 proc has*(a,b: CliffMask): bool =
   result = a == b
-  if a.ord < GG.ord:
+  if a.cliff:
     return (a.ord and b.ord) != 0
+
 
 type
   GameState* = enum

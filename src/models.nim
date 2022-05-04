@@ -1,58 +1,36 @@
 import glm
 from types import Ind
 
-var cube* = @[
-  -1.0f, -1.0f, -1.0f, # triangle 1 : begin
-  -1.0f, -1.0f, +1.0f,
-  -1.0f, +1.0f, +1.0f, # triangle 1 : end
-  +1.0f, +1.0f, -1.0f, # triangle 2 : begin
-  -1.0f, -1.0f, -1.0f,
-  -1.0f, +1.0f, -1.0f, # triangle 2 : end
-  +1.0f, -1.0f, +1.0f,
-  -1.0f, -1.0f, -1.0f,
-  +1.0f, -1.0f, -1.0f,
-  +1.0f, +1.0f, -1.0f,
-  +1.0f, -1.0f, -1.0f,
-  -1.0f, -1.0f, -1.0f,
-  -1.0f, -1.0f, -1.0f,
-  -1.0f, +1.0f, +1.0f,
-  -1.0f, +1.0f, -1.0f,
-  +1.0f, -1.0f, +1.0f,
-  -1.0f, -1.0f, +1.0f,
-  -1.0f, -1.0f, -1.0f,
-  -1.0f, +1.0f, +1.0f,
-  -1.0f, -1.0f, +1.0f,
-  +1.0f, -1.0f, +1.0f,
-  +1.0f, +1.0f, +1.0f,
-  +1.0f, -1.0f, -1.0f,
-  +1.0f, +1.0f, -1.0f,
-  +1.0f, -1.0f, -1.0f,
-  +1.0f, +1.0f, +1.0f,
-  +1.0f, -1.0f, +1.0f,
-  +1.0f, +1.0f, +1.0f,
-  +1.0f, +1.0f, -1.0f,
-  -1.0f, +1.0f, -1.0f,
-  +1.0f, +1.0f, +1.0f,
-  -1.0f, +1.0f, -1.0f,
-  -1.0f, +1.0f, +1.0f,
-  +1.0f, +1.0f, +1.0f,
-  -1.0f, +1.0f, +1.0f,
-  +1.0f, -1.0f, +1.0f,
+
+var cube_verts* = @[
+  vec3i( 1, 1, 1 ), #0
+  vec3i( 0, 1, 1 ), #1
+  vec3i( 1, 1, 0 ), #2
+  vec3i( 0, 1, 0 ), #3
+  vec3i( 1, 0, 1 ), #4
+  vec3i( 0, 0, 1 ), #5
+  vec3i( 0, 0, 0 ), #6
+  vec3i( 1, 0, 0 ), #7
 ]
 
-const d = 3
-var cube_index* = newSeq[Ind](cube.len div d)
-for i in 0..<cube_index.len:
-  cube_index[i] = i.Ind
+var cube_index* = @[
+  7, 7, 3, 2, 6, 7, 4, 2, 0,
+  3, 1, 6, 5, 4, 1, 0, 7, 7,
+]
 
-const ch = 4
-var cube_colors* = newSeq[cfloat](cube.len * ch div d)
-for i in 0..<cube_index.len:
-  let phase = (i.cfloat/(cube.len / ch))
-  cube_colors[ch*i+0] = 0.0f * phase
-  cube_colors[ch*i+1] = 0.5f * phase
-  cube_colors[ch*i+2] = 1.0f * (1.0-phase)
-  cube_colors[ch*i+3] = 0.5f
+iterator cube_vert*(): Vec3i =
+  for i in cube_index:
+    yield cube_verts[i]
+
+
+#const ch = 4
+#var cube_colors* = newSeq[cfloat](cube.len * ch div d)
+#for i in 0..<cube_index.len:
+#  let phase = (i.cfloat/(cube.len / ch))
+#  cube_colors[ch*i+0] = 0.0f * phase
+#  cube_colors[ch*i+1] = 0.5f * phase
+#  cube_colors[ch*i+2] = 1.0f * (1.0-phase)
+#  cube_colors[ch*i+3] = 0.5f
 
 const player_radius* = 0.625f
 proc uvSphereVerts*(segments, rings: int): seq[cfloat] =

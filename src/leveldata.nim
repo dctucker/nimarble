@@ -5,6 +5,8 @@ import std/tables
 
 import types
 
+from models import cube_vert
+
 const EE = 0
 const sky* = 200f
 
@@ -160,19 +162,19 @@ proc cliff_color(level: Level, mask: CliffMask): Vec4f =
 proc mask_color(level: Level, mask: CliffMask): Vec4f =
   case mask:
   of GG:
-    return vec4f( 0.8, 0.8, 0.8, 1.0)
+    return vec4f( 0.8, 0.8, 0.8, 1.0 )
   of TU, IN, OU:
-    return vec4f( level.color.x * 0.5, level.color.y * 0.5, level.color.z * 0.5, 1.0)
+    return vec4f( level.color.x * 0.5, level.color.y * 0.5, level.color.z * 0.5, 1.0 )
   of P1:
-    return vec4f( 0.0, 0.0, 0.5, 0.8)
+    return vec4f( 0.0, 0.0, 0.5, 0.8 )
   of EM:
-    return vec4f( 0.1, 0.1, 0.1, 1.0)
+    return vec4f( 0.1, 0.1, 0.1, 1.0 )
   of EY, EA:
-    return vec4f( 0.4, 9.0, 0.0, 1.0)
+    return vec4f( 0.4, 9.0, 0.0, 1.0 )
   of SW:
-    return vec4f( 0.1, 0.6, 0.6, 1.0)
+    return vec4f( 0.1, 0.6, 0.6, 1.0 )
   else:
-    return vec4f(0.7)
+    return vec4f( 0.6, 0.6, 0.6, 0.7 )
     #return vec4f(((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), 0.9)
 
 proc point_cliff_color(level: Level, i,j: int): Vec4f =
@@ -205,8 +207,12 @@ proc setup_floor(level: Level) =
   var n = 0.Ind
   var x,y,z: float
   var y0, y1, y2, y3: float
-  var m0, m1, m2, m3: CliffMask
-  var c0, c1, c2, c3: Vec4f
+  var m, m0, m1, m2, m3: CliffMask
+  var c, c0, c1, c2, c3: Vec4f
+  var v00, v01, v02, v03: Vec3f
+  var v10, v11, v12, v13: Vec3f
+  var v20, v21, v22, v23: Vec3f
+  var v30, v31, v32, v33: Vec3f
 
   proc offset[T:Ordinal](level: Level, i,j: T): T =
     if j >= level.width or j < 0: return 0
@@ -224,7 +230,7 @@ proc setup_floor(level: Level) =
     colors.add c.x
     colors.add c.y
     colors.add c.z
-    colors.add 0.9f
+    colors.add c.w
 
   proc add_index =
     index.add n
@@ -252,6 +258,9 @@ proc setup_floor(level: Level) =
       add_index()
       add_color(c)
 
+  proc add_point(v: Vec3f, c: Vec4f) =
+    add_point(v.x, v.y, v.z, c)
+
   for i in  1..<level.height-1:
     for j in 1..<level.width-1:
       x = (j - level.origin.x).float
@@ -275,43 +284,158 @@ proc setup_floor(level: Level) =
       y2 = level.data[level.offset(i+1,j+0)]
       y3 = level.data[level.offset(i+1,j+1)]
 
+      for vert in cube_vert():
+        y = level.data[level.offset(i+vert.z, j+vert.x)]
+        m = level.mask[level.offset(i+vert.z, j+vert.x)]
+        if vert.x == 0 and vert.z == 0:
+          if m.has AA: y = y0
+          if m.has VV: y = y2
+          if m.has LL: y = y0
+          if m.has JJ: y = y1
+        elif vert.x == 0 and vert.z == 1:
+          if m.has AA: y = y0
+          if m.has VV: y = y2
+          if m.has LL: y = y2
+          if m.has JJ: y = y3
+        elif vert.x == 1 and vert.z == 0:
+          if m.has AA: y = y1
+          if m.has VV: y = y3
+          if m.has LL: y = y0
+          if m.has JJ: y = y3
+        elif vert.x == 1 and vert.z == 1:
+          if m.has AA: y = y1
+          if m.has VV: y = y3
+          if m.has LL: y = y2
+          if m.has JJ: y = y3
+
+        c = if y == 1: cx else: c0
+        add_point x + vert.x.float * 0.8, vert.y.float + y - 0.2, z + vert.z.float * 0.8, c
 
       #[
+      v00 = vec3f( x+0, y0, z+0 )
+      v01 = vec3f( x+0, y1, z+0 )
+      v02 = vec3f( x+0, y2, z+0 )
+      v03 = vec3f( x+0, y3, z+0 )
+      v10 = vec3f( x+1, y0, z+0 )
+      v11 = vec3f( x+1, y1, z+0 )
+      v12 = vec3f( x+1, y2, z+0 )
+      v13 = vec3f( x+1, y3, z+0 )
+      v20 = vec3f( x+0, y0, z+1 )
+      v21 = vec3f( x+0, y1, z+1 )
+      v22 = vec3f( x+0, y2, z+1 )
+      v23 = vec3f( x+0, y3, z+1 )
+      v30 = vec3f( x+1, y0, z+1 )
+      v31 = vec3f( x+1, y1, z+1 )
+      v32 = vec3f( x+1, y2, z+1 )
+      v33 = vec3f( x+1, y3, z+1 )
 
+      if m0.has JJ:
+        add_point v00, cx
+        add_point v01, c0
+        add_point v11, c0
+      else:
+        add_point v00, cx
+        add_point v11, cx
+
+      if m1.has LL:
+        add_point v01, c1
+        add_point v01, c1
+        add_point v11, cx
+      else:
+        add_point v11, cx
+
+      if m2.has JJ:
+        add_point v22, cx
+        add_point v23, c2
+        add_point v33, c2
+      else:
+        add_point v22, cx
+
+      if m3.has LL:
+        add_point v23, c3
+        add_point v23, c3
+        add_point v33, cx
+      else:
+        add_point v33, cx
+
+]#
+
+#[
+      if m0.has VV:
+        add_point v00, c0
+        add_point v02, c0
+      if m0.has JJ:
+        add_point v00, c0
+        add_point v01, c0
+      if not m0.cliff():
+
+      if m1.has LL:
+        add_point v10, c1
+        add_point v11, c1
+      if m1.has VV:
+        add_point v11, c1
+        add_point v13, c1
+      if not m1.cliff():
+        add_point v11, cx
+
+      if m2.has AA:
+        add_point v20, c2
+        add_point v22, c2
+      if m2.has JJ:
+        add_point v23, c2
+        add_point v22, c2
+      if not m2.cliff():
+        add_point v22, cx
+
+      if m3.has AA:
+        add_point v31, c3
+        add_point v33, c3
+      if m3.has LL:
+        add_point v32, c3
+        add_point v33, c3
+      if not m3.cliff():
+        add_point v33, cx
+        ]#
+
+      continue
+
+
+      #[
         *-*   0 1
         |/|
         *-*   2 3
 
       ]#
 
+
       # north face
       if m2.has AA:
-        add_point x+0, y0, z+0, cx
-        add_point x+1, y1, z+0, cx
-        add_point x+0, y0, z+1, cx
-        add_point x+1, y1, z+1, cx
-        add_point x+0, y0, z+1, c2
-        add_point x+1, y1, z+1, c3
-        add_point x+0, y2, z+1, c2
-        add_point x+1, y3, z+1, c3
-        add_point x+1, y3, z+1, cx
-        add_point x+1, y0, z+1, cx
-        add_point x+1, y0, z+1, cx
-        add_point x+1, y1, z+0, cx
+        add_point v00, cx
+        add_point v11, cx
+        add_point v20, cx
+        add_point v31, cx
+        add_point v20, c2
+        add_point v31, c3
+        add_point v22, c2
+        add_point v33, c3
+        add_point v33, cx
+        add_point v30, cx
+        add_point v30, cx
+        add_point v11, cx
         continue
 
       # south face
       if m0.has VV:
-        add_point x+0, y0, z+0, cx
-        add_point x+1, y1, z+0, cx
-        add_point x+0, y0, z+0, c0
-        add_point x+1, y1, z+0, c1
-        add_point x+0, y2, z+0, c0
-        add_point x+1, y3, z+0, c1
-        add_point x+0, y2, z+0, c2
-        add_point x+1, y3, z+0, c3
-        add_point x+0, y2, z+1, cx
-        add_point x+1, y3, z+1, cx
+        add_point v00, cx
+        add_point v11, cx
+        add_point v00, c0
+        add_point v11, c1
+        add_point v02, c0
+        add_point v03, c1
+        add_point v02, c2
+        add_point v13, c3
+        add_point v22, cx
+        add_point v33, cx
       else:
         # north surface point
         add_point x+0, y0, z+0, c0
