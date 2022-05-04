@@ -14,9 +14,13 @@ let cube_verts* = @[
 ]
 echo cube_verts.len
 
+#let cube_index* = @[
+#  4, 4, 2, 6, 0, 4, 5, 6, 7,
+#  2, 3, 0, 1, 5, 6, 7, 4, 4,
+#]
+
 let cube_index* = @[
-  4, 4, 2, 6, 0, 4, 5, 6, 7,
-  2, 3, 0, 1, 5, 6, 7, 4, 4,
+  0, 0, 2, 6, 4, 7, 5, 3, 1, 2, 2, 6, 3, 7, 7, 5, 5, 4, 4,
 ]
 
 var cube_normals*: seq[Vec3f]

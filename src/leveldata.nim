@@ -292,6 +292,7 @@ proc setup_floor(level: Level) =
 
       for vert in cube_vert():
         y = level.data[level.offset(i+vert.z, j+vert.x)]
+        c = level.point_cliff_color(i+vert.z, j+vert.x)
         m = level.mask[level.offset(i+vert.z, j+vert.x)]
         if vert.y == 1:
           if vert.x == 0 and vert.z == 0:
@@ -316,12 +317,13 @@ proc setup_floor(level: Level) =
             if m.has JJ: y = y3
         else:
           y = 0
+          c = vec4f(0,0,0,1.0)
 
-        c = if y == 1: cx else: c0
         const margin = 0.9
         add_point x + vert.x.float * margin, y, z + vert.z.float * margin, c
         let n = vert.x * 4 + vert.y * 2 + vert.z
-        add_normal cube_normals[n]
+        #add_normal cube_normals[n]
+        add_normal vec3f(vert.x.float * margin, y, vert.z.float * margin).normalize()
 
       #[
       v00 = vec3f( x+0, y0, z+0 )
