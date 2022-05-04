@@ -23,6 +23,7 @@ var geoms = "".cstring
 
 if os.getEnv("CI") != "": quit()
 
+var light_id, light_power_id, light_color_id: GLint
 var width, height: int32
 width = 1600
 height = 1200
@@ -36,6 +37,11 @@ var mouse: Vec3f
 const level_squash = 0.5f
 const start_level = 1
 
+proc update_light =
+  glUniform3f light_id, game.light_pos.x, game.light_pos.y, game.light_pos.z
+  glUniform3f light_color_id, game.light_color.x, game.light_color.y, game.light_color.z
+  glUniform1f light_power_id, game.light_power
+
 proc update_camera(game: Game) =
   let level = game.get_level()
 
@@ -45,9 +51,9 @@ proc update_camera(game: Game) =
   game.camera_up = vec3f( 0f,  1.0f,  0f )
   #let target = vec3f( 10, 0, 10 )
   #let pos = vec3f( level.origin.z.float * 2, 0, level.origin.z.float * 2)
-  echo game.camera_target
   game.view.mat = lookAt( game.camera_pos, game.camera_target, game.camera_up )
   game.view.update()
+  update_light()
 
 const field_width = 10f
 proc update_fov(game: Game) =
@@ -96,35 +102,45 @@ proc follow_player(game: Game) =
 
   let y = (game.player.mesh.pos.y - level.origin.y.float) * 0.5
   game.pan_target = vec3f( coord.x, y, coord.z )
+
+  let ly = target.y * 0.5
+  game.light_pos = vec3f( target.x, ly + 60, target.z + 30)
   if game.goal:
     return
 
-proc update_mouse_lock =
-  if not game.mouse_lock:
+proc update_mouse_mode =
+  case game.mouse_mode
+  of MouseOff:
     game.window.setInputMode GLFW_CURSOR_SPECIAL, GLFWCursorNormal
-  else:
+  of MouseAcc:
     let mid = middle()
     game.window.setCursorPos mid.x, mid.y
     mouse *= 0
     game.window.setInputMode GLFW_CURSOR_SPECIAL, GLFWCursorDisabled
+  else:
+    discard
 
 proc toggle_mouse_lock(press: bool) =
   if not press:
     return
-  game.mouse_lock = not game.mouse_lock
-  update_mouse_lock()
+  if game.mouse_mode == MouseOff:
+    game.mouse_mode = MouseAcc
+  else:
+    game.mouse_mode = MouseOff
+  update_mouse_mode()
 
 proc toggle_pause(w: GLFWWindow) =
   game.paused = not game.paused
   if game.paused:
-    game.mouse_lock = false
-    update_mouse_lock()
+    game.mouse_mode = MouseOff
+    update_mouse_mode()
 
 proc init_player(game: var Game) =
   game.player.mesh = Mesh(
     vao: newVAO(),
     vert_vbo: newVBO(3, sphere),
     color_vbo: newVBO(4, sphere_colors),
+    norm_vbo: newVBO(3, sphere_normals),
     elem_vbo: newElemVBO(sphere_index),
     program: newProgram(frags, verts, geoms),
   )
@@ -300,7 +316,7 @@ proc rotate_mouse(mouse: Vec3f): Vec3f =
   result = vec3f(m.x, m.y, mouse.z)
 
 proc mouseProc(window: GLFWWindow, xpos, ypos: cdouble): void {.cdecl.} =
-  if not game.mouse_lock:
+  if game.mouse_mode == MouseOff:
     return
   let mid = middle()
   if not game.paused:
@@ -484,6 +500,13 @@ proc draw_imgui =
   game.view.mat = lookAt( game.camera_pos, game.camera_target, game.camera_up )
   igEnd()
 
+  igBegin("light")
+  igSliderFloat3 "pos"  , game.light_pos.arr, -sky, +sky
+  igSliderFloat3 "color", game.light_color.arr, 0f, 1f
+  igSliderFloat  "power", game.light_power.addr, 0f, 10000f
+  igEnd()
+  update_light()
+
   igPopFont()
 
 proc imgui_frame =
@@ -518,8 +541,10 @@ proc main =
   setup_imgui(w)
 
   game.init()
-  var light_id = glGetUniformLocation(game.player.mesh.program.id, "LightPosition_worldspace")
-  glUniform3f light_id, game.light_pos.x, game.light_pos.y, game.light_pos.z
+  light_id = glGetUniformLocation(game.player.mesh.program.id, "LightPosition_worldspace")
+  light_power_id = glGetUniformLocation(game.player.mesh.program.id, "LightPower")
+  light_color_id = glGetUniformLocation(game.player.mesh.program.id, "LightColor")
+  update_light()
 
   proc toString[T: float](f: T, prec: int = 8): string =
     result = f.formatFloat(ffDecimal, prec)
@@ -625,6 +650,7 @@ proc main =
 
   proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
     mesh.mvp.update game.proj * game.view.mat.translate(-game.pan) * mesh.model.mat
+    mesh.model.update
     mesh.program.use()
     mesh.vert_vbo.apply 0
     mesh.color_vbo.apply 1
@@ -669,7 +695,7 @@ proc main =
       if game.following:
         game.follow_player()
 
-      game.camera_physics()
+    game.camera_physics()
 
     glClear            GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
 

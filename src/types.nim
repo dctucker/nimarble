@@ -199,6 +199,12 @@ type
     INITIALS,
     HALL_OF_FAME,
 
+  MouseMode* = enum
+    MouseOff,
+    MouseAcc,
+    MousePan,
+    MouseCam,
+
   Player* = ref object
     mesh*: Mesh
 
@@ -220,8 +226,10 @@ type
     fov*: float32
     camera_target*, camera_pos*, camera_up*: Vec3f
     light_pos*: Vec3f
+    light_power*: float32
+    light_color*: Vec3f
     paused*: bool
-    mouse_lock*: bool
+    mouse_mode*: MouseMode
     following*: bool
     frame_step*: bool
     goal*: bool
@@ -234,12 +242,13 @@ proc newGame*: Game =
     level: 1,
     player: Player(),
     fov: 60f,
+    light_color: vec3f(1,1,1),
+    light_power: 1500f,
     paused : false,
-    mouse_lock : true,
+    mouse_mode : MouseAcc,
     following : true,
     frame_step : false,
     goal : false,
     dead : false,
     wireframe : false,
-    light_pos: vec3f(4,4,4),
   )

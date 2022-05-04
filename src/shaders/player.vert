@@ -23,6 +23,8 @@ void main() {
 	vec3 vertexPosition_cameraspace = ( V * M * vec4(vertexPosition_modelspace,1)).xyz;
 	EyeDirection_cameraspace = vec3(0,0,0) - vertexPosition_cameraspace;
 	Normal_cameraspace = ( V * M * vec4(vertexNormal_modelspace,0)).xyz; // Only correct if ModelMatrix does not scale the model ! Use its inverse transpose if not.
+	vec3 LightPosition_cameraspace = ( V * vec4(LightPosition_worldspace,1)).xyz;
+	LightDirection_cameraspace = LightPosition_cameraspace + EyeDirection_cameraspace;
 
 	fragmentColor = vertexColor;
 }

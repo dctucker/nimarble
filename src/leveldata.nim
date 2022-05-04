@@ -152,8 +152,8 @@ proc cliff_color(level: Level, mask: CliffMask): Vec4f =
   case mask:
   of AA, JJ: return vec4f(level.color * 0.4, 1.0)
   of LL, VV: return vec4f(level.color * 0.6, 1.0)
-  of LV, VJ: return vec4f(level.color * 0.8, 0.5)
-  of LA, AJ: return vec4f(level.color * 0.2, 0.5)
+  of LV, VJ: return vec4f(level.color * 0.8, 1.0)
+  of LA, AJ: return vec4f(level.color * 0.3, 1.0)
   of AH, VH, IL, IJ,
      IH, II, HH:     return vec4f(level.color * 0.9, 0.5)
   else:
@@ -318,7 +318,8 @@ proc setup_floor(level: Level) =
           y = 0
 
         c = if y == 1: cx else: c0
-        add_point x + vert.x.float * 0.8, y, z + vert.z.float * 0.8, c
+        const margin = 0.9
+        add_point x + vert.x.float * margin, y, z + vert.z.float * margin, c
         let n = vert.x * 4 + vert.y * 2 + vert.z
         add_normal cube_normals[n]
 
@@ -535,7 +536,7 @@ proc slope*(level: Level, x,z: float): Vec3f =
   var dx = p0 - p1
   var dz = p0 - p2
 
-  const pushback = 45
+  const pushback = 30
   if (m0 == XX) and (m2.has AA):
     dz = -pushback
 
