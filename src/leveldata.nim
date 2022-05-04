@@ -146,18 +146,23 @@ proc around*(level: Level, m: CliffMask, x,z: float): bool =
         return true
   return false
 
+proc cliff_color(level: Level, mask: CliffMask): Vec4f =
+  case mask:
+  of AA, JJ: return vec4f(level.color * 0.4, 1.0)
+  of LL, VV: return vec4f(level.color * 0.6, 1.0)
+  of LV, VJ: return vec4f(level.color * 0.8, 0.5)
+  of LA, AJ: return vec4f(level.color * 0.2, 0.5)
+  of AH, VH, IL, IJ,
+     IH, II, HH:     return vec4f(level.color * 0.9, 0.5)
+  else:
+    return vec4f(0.7)
+
 proc mask_color(level: Level, mask: CliffMask): Vec4f =
   case mask:
   of GG:
     return vec4f( 0.8, 0.8, 0.8, 1.0)
   of TU, IN, OU:
     return vec4f( level.color.x * 0.5, level.color.y * 0.5, level.color.z * 0.5, 1.0)
-  of AA, JJ: return vec4f(level.color * 0.2, 0.5)
-  of LL, VV: return vec4f(level.color * 0.5, 0.5)
-  of LV, VJ: return vec4f(level.color * 0.7, 1.0)
-  of LA, AJ: return vec4f(level.color * 0.2, 1.0)
-  of AH, VH, IL, IJ,
-     IH, II, HH:     return vec4f(level.color * 0.9, 0.5)
   of P1:
     return vec4f( 0.0, 0.0, 0.5, 0.8)
   of EM:
@@ -169,6 +174,16 @@ proc mask_color(level: Level, mask: CliffMask): Vec4f =
   else:
     return vec4f(0.7)
     #return vec4f(((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), 0.9)
+
+proc point_cliff_color(level: Level, i,j: int): Vec4f =
+  let k = level.width * i + j
+  let y = level.data[k]
+  if y == EE:
+    return vec4f(0,0,0,0)
+  elif level.around(IC, j.float - level.origin.x.float, i.float - level.origin.z.float):
+    return vec4f( 0.0, 1.0, 1.0, 1.0)
+  else:
+    return level.cliff_color(level.mask[k])
 
 proc point_color(level: Level, i,j: int): Vec4f =
   let k = level.width * i + j
@@ -182,6 +197,7 @@ proc point_color(level: Level, i,j: int): Vec4f =
 
 proc setup_floor(level: Level) =
   const nv = 8
+  var cx: Vec4f
   var lookup = newTable[(cfloat,cfloat,cfloat), Ind]()
   var verts = newSeqOfCap[cfloat]( level.width * level.height)
   var index = newSeqOfCap[Ind]( level.width * level.height * nv)
@@ -248,35 +264,62 @@ proc setup_floor(level: Level) =
       m2 = level.mask[level.offset(i+1,j+0)]
       m3 = level.mask[level.offset(i+1,j+1)]
 
-      c0 = level.point_color(i+0,j+0)
-      c1 = level.point_color(i+0,j+1)
-      c2 = level.point_color(i+1,j+0)
-      c3 = level.point_color(i+1,j+1)
+      cx = level.point_color(i+0,j+0)
+      c0 = level.point_cliff_color(i+0,j+0)
+      c1 = level.point_cliff_color(i+0,j+1)
+      c2 = level.point_cliff_color(i+1,j+0)
+      c3 = level.point_cliff_color(i+1,j+1)
 
       y0 = level.data[level.offset(i+0,j+0)]
       y1 = level.data[level.offset(i+0,j+1)]
       y2 = level.data[level.offset(i+1,j+0)]
       y3 = level.data[level.offset(i+1,j+1)]
 
-      add_point x+0, y0, z+0, c0
 
+      #[
 
-      add_point x+1, y1, z+0, c1
+        *-*   0 1
+        |/|
+        *-*   2 3
 
+      ]#
+
+      # north face
       if m2.has AA:
-        add_point x+0, y0, z+0, c2
-        add_point x+1, y1, z+0, c3
-        add_point x+0, y2, z+0, c2
-        add_point x+1, y3, z+0, c3
+        add_point x+0, y0, z+0, cx
+        add_point x+1, y1, z+0, cx
+        add_point x+0, y0, z+1, cx
+        add_point x+1, y1, z+1, cx
+        add_point x+0, y0, z+1, c2
+        add_point x+1, y1, z+1, c3
+        add_point x+0, y2, z+1, c2
+        add_point x+1, y3, z+1, c3
+        add_point x+1, y3, z+1, cx
+        add_point x+1, y0, z+1, cx
+        add_point x+1, y0, z+1, cx
+        add_point x+1, y1, z+0, cx
+        continue
 
+      # south face
       if m0.has VV:
+        add_point x+0, y0, z+0, cx
+        add_point x+1, y1, z+0, cx
+        add_point x+0, y0, z+0, c0
+        add_point x+1, y1, z+0, c1
         add_point x+0, y2, z+0, c0
         add_point x+1, y3, z+0, c1
         add_point x+0, y2, z+0, c2
         add_point x+1, y3, z+0, c3
+        add_point x+0, y2, z+1, cx
+        add_point x+1, y3, z+1, cx
+      else:
+        # north surface point
+        add_point x+0, y0, z+0, c0
+        add_point x+1, y1, z+0, c1
 
-      add_point x+0, y2, z+1, c2
-      add_point x+1, y3, z+1, c3
+        # south surface point
+        add_point x+0, y2, z+1, cx
+        add_point x+1, y3, z+1, cx
 
       if m1.has VV:
         add_point x+1, y3, z+0, c1
