@@ -224,6 +224,7 @@ type
     pan_target*: Vec3f
     window*: GLFWWindow
     fov*: float32
+    camera_distance*: float32
     camera_target*, camera_pos*, camera_up*: Vec3f
     light_pos*: Vec3f
     light_power*: float32
@@ -241,9 +242,10 @@ proc newGame*: Game =
     state: ATTRACT,
     level: 1,
     player: Player(),
-    fov: 60f,
+    fov: 30f,
     light_color: vec3f(1,1,1),
-    light_power: 1500f,
+    light_power: 1000f,
+    camera_distance: 30f,
     paused : false,
     mouse_mode : MouseAcc,
     following : true,

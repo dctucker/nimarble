@@ -45,7 +45,7 @@ proc update_light =
 proc update_camera(game: Game) =
   let level = game.get_level()
 
-  const distance = 15
+  let distance = game.camera_distance
   game.camera_target = vec3f( 0, level.origin.y.float * level_squash, 0 )
   game.camera_pos = vec3f( distance, game.camera_target.y + distance, distance )
   game.camera_up = vec3f( 0f,  1.0f,  0f )
@@ -104,7 +104,7 @@ proc follow_player(game: Game) =
   game.pan_target = vec3f( coord.x, y, coord.z )
 
   let ly = target.y * 0.5
-  game.light_pos = vec3f( target.x, ly + 60, target.z + 30)
+  game.light_pos = vec3f( target.x - 10, ly + 35, target.z - 5)
   if game.goal:
     return
 

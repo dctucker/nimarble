@@ -157,7 +157,7 @@ proc cliff_color(level: Level, mask: CliffMask): Vec4f =
   of AH, VH, IL, IJ,
      IH, II, HH:     return vec4f(level.color * 0.9, 0.5)
   else:
-    return vec4f(0.7)
+    return vec4f( 0.6, 0.6, 0.6, 1.0 )
 
 proc mask_color(level: Level, mask: CliffMask): Vec4f =
   case mask:
@@ -174,7 +174,7 @@ proc mask_color(level: Level, mask: CliffMask): Vec4f =
   of SW:
     return vec4f( 0.1, 0.6, 0.6, 1.0 )
   else:
-    return vec4f( 0.6, 0.6, 0.6, 0.7 )
+    return vec4f( 0.6, 0.6, 0.6, 1.0 )
     #return vec4f(((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), 0.9)
 
 proc point_cliff_color(level: Level, i,j: int): Vec4f =

@@ -16,7 +16,7 @@ uniform vec3  LightColor;
 void main(){
 	// Material properties
 	vec3 MaterialDiffuseColor = fragmentColor.rgb; //texture( myTextureSampler, UV ).rgb;
-	vec3 MaterialAmbientColor = 0.6 * MaterialDiffuseColor;
+	vec3 MaterialAmbientColor = 0.2 * MaterialDiffuseColor;
 	vec3 MaterialSpecularColor = vec3(1.0,1.0,1.0) * 0.3;
 
 	// Distance to the light
