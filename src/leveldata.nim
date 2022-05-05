@@ -298,22 +298,22 @@ proc setup_floor(level: Level) =
         m = level.mask[level.offset(i+vert.z, j+vert.x)]
 
         if vert.y == 1:
-          if vert.x == 0 and vert.z == 0:
+          if   vert.z == 0 and vert.x == 0:
             if m.has AA: y = y0
             if m.has VV: y = y2
             if m.has LL: y = y0
             if m.has JJ: y = y1
-          elif vert.x == 0 and vert.z == 1:
+          elif vert.z == 0 and vert.x == 1:
+            if m.has AA: y = y1
+            if m.has VV: y = y3
+            if m.has LL: y = y0
+            if m.has JJ: y = y1
+          elif vert.z == 1 and vert.x == 0:
             if m.has AA: y = y0
             if m.has VV: y = y2
             if m.has LL: y = y2
             if m.has JJ: y = y3
-          elif vert.x == 1 and vert.z == 0:
-            if m.has AA: y = y1
-            if m.has VV: y = y3
-            if m.has LL: y = y0
-            if m.has JJ: y = y3
-          elif vert.x == 1 and vert.z == 1:
+          elif vert.z == 1 and vert.x == 1:
             if m.has AA: y = y1
             if m.has VV: y = y3
             if m.has LL: y = y2
