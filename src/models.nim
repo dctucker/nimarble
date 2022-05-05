@@ -36,10 +36,10 @@ let cube_index* = @[
 
 let cube_colors* = @[
   0,
-  3, 3, 3, 3,
+  3, 4, 3, 3,
   2, 2, 2, 2,
   3, 3, 3, 3,
-  2, 2, 2, 2,
+  2, 2, 2, 4,
   1, 1, 1, 1,
   0, 0, 0, 0, 0,
 ]
@@ -117,7 +117,7 @@ proc uvSphereElements*(segments, rings: int): seq[Ind] =
 proc uvSphereColors*(segments, rings: int): seq[cfloat] =
   result = newSeqOfCap[cfloat](4 * (segments+1) * rings)
 
-  const opacity = 0.8
+  const opacity = 0.7
   for j in 0 .. segments:
     let beta = (j / segments).float32
 

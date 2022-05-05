@@ -274,11 +274,6 @@ proc setup_floor(level: Level) =
 
       if j < i - 4 or j > i + 44: continue
 
-      m0 = level.mask[level.offset(i+0,j+0)]
-      m1 = level.mask[level.offset(i+0,j+1)]
-      m2 = level.mask[level.offset(i+1,j+0)]
-      m3 = level.mask[level.offset(i+1,j+1)]
-
       cx = level.point_color(i+0,j+0)
       c0 = level.point_cliff_color(i+0,j+0)
       c1 = level.point_cliff_color(i+0,j+1)
@@ -292,6 +287,11 @@ proc setup_floor(level: Level) =
 
       var w = 0
       for vert in cube_vert():
+        m0 = level.mask[level.offset(i+0,j+0)]
+        m1 = level.mask[level.offset(i+0,j+1)]
+        m2 = level.mask[level.offset(i+1,j+0)]
+        m3 = level.mask[level.offset(i+1,j+1)]
+
         let color_w = cube_colors[w]
         y = level.data[level.offset(i+vert.z, j+vert.x)]
         c = level.point_color(i+vert.z, j+vert.x)
@@ -300,13 +300,14 @@ proc setup_floor(level: Level) =
         if vert.y == 1:
           if   vert.z == 0 and vert.x == 0:
             if m.has AA: y = y0
-            if m.has VV: y = y2
             if m.has LL: y = y0
+            if m.has VV: y = y2
             if m.has JJ: y = y1
+            if m1.has(VV) and m2.has(JJ): y = y3 # why does this work?
           elif vert.z == 0 and vert.x == 1:
             if m.has AA: y = y1
-            if m.has VV: y = y3
             if m.has LL: y = y0
+            if m.has VV: y = y3
             if m.has JJ: y = y1
           elif vert.z == 1 and vert.x == 0:
             if m.has AA: y = y0
@@ -315,9 +316,9 @@ proc setup_floor(level: Level) =
             if m.has JJ: y = y3
           elif vert.z == 1 and vert.x == 1:
             if m.has AA: y = y1
-            if m.has VV: y = y3
             if m.has LL: y = y2
             if m.has JJ: y = y3
+            if m.has VV: y = y3
         else:
           y = 0
           c = vec4f(0,0,0,1.0)
@@ -328,6 +329,8 @@ proc setup_floor(level: Level) =
           c = level.cliff_color(JJ)
         elif color_w == 3:
           c = level.cliff_color(VV)
+        elif color_w == 4:
+          c = vec4f(1,0,1,1)
 
         const margin = 0.9
         add_point x + vert.x.float * margin, y, z + vert.z.float * margin, c

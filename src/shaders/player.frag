@@ -45,7 +45,7 @@ void main(){
 	//  - Looking elsewhere -> < 1
 	float cosAlpha = clamp( dot( E,R ), 0,1 );
 	
-	float distance2i = 1f / (distance * distance);
+	float distance2i = 1.0 / (distance * distance);
 	// Ambient : simulates indirect lighting
 	// Diffuse : "color" of the object
 	// Specular : reflective highlight, like a mirror
