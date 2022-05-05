@@ -12,12 +12,14 @@ out vec4 color;
 uniform vec3  LightPosition_worldspace;
 uniform float LightPower;
 uniform vec3  LightColor;
+uniform float AmbientWeight;
+uniform vec3  SpecularColor;
 
 void main(){
 	// Material properties
 	vec3 MaterialDiffuseColor = fragmentColor.rgb; //texture( myTextureSampler, UV ).rgb;
-	vec3 MaterialAmbientColor = 0.2 * MaterialDiffuseColor;
-	vec3 MaterialSpecularColor = vec3(1.0,1.0,1.0) * 0.3;
+	vec3 MaterialAmbientColor = AmbientWeight * MaterialDiffuseColor;
+	vec3 MaterialSpecularColor = SpecularColor;
 
 	// Distance to the light
 	float distance = length( LightPosition_worldspace - Position_worldspace );
@@ -43,13 +45,14 @@ void main(){
 	//  - Looking elsewhere -> < 1
 	float cosAlpha = clamp( dot( E,R ), 0,1 );
 	
+	float distance2i = 1f / (distance * distance);
 	// Ambient : simulates indirect lighting
 	// Diffuse : "color" of the object
 	// Specular : reflective highlight, like a mirror
 	color = vec4(
 		MaterialAmbientColor  +
-		MaterialDiffuseColor  * LightColor * LightPower *        cosTheta / (distance*distance) +
-		MaterialSpecularColor * LightColor * LightPower * pow(cosAlpha,5) / (distance*distance)
+		MaterialDiffuseColor  * LightColor * LightPower *        cosTheta * distance2i +
+		MaterialSpecularColor * LightColor * LightPower * pow(cosAlpha,5) * distance2i
 		, fragmentColor.a);
 }
 

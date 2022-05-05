@@ -23,7 +23,7 @@ var geoms = "".cstring
 
 if os.getEnv("CI") != "": quit()
 
-var light_id, light_power_id, light_color_id: GLint
+var light_id, light_power_id, light_color_id, light_specular_id, light_ambient_id: GLint
 var width, height: int32
 width = 1600
 height = 1200
@@ -38,9 +38,11 @@ const level_squash = 0.5f
 const start_level = 1
 
 proc update_light =
-  glUniform3f light_id, game.light_pos.x, game.light_pos.y, game.light_pos.z
-  glUniform3f light_color_id, game.light_color.x, game.light_color.y, game.light_color.z
-  glUniform1f light_power_id, game.light_power
+  glUniform3f light_id          , game.light_pos.x, game.light_pos.y, game.light_pos.z
+  glUniform3f light_color_id    , game.light_color.x, game.light_color.y, game.light_color.z
+  glUniform3f light_specular_id , game.light_specular_color.x, game.light_specular_color.y, game.light_specular_color.z
+  glUniform1f light_power_id    , game.light_power
+  glUniform1f light_ambient_id  , game.light_ambient_weight
 
 proc update_camera(game: Game) =
   let level = game.get_level()
@@ -103,8 +105,8 @@ proc follow_player(game: Game) =
   let y = (game.player.mesh.pos.y - level.origin.y.float) * 0.5
   game.pan_target = vec3f( coord.x, y, coord.z )
 
-  let ly = target.y * 0.5
-  game.light_pos = vec3f( target.x - 10, ly + 35, target.z - 5)
+  let ly = target.y
+  game.light_pos = vec3f( target.x - 10, 100, target.z - 5)
   if game.goal:
     return
 
@@ -504,6 +506,8 @@ proc draw_imgui =
   igSliderFloat3 "pos"  , game.light_pos.arr, -sky, +sky
   igSliderFloat3 "color", game.light_color.arr, 0f, 1f
   igSliderFloat  "power", game.light_power.addr, 0f, 10000f
+  igSliderFloat  "ambient", game.light_ambient_weight.addr, 0f, 1f
+  igSliderFloat3 "specular", game.light_specular_color.arr, 0f, 1f
   igEnd()
   update_light()
 
@@ -544,6 +548,8 @@ proc main =
   light_id = glGetUniformLocation(game.player.mesh.program.id, "LightPosition_worldspace")
   light_power_id = glGetUniformLocation(game.player.mesh.program.id, "LightPower")
   light_color_id = glGetUniformLocation(game.player.mesh.program.id, "LightColor")
+  light_specular_id = glGetUniformLocation(game.player.mesh.program.id, "SpecularColor")
+  light_ambient_id = glGetUniformLocation(game.player.mesh.program.id, "AmbientWeight")
   update_light()
 
   proc toString[T: float](f: T, prec: int = 8): string =

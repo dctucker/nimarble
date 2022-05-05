@@ -229,6 +229,8 @@ type
     light_pos*: Vec3f
     light_power*: float32
     light_color*: Vec3f
+    light_specular_color*: Vec3f
+    light_ambient_weight*: float32
     paused*: bool
     mouse_mode*: MouseMode
     following*: bool
@@ -244,6 +246,8 @@ proc newGame*: Game =
     player: Player(),
     fov: 30f,
     light_color: vec3f(1,1,1),
+    light_specular_color: vec3f(1.0,0.825,0.75),
+    light_ambient_weight: 0.1f,
     light_power: 1000f,
     camera_distance: 30f,
     paused : false,
