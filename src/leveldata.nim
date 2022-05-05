@@ -5,7 +5,7 @@ import std/tables
 
 import types
 
-from models import cube_vert, cube_normals
+from models import cube_vert, cube_normals, cube_colors
 
 const EE = 0
 const sky* = 200f
@@ -162,7 +162,7 @@ proc cliff_color(level: Level, mask: CliffMask): Vec4f =
 proc mask_color(level: Level, mask: CliffMask): Vec4f =
   case mask:
   of GG:
-    return vec4f( 0.8, 0.8, 0.8, 1.0 )
+    return vec4f( 1, 1, 1, 1 )
   of TU, IN, OU:
     return vec4f( level.color.x * 0.5, level.color.y * 0.5, level.color.z * 0.5, 1.0 )
   of P1:
@@ -290,10 +290,13 @@ proc setup_floor(level: Level) =
       y2 = level.data[level.offset(i+1,j+0)]
       y3 = level.data[level.offset(i+1,j+1)]
 
+      var w = 0
       for vert in cube_vert():
+        let color_w = cube_colors[w]
         y = level.data[level.offset(i+vert.z, j+vert.x)]
-        c = level.point_cliff_color(i+vert.z, j+vert.x)
+        c = level.point_color(i+vert.z, j+vert.x)
         m = level.mask[level.offset(i+vert.z, j+vert.x)]
+
         if vert.y == 1:
           if vert.x == 0 and vert.z == 0:
             if m.has AA: y = y0
@@ -319,164 +322,20 @@ proc setup_floor(level: Level) =
           y = 0
           c = vec4f(0,0,0,1.0)
 
+        if color_w == 0 or y == 0f:
+          c = vec4f(0,0,0,0)
+        elif color_w == 2:
+          c = level.cliff_color(JJ)
+        elif color_w == 3:
+          c = level.cliff_color(VV)
+
         const margin = 0.9
         add_point x + vert.x.float * margin, y, z + vert.z.float * margin, c
         let n = vert.x * 4 + vert.y * 2 + vert.z
         #add_normal cube_normals[n]
         add_normal vec3f(vert.x.float * margin, y, vert.z.float * margin).normalize()
 
-      #[
-      v00 = vec3f( x+0, y0, z+0 )
-      v01 = vec3f( x+0, y1, z+0 )
-      v02 = vec3f( x+0, y2, z+0 )
-      v03 = vec3f( x+0, y3, z+0 )
-      v10 = vec3f( x+1, y0, z+0 )
-      v11 = vec3f( x+1, y1, z+0 )
-      v12 = vec3f( x+1, y2, z+0 )
-      v13 = vec3f( x+1, y3, z+0 )
-      v20 = vec3f( x+0, y0, z+1 )
-      v21 = vec3f( x+0, y1, z+1 )
-      v22 = vec3f( x+0, y2, z+1 )
-      v23 = vec3f( x+0, y3, z+1 )
-      v30 = vec3f( x+1, y0, z+1 )
-      v31 = vec3f( x+1, y1, z+1 )
-      v32 = vec3f( x+1, y2, z+1 )
-      v33 = vec3f( x+1, y3, z+1 )
-
-      if m0.has JJ:
-        add_point v00, cx
-        add_point v01, c0
-        add_point v11, c0
-      else:
-        add_point v00, cx
-        add_point v11, cx
-
-      if m1.has LL:
-        add_point v01, c1
-        add_point v01, c1
-        add_point v11, cx
-      else:
-        add_point v11, cx
-
-      if m2.has JJ:
-        add_point v22, cx
-        add_point v23, c2
-        add_point v33, c2
-      else:
-        add_point v22, cx
-
-      if m3.has LL:
-        add_point v23, c3
-        add_point v23, c3
-        add_point v33, cx
-      else:
-        add_point v33, cx
-
-]#
-
-#[
-      if m0.has VV:
-        add_point v00, c0
-        add_point v02, c0
-      if m0.has JJ:
-        add_point v00, c0
-        add_point v01, c0
-      if not m0.cliff():
-
-      if m1.has LL:
-        add_point v10, c1
-        add_point v11, c1
-      if m1.has VV:
-        add_point v11, c1
-        add_point v13, c1
-      if not m1.cliff():
-        add_point v11, cx
-
-      if m2.has AA:
-        add_point v20, c2
-        add_point v22, c2
-      if m2.has JJ:
-        add_point v23, c2
-        add_point v22, c2
-      if not m2.cliff():
-        add_point v22, cx
-
-      if m3.has AA:
-        add_point v31, c3
-        add_point v33, c3
-      if m3.has LL:
-        add_point v32, c3
-        add_point v33, c3
-      if not m3.cliff():
-        add_point v33, cx
-        ]#
-
-      continue
-
-
-      #[
-        *-*   0 1
-        |/|
-        *-*   2 3
-
-      ]#
-
-
-      # north face
-      if m2.has AA:
-        add_point v00, cx
-        add_point v11, cx
-        add_point v20, cx
-        add_point v31, cx
-        add_point v20, c2
-        add_point v31, c3
-        add_point v22, c2
-        add_point v33, c3
-        add_point v33, cx
-        add_point v30, cx
-        add_point v30, cx
-        add_point v11, cx
-        continue
-
-      # south face
-      if m0.has VV:
-        add_point v00, cx
-        add_point v11, cx
-        add_point v00, c0
-        add_point v11, c1
-        add_point v02, c0
-        add_point v03, c1
-        add_point v02, c2
-        add_point v13, c3
-        add_point v22, cx
-        add_point v33, cx
-      else:
-        # north surface point
-        add_point x+0, y0, z+0, c0
-        add_point x+1, y1, z+0, c1
-
-        # south surface point
-        add_point x+0, y2, z+1, cx
-        add_point x+1, y3, z+1, cx
-
-      if m1.has VV:
-        add_point x+1, y3, z+0, c1
-        add_point x+1, y3, z+0, c1
-        add_point x+1, y1, z+0, c1
-
-
-      #if level.mask[level.offset(i,j)].has JJ:
-      #  add_point(x,y,z,i,j)
-
-      #if level.mask[level.offset(i,j)].has AA:
-      #  y = level.data[level.offset(i-1,j)]
-      #  add_point(x,y,z,i,j)
-      #if level.mask[level.offset(i,j)].has LL:
-      #  y = level.data[level.offset(i,j-1)]
-      #  add_point(x,y,z,i,j)
-      #if level.mask[level.offset(i,j)].has JJ:
-      #  y = level.data[level.offset(i,j+1)]
-      #  add_point(x,y,z,i,j)
+        inc w
 
 
   level.floor_colors = colors

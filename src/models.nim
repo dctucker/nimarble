@@ -34,6 +34,17 @@ let cube_index* = @[
   7, 5, 5, 4, 4,  # reset
 ]
 
+let cube_colors* = @[
+  0,
+  3, 3, 3, 3,
+  2, 2, 2, 2,
+  3, 3, 3, 3,
+  2, 2, 2, 2,
+  1, 1, 1, 1,
+  0, 0, 0, 0, 0,
+]
+assert cube_colors.len == cube_index.len
+
 var cube_normals*: seq[Vec3f]
 for v in cube_verts:
   cube_normals.add vec3f(v.x.float - 0.5, v.y.float - 0.5, v.z.float - 0.5).normalize()

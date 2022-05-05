@@ -53,8 +53,7 @@ proc update_camera(game: Game) =
   game.camera_up = vec3f( 0f,  1.0f,  0f )
   #let target = vec3f( 10, 0, 10 )
   #let pos = vec3f( level.origin.z.float * 2, 0, level.origin.z.float * 2)
-  game.view.mat = lookAt( game.camera_pos, game.camera_target, game.camera_up )
-  game.view.update()
+  game.view.update lookAt( game.camera_pos, game.camera_target, game.camera_up )
   update_light()
 
 const field_width = 10f
@@ -106,7 +105,7 @@ proc follow_player(game: Game) =
   game.pan_target = vec3f( coord.x, y, coord.z )
 
   let ly = target.y
-  game.light_pos = vec3f( target.x - 10, 100, target.z - 5)
+  game.light_pos = vec3f( -200, 100, 200 )
   if game.goal:
     return
 
@@ -215,11 +214,19 @@ proc init(game: var Game) =
   var viewmat = game.view.mat
   game.view = game.player.mesh.program.newMatrix(viewmat, "V")
 
+  light_id = glGetUniformLocation(game.player.mesh.program.id, "LightPosition_worldspace")
+  light_power_id = glGetUniformLocation(game.player.mesh.program.id, "LightPower")
+  light_color_id = glGetUniformLocation(game.player.mesh.program.id, "LightColor")
+  light_specular_id = glGetUniformLocation(game.player.mesh.program.id, "SpecularColor")
+  light_ambient_id = glGetUniformLocation(game.player.mesh.program.id, "AmbientWeight")
+
   with game:
     level = start_level
     set_level()
     init_floor_plane()
     init_actors()
+  update_light()
+
 
 proc pan_stop =
   game.pan_acc = vec3f(0f,0f,0f)
@@ -250,6 +257,7 @@ proc pan_cw(press: bool) =
     let distance = game.camera_pos.xz.length
     let xz = distance * normalize(pos + vec2f(1,-1))
     game.camera_pos = vec3f(xz.x, y, xz.y)
+    game.view.update lookAt( game.camera_pos, game.camera_target, game.camera_up )
 
 proc pan_ccw(press: bool) =
   if press:
@@ -258,6 +266,7 @@ proc pan_ccw(press: bool) =
     let distance = game.camera_pos.xz.length
     let xz = distance * normalize(pos + vec2f(-1,1))
     game.camera_pos = vec3f(xz.x, y, xz.y)
+    game.view.update lookAt( game.camera_pos, game.camera_target, game.camera_up )
 
 proc step_frame(press: bool) =
   if press: game.frame_step = true
@@ -438,6 +447,8 @@ proc draw_goal =
   igEnd()
 
 proc draw_imgui =
+  var dirty = false
+
   igSetNextWindowSize(ImVec2(x:300f, y:400f))
   igPushFont( small_font )
 
@@ -489,27 +500,31 @@ proc draw_imgui =
   igEnd()
 
   #igSetNextWindowPos(ImVec2(x:5, y:500))
+  dirty = false
   igBegin("camera")
-  igSliderFloat3 "pos"   , game.camera_pos.arr   , -sky, sky
-  igSliderFloat3 "target", game.camera_target.arr, -sky, sky
-  igSliderFloat3 "up"    , game.camera_up.arr    , -sky, sky
+  dirty = igSliderFloat3("pos"       , game.camera_pos.arr   , -sky, sky  ) or dirty
+  dirty = igSliderFloat3("target"    , game.camera_target.arr, -sky, sky  ) or dirty
+  dirty = igSliderFloat3("up"        , game.camera_up.arr    , -sky, sky  ) or dirty
   igSeparator()
-  igSliderFloat3 "pan_target", game.pan_target.arr , -sky, sky
-  igSliderFloat3 "pan"       , game.pan.arr        , -sky, sky
-  igSliderFloat3 "pan_vel"   , game.pan_vel.arr    , -sky, sky
-  igSliderFloat3 "pan_acc"   , game.pan_acc.arr    , -sky, sky
-  igSliderFloat  "fov"       , game.fov.addr       ,   0f, 360f
-  game.view.mat = lookAt( game.camera_pos, game.camera_target, game.camera_up )
+  dirty = igSliderFloat3("pan_target", game.pan_target.arr   , -sky, sky  ) or dirty
+  dirty = igSliderFloat3("pan"       , game.pan.arr          , -sky, sky  ) or dirty
+  dirty = igSliderFloat3("pan_vel"   , game.pan_vel.arr      , -sky, sky  ) or dirty
+  dirty = igSliderFloat3("pan_acc"   , game.pan_acc.arr      , -sky, sky  ) or dirty
+  dirty = igSliderFloat( "fov"       , game.fov.addr         ,   0f, 360f ) or dirty
   igEnd()
+  if dirty:
+    game.view.mat = lookAt( game.camera_pos, game.camera_target, game.camera_up )
+    game.update_camera()
 
   igBegin("light")
-  igSliderFloat3 "pos"  , game.light_pos.arr, -sky, +sky
-  igSliderFloat3 "color", game.light_color.arr, 0f, 1f
-  igSliderFloat  "power", game.light_power.addr, 0f, 10000f
-  igSliderFloat  "ambient", game.light_ambient_weight.addr, 0f, 1f
-  igSliderFloat3 "specular", game.light_specular_color.arr, 0f, 1f
+  dirty = igSliderFloat3("pos"     , game.light_pos.arr, -sky, +sky          ) or dirty
+  dirty = igSliderFloat3("color"   , game.light_color.arr, 0f, 1f            ) or dirty
+  dirty = igSliderFloat( "power"   , game.light_power.addr, 0f, 90000f       ) or dirty
+  dirty = igSliderFloat( "ambient" , game.light_ambient_weight.addr, 0f, 1f  ) or dirty
+  dirty = igSliderFloat3("specular", game.light_specular_color.arr , 0f, 1f  ) or dirty
   igEnd()
-  update_light()
+  if dirty:
+    update_light()
 
   igPopFont()
 
@@ -545,11 +560,6 @@ proc main =
   setup_imgui(w)
 
   game.init()
-  light_id = glGetUniformLocation(game.player.mesh.program.id, "LightPosition_worldspace")
-  light_power_id = glGetUniformLocation(game.player.mesh.program.id, "LightPower")
-  light_color_id = glGetUniformLocation(game.player.mesh.program.id, "LightColor")
-  light_specular_id = glGetUniformLocation(game.player.mesh.program.id, "SpecularColor")
-  light_ambient_id = glGetUniformLocation(game.player.mesh.program.id, "AmbientWeight")
   update_light()
 
   proc toString[T: float](f: T, prec: int = 8): string =
