@@ -1,0 +1,15 @@
+#!/bin/bash
+
+inotifywait -m ~/Downloads -e moved_to --include "Marble Madness.*\.tsv$" | \
+	while read dir action file; do
+		n="${file/*level_/}"
+		n="${n/.tsv/}"
+		n="${n/_mask/}"
+		if [[ "$file" =~ "_mask" ]]; then
+			dest=levels/${n}mask.tsv
+		else
+			dest=levels/${n}.tsv
+		fi
+		echo $dest
+		mv "$dir/$file" "$dest"
+	done

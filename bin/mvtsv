@@ -1,0 +1,19 @@
+#!/bin/bash
+set -e
+
+N="$1"
+if [ -z "$N" ]; then
+  exit 2
+fi
+
+data="/home/casey/Downloads/Marble Madness levels - level_${N}.tsv"
+mask="/home/casey/Downloads/Marble Madness levels - level_${N}_mask.tsv"
+
+if [ -r "$data" ]; then
+  echo $data
+  mv "$data" "levels/${N}.tsv"
+fi
+if [ -r "$mask" ]; then
+  echo $mask
+  mv "$mask" "levels/${N}mask.tsv"
+fi
