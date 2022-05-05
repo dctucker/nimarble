@@ -129,8 +129,6 @@ for l in 1..levels.high:
   echo "Level ", $l
   levels[l].validate()
 
-var current_level*: int32
-
 proc xlat_coord(level: Level, x,z: float): (int,int) =
   return ((z.floor+level.origin.z.float).int, (x.floor+level.origin.x.float).int)
 
@@ -312,8 +310,8 @@ proc setup_floor(level: Level) =
           elif vert.z == 1 and vert.x == 0:
             if m.has AA: y = y0
             if m.has VV: y = y2
-            if m.has LL: y = y2
             if m.has JJ: y = y3
+            if m.has LL: y = y2
           elif vert.z == 1 and vert.x == 1:
             if m.has AA: y = y1
             if m.has LL: y = y2
@@ -332,7 +330,7 @@ proc setup_floor(level: Level) =
         elif color_w == 4:
           c = vec4f(1,0,1,1)
 
-        const margin = 0.9
+        const margin = 0.98
         add_point x + vert.x.float * margin, y, z + vert.z.float * margin, c
         let n = vert.x * 4 + vert.y * 2 + vert.z
         #add_normal cube_normals[n]

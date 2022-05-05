@@ -313,6 +313,7 @@ const keymap = {
   GLFWKey.L            : toggle_mouse_lock ,
   GLFWKey.Home         : pan_ccw           ,
   GLFWKey.End          : pan_cw            ,
+  #GLFWKey.O            : reload_level      ,
 }.toTable
 
 proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mods: int32): void {.cdecl.} =
@@ -487,7 +488,7 @@ proc draw_imgui =
   igSliderInt    "respawns"     , respawns.addr, 0.int32, 10.int32
   igCheckBox     "following"    , game.following.addr
   igCheckBox     "wireframe"    , game.wireframe.addr
-  igSliderInt    "current_level", game.level.addr, 1.int32, n_levels.int32 - 1
+  igSliderInt    "level"        , game.level.addr, 1.int32, n_levels.int32 - 1
 
   #igText("average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
   igEnd()
