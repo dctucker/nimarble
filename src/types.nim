@@ -242,6 +242,7 @@ type
     frame_step*: bool
     goal*: bool
     dead*: bool
+    god*: bool
     wireframe*: bool
 
 proc newGame*: Game =
@@ -263,7 +264,6 @@ proc newGame*: Game =
     dead : false,
     wireframe : false,
   )
-
 
 
 type

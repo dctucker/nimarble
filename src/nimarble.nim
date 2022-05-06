@@ -296,6 +296,9 @@ proc pause(press: bool) =
 proc do_quit(press: bool) =
   game.window.setWindowShouldClose(true)
 
+proc toggle_god(press: bool) =
+  if press: game.god = not game.god
+
 const keymap = {
   GLFWKey.R            : do_reset_player   ,
   GLFWKey.Up           : pan_up            ,
@@ -316,6 +319,7 @@ const keymap = {
   GLFWKey.L            : toggle_mouse_lock ,
   GLFWKey.Home         : pan_ccw           ,
   GLFWKey.End          : pan_cw            ,
+  GLFWKey.G            : toggle_god        ,
   #GLFWKey.O            : reload_level      ,
 }.toTable
 
@@ -607,6 +611,10 @@ proc main =
       traction = 0f
     else:
       traction = 1f
+    
+    if game.god:
+      ramp_a *= 0
+      traction = 1f
 
     let flat = ramp.length == 0
     let nonzero = level.point_height(x.floor, z.floor) > 0f
@@ -624,6 +632,8 @@ proc main =
     mesh.acc += mass * vec3f(m.x, 0, -m.y) * traction  # mouse motion
     mesh.acc += vec3f(0, (1f-traction) * gravity, 0)   # free fall
     mesh.acc += ramp_a * traction
+
+    if game.god: mesh.acc.y = 0
 
     let lateral_dir = mesh.vel.xz.normalize()
     let lateral_vel = mesh.vel.xz.length()
