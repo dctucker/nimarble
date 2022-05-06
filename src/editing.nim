@@ -1,3 +1,4 @@
+from nimgl/glfw import GLFWKey
 import nimgl/imgui
 import glm
 
@@ -6,6 +7,42 @@ import types
 const highlight_width = 16
 const line_height = 16
 const dark_color = ImVec4(x: 0.2, y: 0.2, z: 0.2, w: 1.0)
+
+proc inc(editor: Editor) =
+  let o = editor.level.offset(editor.row, editor.col)
+  let h = editor.level.data[o]
+  editor.level.data[o] = (h + 1).int.float
+
+proc dec(editor: Editor) =
+  let o = editor.level.offset(editor.row, editor.col)
+  let h = editor.level.data[o]
+  editor.level.data[o] = (h - 1).int.float
+
+proc handle_key*(editor: Editor, key: int32): bool =
+  #let io = igGetIO()
+  #if not io.wantCaptureMouse:
+  #  return
+
+  result = true
+  case key
+  of GLFWKey.E:
+    editor.focused = false
+    igFocusWindow(nil)
+
+  of GLFWKey.Up:
+    editor.row.dec
+  of GLFWKey.Down:
+    editor.row.inc
+  of GLFWKey.Left:
+    editor.col.dec
+  of GLFWKey.Right:
+    editor.col.inc
+  of GLFWKey.Minus, GLFWKey.KpSubtract:
+    editor.dec
+  of GLFWKey.Equal, GLFWKey.KpAdd:
+    editor.inc
+  else:
+    result = false
 
 proc draw*(editor: Editor) =
   igSetNextWindowSizeConstraints ImVec2(x:300, y:300), ImVec2(x: 1000, y: 1000)
@@ -69,6 +106,8 @@ proc draw*(editor: Editor) =
       igTextColored(color.value, text)
 
     igText("")
+
+    editor.focused = igIsWindowFocused()
 
   igEnd()
 

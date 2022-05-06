@@ -270,4 +270,5 @@ type
   Editor* = ref object
     level*: Level
     row*, col*: int
+    focused*: bool
 

@@ -299,6 +299,14 @@ proc do_quit(press: bool) =
 proc toggle_god(press: bool) =
   if press: game.god = not game.god
 
+proc focus_editor(press: bool) =
+  if press:
+    editor.focused = not editor.focused
+    if editor.focused:
+      igSetWindowFocus("editor")
+    else:
+      igFocusWindow(nil)
+
 const keymap = {
   GLFWKey.R            : do_reset_player   ,
   GLFWKey.Up           : pan_up            ,
@@ -320,13 +328,20 @@ const keymap = {
   GLFWKey.Home         : pan_ccw           ,
   GLFWKey.End          : pan_cw            ,
   GLFWKey.G            : toggle_god        ,
+  GLFWKey.E            : focus_editor      ,
   #GLFWKey.O            : reload_level      ,
 }.toTable
 
 proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mods: int32): void {.cdecl.} =
+  let press = (action != GLFWRelease)
+
+  if editor.focused and press:
+    if editor.handle_key(key):
+      return
+
   if keymap.hasKey key:
     game.window = window
-    keymap[key](action != GLFWRelease)
+    keymap[key](press)
 
 proc rotate_mouse(mouse: Vec3f): Vec3f =
   const th = radians(45f)
@@ -535,8 +550,9 @@ proc draw_imgui =
   if dirty:
     update_light()
 
-  editor.col = level.origin.x + coord.x.floor.int
-  editor.row = level.origin.z + coord.z.floor.int
+  if not editor.focused:
+    editor.col = level.origin.x + coord.x.floor.int
+    editor.row = level.origin.z + coord.z.floor.int
   editor.draw()
 
   igPopFont()
