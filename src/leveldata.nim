@@ -219,9 +219,10 @@ proc setup_floor(level: Level) =
     result = level.width * i + j
 
   proc add_normal(n: Vec3f) =
-    normals.add n.x
-    normals.add n.y
-    normals.add n.z
+    let nn = n.normalize()
+    normals.add nn.x
+    normals.add nn.y
+    normals.add nn.z
 
   proc add_color(c: Vec4f) =
     colors.add c.x
@@ -282,7 +283,23 @@ proc setup_floor(level: Level) =
       y1 = level.data[level.offset(i+0,j+1)]
       y2 = level.data[level.offset(i+1,j+0)]
       y3 = level.data[level.offset(i+1,j+1)]
+      let normal = normalize(
+        vec3f(-1, -1, -1) * -y0 +
+        vec3f(+1, -1, -1) * -y1 +
+        vec3f(-1, -1, +1) * -y2 +
+        vec3f(+1, -1, +1) * -y3
+      )
 
+#[
+      let na = vec3f(-1, 1 + y0 - y0, -1)
+      let nb = vec3f(+1, 1 + y1 - y0, -1)
+      let nc = vec3f(-1, 1 + y2 - y0, +1)
+      let nd = vec3f(+1, 1 + y3 - y0, +1)
+      let normal = normalize(
+        (nb - na).cross(nc - nb) +
+        (nc - nb).cross(nd - nc)
+      )
+]#
       var w = 0
       for vert in cube_vert():
         m0 = level.mask[level.offset(i+0,j+0)]
@@ -294,6 +311,8 @@ proc setup_floor(level: Level) =
         y = level.data[level.offset(i+vert.z, j+vert.x)]
         c = level.point_color(i+vert.z, j+vert.x)
         m = level.mask[level.offset(i+vert.z, j+vert.x)]
+
+        const abyss = -1
 
         if vert.y == 1:
           if   vert.z == 0 and vert.x == 0:
@@ -318,23 +337,33 @@ proc setup_floor(level: Level) =
             if m.has JJ: y = y3
             if m.has VV: y = y3
         else:
-          y = 0
-          c = vec4f(0,0,0,1.0)
+          y = abyss
+          #c = vec4f(0,0,0,1.0)
 
-        if color_w == 0 or y == 0f:
+        if y == 0:
+          y = abyss
+
+        if color_w == 0:
           c = vec4f(0,0,0,0)
-        elif color_w == 2:
+        if (color_w == 2) or (color_w == 4):
           c = level.cliff_color(JJ)
-        elif color_w == 3:
+        elif (color_w == 3) or (color_w == 5):
           c = level.cliff_color(VV)
         elif color_w == 4:
           c = vec4f(1,0,1,1)
 
+        case color_w
+        of 3: add_normal vec3f(0,0,-1)
+        of 4: add_normal vec3f(1,0,0)
+        of 5: add_normal vec3f(0,0,1)
+        of 2: add_normal vec3f(-1,0,0)
+        of 1: add_normal normal
+        else: add_normal vec3f(0,0,0)
+
         const margin = 0.98
         add_point x + vert.x.float * margin, y, z + vert.z.float * margin, c
         let n = vert.x * 4 + vert.y * 2 + vert.z
-        #add_normal cube_normals[n]
-        add_normal vec3f(vert.x.float * margin, y, vert.z.float * margin).normalize()
+        #add_normal vec3f(vert.x.float - 0.5, y, vert.z.float - 0.5)
 
         inc w
 

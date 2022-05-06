@@ -26,28 +26,64 @@ echo cube_verts.len
 
 let cube_index* = @[
   0,
-  0, 2, 4, 6,     # north
-  4, 6, 5, 7,     # east
-  5, 7, 1, 3,     # south
+  0, 2, 4, 6, 6, 4,   # north
+  4, 6, 5, 7, 7, 5,    # east
+  5, 7, 1, 3, 3, 1,    # south
   1, 3, 0, 2,     # west
-  2, 6, 3, 7,     # top
+  2, 6, 3, 7, 7,  # top
   7, 5, 5, 4, 4,  # reset
+]
+
+let cube_normals* = @[
+  cube_verts[0],
+  # north
+  -cube_verts[1],
+  -cube_verts[1],
+  -cube_verts[1],
+  -cube_verts[1],
+  -cube_verts[0],
+  -cube_verts[0],
+
+  # east
+  cube_verts[4],
+  cube_verts[4],
+  cube_verts[4],
+  cube_verts[4],
+  cube_verts[0],
+  cube_verts[0],
+
+  # south
+  cube_verts[1],
+  cube_verts[1],
+  cube_verts[1],
+  cube_verts[1],
+  cube_verts[0],
+  cube_verts[0],
+
+  # west
+  -cube_verts[4],
+  -cube_verts[4],
+  -cube_verts[4],
+  -cube_verts[4],
+
+  # top
+
 ]
 
 let cube_colors* = @[
   0,
-  3, 4, 3, 3,
+  3, 3, 3, 3, 0, 0,
+  4, 4, 4, 4, 0, 0,
+  5, 5, 5, 5, 0, 0,
   2, 2, 2, 2,
-  3, 3, 3, 3,
-  2, 2, 2, 4,
-  1, 1, 1, 1,
+  1, 1, 1, 1, 0,
   0, 0, 0, 0, 0,
 ]
 assert cube_colors.len == cube_index.len
 
-var cube_normals*: seq[Vec3f]
-for v in cube_verts:
-  cube_normals.add vec3f(v.x.float - 0.5, v.y.float - 0.5, v.z.float - 0.5).normalize()
+#var cube_normals*: seq[Vec3f]
+#for v in cube_verts:
+#  cube_normals.add vec3f(v.x.float - 0.5, v.y.float - 0.5, v.z.float - 0.5).normalize()
 
 iterator cube_vert*(): Vec3i =
   for i in cube_index:
