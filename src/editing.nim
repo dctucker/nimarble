@@ -5,6 +5,7 @@ import types
 
 const highlight_width = 16
 const line_height = 16
+const dark_color = ImVec4(x: 0.2, y: 0.2, z: 0.2, w: 1.0)
 
 proc draw*(editor: Editor) =
   igSetNextWindowSizeConstraints ImVec2(x:300, y:300), ImVec2(x: 1000, y: 1000)
@@ -16,7 +17,7 @@ proc draw*(editor: Editor) =
 
   igSameLine()
 
-  var color: ImVec4
+  var color: ImColor
   var draw_list = igGetWindowDrawList()
 
   proc draw_cursor =
@@ -36,10 +37,16 @@ proc draw*(editor: Editor) =
       if txt.len < 2: txt = " " & txt
       var text = txt.cstring
 
-      const period = 10
-      let hmod = 0.6 + 0.1 * sin( 2 * 3.14159265 * (h mod period).float / period.float )
-      color = ImVec4(x:hmod, y:hmod, z:hmod, w:1)
-      igTextColored(color , text)
+      if h == 0:
+        color.value = dark_color
+      else:
+        const period = 8
+        let hmod = (h mod period).float / period.float
+        let hdiv = (h div period).float / 16f
+
+        color.addr.setHSV( hmod, 0.5, 0.4 + hdiv, 1.0 )
+
+      igTextColored(color.value, text)
 
     igSameLine()
     igText(" | ")
@@ -57,9 +64,9 @@ proc draw*(editor: Editor) =
 
       #const period = 10
       #let hmod = 0.6 + 0.1 * sin( 2 * 3.14159265 * (h mod period).float / period.float )
-      color = ImVec4(x: 0.8, y: 0.8, z: 0.8, w: 1.0)
-      if m == XX: color = ImVec4(x: 0.2, y: 0.2, z: 0.2, w: 1.0)
-      igTextColored(color, text)
+      color.value = ImVec4(x: 0.8, y: 0.8, z: 0.8, w: 1.0)
+      if m == XX: color.value = dark_color
+      igTextColored(color.value, text)
 
     igText("")
 

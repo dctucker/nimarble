@@ -495,6 +495,7 @@ proc draw_imgui =
   igSliderInt    "respawns"     , respawns.addr, 0.int32, 10.int32
   igCheckBox     "following"    , game.following.addr
   igCheckBox     "wireframe"    , game.wireframe.addr
+  igCheckBox     "god"          , game.god.addr
   igSliderInt    "level"        , game.level.addr, 1.int32, n_levels.int32 - 1
 
   #igText("average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
@@ -611,7 +612,7 @@ proc main =
       traction = 0f
     else:
       traction = 1f
-    
+
     if game.god:
       ramp_a *= 0
       traction = 1f
