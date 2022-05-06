@@ -300,12 +300,17 @@ proc toggle_god(press: bool) =
   if press: game.god = not game.god
 
 proc focus_editor(press: bool) =
-  if press:
-    editor.focused = not editor.focused
-    if editor.focused:
-      igSetWindowFocus("editor")
-    else:
-      igFocusWindow(nil)
+  if not press: return
+
+  editor.focused = not editor.focused
+  game.god = editor.focused
+
+  if editor.focused:
+    igSetWindowFocus("editor")
+  else:
+    #game.player.mesh.pos.z = editor.row.float
+    #game.player.mesh.pos.x = editor.col.float
+    igFocusWindow(nil)
 
 const keymap = {
   GLFWKey.R            : do_reset_player   ,
@@ -553,6 +558,9 @@ proc draw_imgui =
   if not editor.focused:
     editor.col = level.origin.x + coord.x.floor.int
     editor.row = level.origin.z + coord.z.floor.int
+  else:
+    game.player.mesh.pos.x = editor.col.float - level.origin.x.float
+    game.player.mesh.pos.z = editor.row.float - level.origin.z.float
   editor.draw()
 
   igPopFont()
@@ -611,7 +619,6 @@ proc main =
     let cur_mask = level.mask_at(x,z)
     #stdout.write "\27[K"
 
-    game.goal = game.goal or cur_mask == GG
     game.dead = mesh.pos.y < 10f or (mesh.acc.xz.length == 0f and mesh.vel.y <= -max_vel.y)
 
     let ramp = level.slope(x,z) * level_squash * level_squash
@@ -650,7 +657,7 @@ proc main =
     mesh.acc += vec3f(0, (1f-traction) * gravity, 0)   # free fall
     mesh.acc += ramp_a * traction
 
-    if game.god: mesh.acc.y = 0
+    if game.god: mesh.acc.y = gravity * 0.125
 
     let lateral_dir = mesh.vel.xz.normalize()
     let lateral_vel = mesh.vel.xz.length()
@@ -688,6 +695,8 @@ proc main =
     if level.around(TU,x,z):
       mesh.vel.y = clamp(mesh.vel.y, -max_vel.y, max_vel.y)
 
+    if game.god: return # a god neither dies nor achieves goals
+
     if game.dead:
       respawn(true)
 
@@ -699,6 +708,8 @@ proc main =
         game.goal = false
         event_time = 0
         next_level(true)
+    else:
+      game.goal = game.goal or cur_mask == GG
 
   proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
     mesh.mvp.update game.proj * game.view.mat.translate(-game.pan) * mesh.model.mat

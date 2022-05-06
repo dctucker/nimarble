@@ -86,6 +86,12 @@ proc validate(level: Level) =
         if level.data[i*w+j+1] == data:
           mask.unsloped()
 
+proc find_span(level: Level): int =
+  for i in 0..<level.height:
+    for j in 0..<level.width:
+      if level.data[ level.offset(i,j) ] != 0:
+        result = max(result, j - i)
+
 proc init_level(data_src, mask_src: string, color: Vec3f): Level =
   var i,j: int
 
@@ -103,6 +109,45 @@ proc init_level(data_src, mask_src: string, color: Vec3f): Level =
   )
   result.origin = data.find_p1(mask, width, height)
   result.actors = data.find_actors(mask, width, height)
+  result.span   = result.find_span()
+
+proc save*(level: Level) =
+  proc format(value: float): string =
+    if value == value.floor:
+      return $value.int
+    else:
+      return $value
+
+  let span = level.span
+  let data = level.data
+  let mask = level.mask
+  let h = level.height
+  let w = level.width
+
+  let data_out = "levels/data.tsv".open(fmWrite)
+  let mask_out = "levels/mask.tsv".open(fmWrite)
+  for i in 0..<h:
+    for j in 0..<w:
+      if j >= i and j <= i + span:
+        data_out.write data[i * w + j].format
+      data_out.write "\t"
+    data_out.setFilePos data_out.getFilePos - 1
+    data_out.write "\n"
+
+    for j in 0..<w:
+      let height = data[i * w + j].format
+      let value = mask[i * w + j]
+      if j >= i and j <= i + span:
+        if value == XX:
+          mask_out.write height
+        else:
+          mask_out.write $value
+      mask_out.write "\t"
+    mask_out.setFilePos mask_out.getFilePos - 1
+    mask_out.write "\n"
+
+  data_out.close()
+  mask_out.close()
 
 const level_0_src      = staticRead("../levels/0.tsv")
 const level_0_mask_src = staticRead("../levels/0mask.tsv")
@@ -195,17 +240,30 @@ proc point_color(level: Level, i,j: int): Vec4f =
   else:
     return level.mask_color(level.mask[k])
 
+proc add_normal(normals: var seq[cfloat], n: Vec3f) =
+  let nn = n.normalize()
+  normals.add nn.x
+  normals.add nn.y
+  normals.add nn.z
+
+proc add_color(colors: var seq[cfloat], c: Vec4f) =
+  colors.add c.x
+  colors.add c.y
+  colors.add c.z
+  colors.add c.w
+
 proc setup_floor(level: Level) =
   const nv = 8
+  let dim = level.height * level.width
   var cx: Vec4f
-  var normals = newSeqOfCap[cfloat]( level.width * level.height )
-  var lookup = newTable[(cfloat,cfloat,cfloat), Ind]()
-  var verts = newSeqOfCap[cfloat]( level.width * level.height)
-  var index = newSeqOfCap[Ind]( level.width * level.height * nv)
-  var colors = newSeqOfCap[cfloat](level.width * level.height * nv * 4)
+  var normals = newSeqOfCap[cfloat]( dim )
+  var lookup  = newTable[(cfloat,cfloat,cfloat), Ind]()
+  var verts   = newSeqOfCap[cfloat]( dim )
+  var index   = newSeqOfCap[Ind]( nv * dim )
+  var colors  = newSeqOfCap[cfloat]( 4 * nv * dim )
   var n = 0.Ind
-  var x,y,z: float
-  var y0, y1, y2, y3: float
+  var x,z: float
+  var y, y0, y1, y2, y3: float
   var m, m0, m1, m2, m3: CliffMask
   var c, c0, c1, c2, c3: Vec4f
   var v00, v01, v02, v03: Vec3f
@@ -213,40 +271,11 @@ proc setup_floor(level: Level) =
   var v20, v21, v22, v23: Vec3f
   var v30, v31, v32, v33: Vec3f
 
-  proc add_normal(n: Vec3f) =
-    let nn = n.normalize()
-    normals.add nn.x
-    normals.add nn.y
-    normals.add nn.z
-
-  proc add_color(c: Vec4f) =
-    colors.add c.x
-    colors.add c.y
-    colors.add c.z
-    colors.add c.w
-
-  proc add_color(i,j:int) =
-    let c = level.point_color(i,j)
-    colors.add c.x
-    colors.add c.y
-    colors.add c.z
-    colors.add c.w
-
   proc add_index =
     index.add n
     inc n
   proc add_index(nn: Ind) =
     index.add nn
-
-  proc add_point(x,y,z: cfloat, i,j:int) =
-    if lookup.hasKey((x,y,z)):
-      index.add lookup[(x,y,z)]
-    else:
-      verts.add x
-      verts.add y
-      verts.add z
-      add_index()
-      add_color(i,j)
 
   proc add_point(x,y,z: cfloat, c: Vec4f) =
     if lookup.hasKey((x,y,z)):
@@ -255,11 +284,9 @@ proc setup_floor(level: Level) =
       verts.add x
       verts.add y
       verts.add z
-      add_index()
-      add_color(c)
 
-  proc add_point(v: Vec3f, c: Vec4f) =
-    add_point(v.x, v.y, v.z, c)
+      add_index()
+      colors.add_color c
 
   for i in  1..<level.height-1:
     for j in 1..<level.width-1:
@@ -278,20 +305,22 @@ proc setup_floor(level: Level) =
       y1 = level.data[level.offset(i+0,j+1)]
       y2 = level.data[level.offset(i+1,j+0)]
       y3 = level.data[level.offset(i+1,j+1)]
+
       #let normal = normalize(
-      let normals = @[
+      let surface_normals = @[
         vec3f(-1, -1, -1) * -y0,
         vec3f(+1, -1, -1) * -y1,
         vec3f(-1, -1, +1) * -y2,
         vec3f(+1, -1, +1) * -y3,
       ]
-      var normal: Vec3f # = normals[0] + normals[1] + normals[2] + normals[3]
+      var surface_normal: Vec3f # = surface_normals[0] + surface_normals[1] + surface_normals[2] + surface_normals[3]
+      var normal: Vec3f         # = surface_normals[0] + surface_normals[1] + surface_normals[2] + surface_normals[3]
 
       let na = vec3f(-1, y0 - y0, -1).normalize()
       let nc = vec3f(+1, y1 - y0, -1).normalize()
       let nb = vec3f(-1, y2 - y0, +1).normalize()
       let nd = vec3f(+1, y3 - y0, +1).normalize()
-      normal = normalize(
+      surface_normal = normalize(
         (nb - na).cross(nc - nb) +
         (nc - nb).cross(nd - nc)
       )
@@ -317,25 +346,25 @@ proc setup_floor(level: Level) =
             if m.has VV: y = y2
             if m.has JJ: y = y1
             if m1.has(VV) and m2.has(JJ): y = y3 # why does this work?
-            #normal = normals[0]
+            #normal = surface_normals[0]
           elif vert.z == 0 and vert.x == 1:
             if m.has AA: y = y1
             if m.has LL: y = y0
             if m.has VV: y = y3
             if m.has JJ: y = y1
-            #normal = normals[1]
+            #normal = surface_normals[1]
           elif vert.z == 1 and vert.x == 0:
             if m.has AA: y = y0
             if m.has VV: y = y2
             if m.has JJ: y = y3
             if m.has LL: y = y2
-            #normal = normals[2]
+            #normal = surface_normals[2]
           elif vert.z == 1 and vert.x == 1:
             if m.has AA: y = y1
             if m.has LL: y = y2
             if m.has JJ: y = y3
             if m.has VV: y = y3
-            #normal = normals[3]
+            #normal = surface_normals[3]
         else:
           y = abyss
           #c = vec4f(0,0,0,1.0)
@@ -343,27 +372,27 @@ proc setup_floor(level: Level) =
         if y == 0:
           y = abyss
 
-        if color_w == 0:
-          c = vec4f(0,0,0,0)
-        if (color_w == 2) or (color_w == 4):
-          c = level.cliff_color(JJ)
-        elif (color_w == 3) or (color_w == 5):
-          c = level.cliff_color(VV)
-        elif color_w == 4:
-          c = vec4f(1,0,1,1)
+        c = case color_w
+        of 0   : vec4f(0,0,0,0)
+        of 2, 4: level.cliff_color(JJ)
+        of 3, 5: level.cliff_color(VV)
+        else   : c
 
-        case color_w
-        of 3: add_normal vec3f(0,0,-1)
-        of 4: add_normal vec3f(1,0,0)
-        of 5: add_normal vec3f(0,0,1)
-        of 2: add_normal vec3f(-1,0,0)
-        of 1: add_normal normal
-        else: add_normal vec3f(0,0,0)
+        #if color_w == 4: c = vec4f(1,0,1,1)
+
+        normal = case color_w
+        of 3: vec3f(  0,  0, -1 )
+        of 4: vec3f( +1,  0,  0 )
+        of 5: vec3f(  0,  0, +1 )
+        of 2: vec3f( -1,  0,  0 )
+        of 1: surface_normal
+        else: vec3f(  0,  0,  0 )
+
+        normals.add_normal surface_normal
 
         const margin = 0.98
         add_point x + vert.x.float * margin, y, z + vert.z.float * margin, c
         let n = vert.x * 4 + vert.y * 2 + vert.z
-        #add_normal vec3f(vert.x.float - 0.5, y, vert.z.float - 0.5)
 
         inc w
 

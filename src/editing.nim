@@ -1,22 +1,100 @@
 from nimgl/glfw import GLFWKey
 import nimgl/imgui
 import glm
+import strutils
 
+from leveldata import save
 import types
 
 const highlight_width = 16
 const line_height = 16
 const dark_color = ImVec4(x: 0.2, y: 0.2, z: 0.2, w: 1.0)
 
+proc offset(editor: Editor, row, col: int): int =
+  result = editor.level.offset( row, col )
+
+proc offset(editor: Editor): int =
+  result = editor.offset( editor.row, editor.col )
+
 proc inc(editor: Editor) =
-  let o = editor.level.offset(editor.row, editor.col)
+  let o = editor.offset()
   let h = editor.level.data[o]
   editor.level.data[o] = (h + 1).int.float
+  editor.dirty = true
 
 proc dec(editor: Editor) =
-  let o = editor.level.offset(editor.row, editor.col)
+  let o = editor.offset()
   let h = editor.level.data[o]
   editor.level.data[o] = (h - 1).int.float
+  editor.dirty = true
+
+proc leave(editor: Editor) =
+  editor.focused = false
+  igFocusWindow(nil)
+
+proc set_data(editor: Editor, value: float) =
+  let o = editor.offset()
+  let cur = editor.level.data[o]
+  editor.level.data[o] = value
+
+proc set_number(editor: Editor, num: int) =
+  if editor.input.len < 2:
+    editor.input = "  "
+  editor.input = editor.input[1..^1] & $num
+  let value: float = (editor.input.strip()).parseFloat
+  editor.set_data value
+  echo editor.input
+
+proc set_mask(editor: Editor, mask: CliffMask) =
+  var m = mask
+  let o = editor.offset()
+  let cur = editor.level.mask[o]
+  if   cur == LL:
+    if   mask == VV: m = LV
+    elif mask == AA: m = LA
+  elif cur == AA:
+    if   mask == JJ: m = AJ
+    if   mask == HH: m = AH
+  elif cur == VV:
+    if   mask == JJ: m = VJ
+    elif mask == HH: m = VH
+  elif cur == II:
+    if   mask == JJ: m = IJ
+    elif mask == LL: m = IL
+    elif mask == HH: m = IH
+  elif cur == RH or cur == RI:
+    if   mask == HH: m = RH
+    elif mask == II: m = RI
+  elif cur == EY or cur == EM:
+    if   mask == AA: m = EA
+
+  editor.level.mask[o] = m
+
+proc cursor(editor: Editor, drow, dcol: int) =
+  if editor.brush:
+    let cur_o = editor.offset()
+    let next_o = editor.offset( editor.row+drow, editor.col+dcol )
+    if 0 < next_o and next_o < editor.level.data.len:
+      editor.level.data[ next_o ] = editor.level.data[ cur_o ]
+      editor.level.mask[ next_o ] = editor.level.mask[ cur_o ]
+      editor.dirty = true
+
+  editor.row += drow
+  editor.col += dcol
+
+proc toggle_brush*(editor: Editor) =
+  editor.brush = not editor.brush
+
+proc delete(editor: Editor) =
+  editor.dirty = true
+  let o = editor.offset()
+  if editor.level.data[o] == 0:
+    editor.level.mask[o] = XX
+    return
+  editor.level.data[o] = 0
+
+proc save(editor: Editor) =
+  editor.level.save()
 
 proc handle_key*(editor: Editor, key: int32): bool =
   #let io = igGetIO()
@@ -25,24 +103,44 @@ proc handle_key*(editor: Editor, key: int32): bool =
 
   result = true
   case key
-  of GLFWKey.E:
-    editor.focused = false
-    igFocusWindow(nil)
-
-  of GLFWKey.Up:
-    editor.row.dec
-  of GLFWKey.Down:
-    editor.row.inc
-  of GLFWKey.Left:
-    editor.col.dec
-  of GLFWKey.Right:
-    editor.col.inc
-  of GLFWKey.Minus, GLFWKey.KpSubtract:
-    editor.dec
-  of GLFWKey.Equal, GLFWKey.KpAdd:
-    editor.inc
-  else:
-    result = false
+  of GLFWKey.E          : editor.leave()
+  of GLFWKey.B          : editor.toggle_brush()
+  of GLFWKey.Up         : editor.cursor(-1, 0)
+  of GLFWKey.Down       : editor.cursor(+1, 0)
+  of GLFWKey.Left       : editor.cursor( 0,-1)
+  of GLFWKey.Right      : editor.cursor( 0,+1)
+  of GLFWKey.PageUp     : editor.cursor(-1,-1)
+  of GLFWKey.PageDown   : editor.cursor(+1,+1)
+  of GLFWKey.Home       : editor.cursor(+1,-1)
+  of GLFWKey.End        : editor.cursor(-1,+1)
+  of GLFWKey.Minus      ,
+     GLFWKey.KpSubtract : editor.dec
+  of GLFWKey.Equal      ,
+     GLFWKey.KpAdd      : editor.inc
+  of GLFWKey.K0,
+     K1, K2, K3,
+     K4, K5, K6,
+     K7, K8, K9         : editor.set_number(key.ord - GLFWKey.K0.ord)
+  of GLFWKey.Backspace  : editor.delete()
+  of GLFWKey.X          : editor.set_mask(XX)
+  of GLFWKey.C          : editor.set_mask(IC)
+  of GLFWKey.L          : editor.set_mask(LL)
+  of GLFWKey.V          : editor.set_mask(VV)
+  of GLFWKey.A          : editor.set_mask(AA)
+  of GLFWKey.J          : editor.set_mask(JJ)
+  of GLFWKey.I          : editor.set_mask(II)
+  of GLFWKey.H          : editor.set_mask(HH)
+  of GLFWKey.R          : editor.set_mask(RH)
+  of GLFWKey.G          : editor.set_mask(GG)
+  of GLFWKey.S          : editor.set_mask(SW)
+  of GLFWKey.P          : editor.set_mask(P1)
+  of GLFWKey.M          : editor.set_mask(EM)
+  of GLFWKey.Y          : editor.set_mask(EY)
+  of GLFWKey.T          : editor.set_mask(TU)
+  of GLFWKey.N          : editor.set_mask(IN)
+  of GLFWKey.O          : editor.set_mask(OU)
+  of GLFWKey.W          : editor.save()
+  else                  : result = false
 
 proc draw*(editor: Editor) =
   igSetNextWindowSizeConstraints ImVec2(x:300, y:300), ImVec2(x: 1000, y: 1000)
@@ -86,7 +184,8 @@ proc draw*(editor: Editor) =
       igTextColored(color.value, text)
 
     igSameLine()
-    igText(" | ")
+    color.value = ImVec4(x: 0, y: 0, z: 0, w: 1.0)
+    igTextColored(color.value, " | ")
 
     for j in editor.col - 5 .. editor.col + 5:
       igSameLine()

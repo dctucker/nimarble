@@ -167,7 +167,7 @@ type
     mesh*: Mesh
 
   Level* = ref object
-    width*, height*: int
+    width*, height*, span*: int
     origin*: Vec3i
     data*: seq[float]
     mask*: seq[CliffMask]
@@ -271,4 +271,7 @@ type
     level*: Level
     row*, col*: int
     focused*: bool
+    input*: string
+    brush*: bool
+    dirty*: bool
 
