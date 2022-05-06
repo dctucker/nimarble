@@ -283,23 +283,24 @@ proc setup_floor(level: Level) =
       y1 = level.data[level.offset(i+0,j+1)]
       y2 = level.data[level.offset(i+1,j+0)]
       y3 = level.data[level.offset(i+1,j+1)]
-      let normal = normalize(
-        vec3f(-1, -1, -1) * -y0 +
-        vec3f(+1, -1, -1) * -y1 +
-        vec3f(-1, -1, +1) * -y2 +
-        vec3f(+1, -1, +1) * -y3
-      )
+      #let normal = normalize(
+      let normals = @[
+        vec3f(-1, -1, -1) * -y0,
+        vec3f(+1, -1, -1) * -y1,
+        vec3f(-1, -1, +1) * -y2,
+        vec3f(+1, -1, +1) * -y3,
+      ]
+      var normal: Vec3f # = normals[0] + normals[1] + normals[2] + normals[3]
 
-#[
-      let na = vec3f(-1, 1 + y0 - y0, -1)
-      let nb = vec3f(+1, 1 + y1 - y0, -1)
-      let nc = vec3f(-1, 1 + y2 - y0, +1)
-      let nd = vec3f(+1, 1 + y3 - y0, +1)
-      let normal = normalize(
+      let na = vec3f(-1, y0 - y0, -1).normalize()
+      let nc = vec3f(+1, y1 - y0, -1).normalize()
+      let nb = vec3f(-1, y2 - y0, +1).normalize()
+      let nd = vec3f(+1, y3 - y0, +1).normalize()
+      normal = normalize(
         (nb - na).cross(nc - nb) +
         (nc - nb).cross(nd - nc)
       )
-]#
+
       var w = 0
       for vert in cube_vert():
         m0 = level.mask[level.offset(i+0,j+0)]
@@ -321,21 +322,25 @@ proc setup_floor(level: Level) =
             if m.has VV: y = y2
             if m.has JJ: y = y1
             if m1.has(VV) and m2.has(JJ): y = y3 # why does this work?
+            #normal = normals[0]
           elif vert.z == 0 and vert.x == 1:
             if m.has AA: y = y1
             if m.has LL: y = y0
             if m.has VV: y = y3
             if m.has JJ: y = y1
+            #normal = normals[1]
           elif vert.z == 1 and vert.x == 0:
             if m.has AA: y = y0
             if m.has VV: y = y2
             if m.has JJ: y = y3
             if m.has LL: y = y2
+            #normal = normals[2]
           elif vert.z == 1 and vert.x == 1:
             if m.has AA: y = y1
             if m.has LL: y = y2
             if m.has JJ: y = y3
             if m.has VV: y = y3
+            #normal = normals[3]
         else:
           y = abyss
           #c = vec4f(0,0,0,1.0)

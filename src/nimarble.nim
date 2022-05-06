@@ -105,7 +105,7 @@ proc follow_player(game: Game) =
   game.pan_target = vec3f( coord.x, y, coord.z )
 
   let ly = target.y
-  game.light_pos = vec3f( -200, 100, 200 )
+  game.light_pos = vec3f( 0, 200, 200 )
   if game.goal:
     return
 
