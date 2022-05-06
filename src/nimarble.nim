@@ -459,10 +459,10 @@ proc draw_imgui =
   #var lateral = player.pos.xz.length()
   #igSliderFloat "lateral_d", lateral.addr     , -sky, sky
   #igSliderFloat3 "respawn_pos" , game.respawn_pos.arr  , -sky, sky
-  igSliderFloat3 "pos"     , game.player.mesh.pos.arr   , -sky, sky
-  igSliderFloat3 "vel"     , game.player.mesh.vel.arr   , -sky, sky
-  igSliderFloat3 "acc"     , game.player.mesh.acc.arr   , -sky, sky
-  igSliderFloat4 "rot"     , game.player.mesh.rot.arr   , -sky, sky
+  igDragFloat3 "pos"     , game.player.mesh.pos.arr   , 0.125, -sky, sky
+  igDragFloat3 "vel"     , game.player.mesh.vel.arr   , 0.125, -sky, sky
+  igDragFloat3 "acc"     , game.player.mesh.acc.arr   , 0.125, -sky, sky
+  igDragFloat4 "rot"     , game.player.mesh.rot.arr   , 0.125, -sky, sky
   #igSliderFloat3 "normal" , game.player.mesh.normal.arr, -1.0, 1.0
 
   let level = game.get_level()
@@ -482,7 +482,7 @@ proc draw_imgui =
   igText(m2)
 
   var sl = level.slope(coord.x, coord.z)
-  igSliderFloat3 "slope"     , sl.arr         , -sky, sky
+  igDragFloat3 "slope"     , sl.arr         , -sky, sky
 
   var respawns = game.respawns.int32
   igSliderInt    "respawns"     , respawns.addr, 0.int32, 10.int32
@@ -497,32 +497,32 @@ proc draw_imgui =
   igBegin("actor 0")
   if level.actors.len > 0:
     var actor0 = level.actors[0].mesh
-    igSliderFloat3 "pos"     , actor0.pos.arr   , -sky, sky
+    igDragFloat3 "pos"     , actor0.pos.arr   , -sky, sky
   igEnd()
 
   #igSetNextWindowPos(ImVec2(x:5, y:500))
   dirty = false
   igBegin("camera")
-  dirty = igSliderFloat3("pos"       , game.camera_pos.arr   , -sky, sky  ) or dirty
-  dirty = igSliderFloat3("target"    , game.camera_target.arr, -sky, sky  ) or dirty
-  dirty = igSliderFloat3("up"        , game.camera_up.arr    , -sky, sky  ) or dirty
+  dirty = igDragFloat3("pos"       , game.camera_pos.arr   , 0.125, -sky, sky  ) or dirty
+  dirty = igDragFloat3("target"    , game.camera_target.arr, 0.125, -sky, sky  ) or dirty
+  dirty = igDragFloat3("up"        , game.camera_up.arr    , 0.125, -sky, sky  ) or dirty
   igSeparator()
-  dirty = igSliderFloat3("pan_target", game.pan_target.arr   , -sky, sky  ) or dirty
-  dirty = igSliderFloat3("pan"       , game.pan.arr          , -sky, sky  ) or dirty
-  dirty = igSliderFloat3("pan_vel"   , game.pan_vel.arr      , -sky, sky  ) or dirty
-  dirty = igSliderFloat3("pan_acc"   , game.pan_acc.arr      , -sky, sky  ) or dirty
-  dirty = igSliderFloat( "fov"       , game.fov.addr         ,   0f, 360f ) or dirty
+  dirty = igDragFloat3("pan_target", game.pan_target.arr   , 0.125, -sky, sky  ) or dirty
+  dirty = igDragFloat3("pan"       , game.pan.arr          , 0.125, -sky, sky  ) or dirty
+  dirty = igDragFloat3("pan_vel"   , game.pan_vel.arr      , 0.125, -sky, sky  ) or dirty
+  dirty = igDragFloat3("pan_acc"   , game.pan_acc.arr      , 0.125, -sky, sky  ) or dirty
+  dirty = igDragFloat( "fov"       , game.fov.addr         , 0.125,   0f, 360f ) or dirty
   igEnd()
   if dirty:
     game.view.mat = lookAt( game.camera_pos, game.camera_target, game.camera_up )
     game.update_camera()
 
   igBegin("light")
-  dirty = igSliderFloat3("pos"     , game.light_pos.arr, -sky, +sky          ) or dirty
-  dirty = igSliderFloat3("color"   , game.light_color.arr, 0f, 1f            ) or dirty
-  dirty = igSliderFloat( "power"   , game.light_power.addr, 0f, 90000f       ) or dirty
-  dirty = igSliderFloat( "ambient" , game.light_ambient_weight.addr, 0f, 1f  ) or dirty
-  dirty = igSliderFloat3("specular", game.light_specular_color.arr , 0f, 1f  ) or dirty
+  dirty = igDragFloat3("pos"     , game.light_pos.arr             , 0.125, -sky, +sky          ) or dirty
+  dirty = igColorEdit3("color"   , game.light_color.arr         ) or dirty
+  dirty = igDragFloat( "power"   , game.light_power.addr          , 100f, 0f, 900000f       ) or dirty
+  dirty = igDragFloat( "ambient" , game.light_ambient_weight.addr , 0.125, 0f, 1f  ) or dirty
+  dirty = igColorEdit3("specular", game.light_specular_color.arr ) or dirty
   igEnd()
   if dirty:
     update_light()
