@@ -213,11 +213,6 @@ proc setup_floor(level: Level) =
   var v20, v21, v22, v23: Vec3f
   var v30, v31, v32, v33: Vec3f
 
-  proc offset[T:Ordinal](level: Level, i,j: T): T =
-    if j >= level.width or j < 0: return 0
-    if i >= level.height or i < 0: return 0
-    result = level.width * i + j
-
   proc add_normal(n: Vec3f) =
     let nn = n.normalize()
     normals.add nn.x

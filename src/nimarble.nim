@@ -10,6 +10,7 @@ import glm
 import types
 import models
 import leveldata
+import editing
 import contrib/heightmap
 
 const vert_source = readFile("src/shaders/player.vert")
@@ -31,6 +32,7 @@ var aspect: float32 = width / height
 
 proc middle(): Vec2f = vec2f(width.float * 0.5f, height.float * 0.5f)
 
+var editor: Editor
 var game: Game
 var mouse: Vec3f
 
@@ -208,6 +210,7 @@ proc set_level(game: Game) =
     pan = game.pan_target
     reset_view()
     following = f
+  editor.level = game.get_level()
 
 proc init(game: var Game) =
   game.init_player()
@@ -527,6 +530,10 @@ proc draw_imgui =
   if dirty:
     update_light()
 
+  editor.col = level.origin.x + coord.x.floor.int
+  editor.row = level.origin.z + coord.z.floor.int
+  editor.draw()
+
   igPopFont()
 
 proc imgui_frame =
@@ -554,6 +561,7 @@ var time = 0.0f
 var event_time = 0.0f
 
 proc main =
+  editor = Editor()
   game = newGame()
   let w = setup_glfw()
 

@@ -180,6 +180,7 @@ type
     clock*: int
     actors*: seq[Actor]
 
+
 proc cliff*(a: CliffMask): bool =
   return a.ord < GG.ord
 
@@ -188,6 +189,10 @@ proc has*(a,b: CliffMask): bool =
   if a.cliff:
     return (a.ord and b.ord) != 0
 
+proc offset*[T:Ordinal](level: Level, i,j: T): T =
+  if j >= level.width or j < 0: return 0
+  if i >= level.height or i < 0: return 0
+  result = level.width * i + j
 
 type
   GameState* = enum
@@ -258,3 +263,11 @@ proc newGame*: Game =
     dead : false,
     wireframe : false,
   )
+
+
+
+type
+  Editor* = ref object
+    level*: Level
+    row*, col*: int
+
