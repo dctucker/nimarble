@@ -286,6 +286,7 @@ type
     row*, col*: int
     selection*: Vec4i
     cut*: Vec4i
+    width*: int
     focused*: bool
     input*: string
     cursor_mask*: bool

@@ -31,6 +31,13 @@ proc in_selection(editor: Editor, i,j: int): bool =
            j >= editor.selection.y and
            j <= editor.selection.w
 
+proc all_ints(editor: Editor): bool =
+  result = true
+  for o in editor.selection_offsets:
+    let h = editor.level.data[o]
+    if h - h.floor > 0:
+      return false
+
 proc cursor_in_selection(editor: Editor): bool =
   result = editor.in_selection(editor.row, editor.col)
 
@@ -43,23 +50,33 @@ proc set_data(editor: Editor, value: float) =
   editor.level.data[o] = value
   editor.dirty = true
 
-proc inc(editor: Editor) =
+proc inc_dec(editor: Editor, d: float) =
+  editor.dirty = true
   if editor.cursor_in_selection():
     for o in editor.selection_offsets():
       let h = editor.level.data[o]
-      editor.level.data[o] = (h + 1).int.float
+      var value = h + d
+      if d == 1:
+        value = value.int.float
+      editor.level.data[o] = value
   else:
     let h = editor.get_data()
-    editor.set_data (h + 1).int.float
+    var value = h + d
+    if d == 1:
+      value = value.int.float
+    editor.set_data (h + d).int.float
+
+proc inc(editor: Editor) =
+  var d = 1f
+  if editor.input.contains(".") or not editor.all_ints():
+    d = 0.125
+  editor.inc_dec(d)
 
 proc dec(editor: Editor) =
-  if editor.cursor_in_selection():
-    for o in editor.selection_offsets():
-      let h = editor.level.data[o]
-      editor.level.data[o] = (h - 1).int.float
-  else:
-    let h = editor.get_data()
-    editor.set_data (h - 1).int.float
+  var d = -1f
+  if editor.input.contains(".") or not editor.all_ints():
+    d = -0.125
+  editor.inc_dec(d)
 
 proc set_number(editor: Editor, num: int) =
   var value: float
@@ -421,6 +438,13 @@ proc draw*(editor: Editor) =
   let highlight_color = style.colors[ImGuiCol.TextSelectedBg.int32].igGetColorU32
   let cursor_color    = style.colors[ImGuiCol.Text.int32].igGetColorU32
   let brush_color     = ImVec4(x: 0.4, y: 0.2, z: 0.2, w: 0.7).igGetColorU32
+  var wh = igGetWindowWidth()
+  wh -= style.windowPadding.x * 2 - style.framePadding.x * 2
+  wh -= highlight_width * 2
+  wh /= 2
+  wh /= highlight_width + style.itemSpacing.x
+
+  editor.width = wh.floor.int
 
   igSameLine()
 
@@ -444,8 +468,7 @@ proc draw*(editor: Editor) =
 
   var color: ImColor
 
-  const edit_width = 20
-  const ew2 = edit_width div 2
+  let ew2 = editor.width div 2
   for i in editor.row - ew2 .. editor.row + ew2:
 
     for j in editor.col - ew2 .. editor.col + ew2:
