@@ -150,7 +150,8 @@ proc save*(level: Level, filename: string) =
         data_out.write data[i * w + j].format
       data_out.write "\t"
     data_out.setFilePos data_out.getFilePos - 1
-    data_out.write "\n"
+    if i < h - 1:
+      data_out.write "\l"
 
     for j in 0..<w:
       let height = data[i * w + j].format
@@ -162,7 +163,8 @@ proc save*(level: Level, filename: string) =
           mask_out.write $value
       mask_out.write "\t"
     mask_out.setFilePos mask_out.getFilePos - 1
-    mask_out.write "\n"
+    if i < h - 1:
+      mask_out.write "\l"
 
   data_out.close()
   mask_out.close()

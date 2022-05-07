@@ -269,6 +269,7 @@ proc newGame*: Game =
 type
   Editor* = ref object
     level*: Level
+    name*: string
     row*, col*: int
     selection*: Vec4i
     cut*: Vec4i
