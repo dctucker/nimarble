@@ -182,7 +182,7 @@ type
 
 
 proc cliff*(a: CliffMask): bool =
-  return a.ord < GG.ord
+  return XX.ord < a.ord and a.ord < GG.ord
 
 proc has*(a,b: CliffMask): bool =
   result = a == b

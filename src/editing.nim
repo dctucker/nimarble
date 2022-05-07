@@ -49,24 +49,16 @@ proc set_mask(editor: Editor, mask: CliffMask) =
   var m = mask
   let o = editor.offset()
   let cur = editor.level.mask[o]
-  if   cur == LL:
-    if   mask == VV: m = LV
-    elif mask == AA: m = LA
-  elif cur == AA:
-    if   mask == JJ: m = AJ
-    if   mask == HH: m = AH
-  elif cur == VV:
-    if   mask == JJ: m = VJ
-    elif mask == HH: m = VH
-  elif cur == II:
-    if   mask == JJ: m = IJ
-    elif mask == LL: m = IL
-    elif mask == HH: m = IH
-  elif cur == RH or cur == RI:
+  if   cur == RH or cur == RI:
     if   mask == HH: m = RH
     elif mask == II: m = RI
   elif cur == EY or cur == EM:
     if   mask == AA: m = EA
+  elif mask.cliff():
+    if cur.cliff():
+      m = CliffMask(cur.ord xor mask.ord)
+    else:
+      m = mask
 
   editor.level.mask[o] = m
 
