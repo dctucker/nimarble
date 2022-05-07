@@ -331,7 +331,7 @@ proc draw*(editor: Editor) =
   proc draw_cursor =
     var pos: ImVec2
     igGetCursorScreenPosNonUDT(pos.addr)
-    draw_list.addRect pos, ImVec2(x: pos.x + highlight_width, y: pos.y + line_height), cursor_color
+    draw_list.addRect ImVec2(x: pos.x - 3, y: pos.y - 1), ImVec2(x: pos.x + 3 + highlight_width, y: pos.y + line_height + 1), cursor_color
 
   proc draw_selected =
     var pos: ImVec2
@@ -339,7 +339,7 @@ proc draw*(editor: Editor) =
     var color = highlight_color
     if editor.brush:
       color = brush_color
-    draw_list.addRectFilled pos, ImVec2(x: pos.x + highlight_width, y: pos.y + line_height), color
+    draw_list.addRectFilled ImVec2(x: pos.x - 3, y: pos.y - 1), ImVec2(x: pos.x + 3 + highlight_width, y: pos.y + line_height + 1), color
 
   for i in editor.row - 5 .. editor.row + 5:
     for j in editor.col - 5 .. editor.col + 5:
