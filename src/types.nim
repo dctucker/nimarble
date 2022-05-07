@@ -270,6 +270,7 @@ type
   Editor* = ref object
     level*: Level
     row*, col*: int
+    selection*: Vec4i
     focused*: bool
     input*: string
     brush*: bool

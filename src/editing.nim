@@ -1,4 +1,4 @@
-from nimgl/glfw import GLFWKey
+from nimgl/glfw import GLFWKey, GLFWModShift
 import nimgl/imgui
 import glm
 import strutils
@@ -62,17 +62,77 @@ proc set_mask(editor: Editor, mask: CliffMask) =
 
   editor.level.mask[o] = m
 
+proc select_one(editor: Editor) =
+  editor.selection.x = editor.row.int32
+  editor.selection.y = editor.col.int32
+  editor.selection.z = editor.row.int32
+  editor.selection.w = editor.col.int32
+
+
+proc brush_selection(editor: Editor, i,j: int) =
+  if editor.row < editor.selection.x or editor.row > editor.selection.z or editor.col < editor.selection.y or editor.col > editor.selection.w:
+    return
+
+  let dim = (editor.selection.z - editor.selection.x) * (editor.selection.w - editor.selection.y)
+  var stamp_data = newSeqOfCap[float](dim)
+  var stamp_mask = newSeqOfCap[CliffMask](dim)
+  for i in editor.selection.x .. editor.selection.z:
+    for j in editor.selection.y .. editor.selection.w:
+      let o = editor.offset(i,j)
+      stamp_data.add editor.level.data[o]
+      stamp_mask.add editor.level.mask[o]
+
+  var oi, oj: int
+  if   i < editor.selection.x: oi = i - editor.selection.x
+  elif i > editor.selection.z: oi = i - editor.selection.z
+  if   j < editor.selection.y: oj = j - editor.selection.y
+  elif j > editor.selection.w: oj = j - editor.selection.w
+
+  var k = 0
+  for i in editor.selection.x .. editor.selection.z:
+    for j in editor.selection.y .. editor.selection.w:
+      let o = editor.offset(i + oi, j + oj)
+      editor.level.data[o] = stamp_data[k]
+      editor.level.mask[o] = stamp_mask[k]
+      k.inc
+
+  editor.selection.x += oi.int32
+  editor.selection.y += oj.int32
+  editor.selection.z += oi.int32
+  editor.selection.w += oj.int32
+
 proc cursor(editor: Editor, drow, dcol: int) =
   if editor.brush:
-    let cur_o = editor.offset()
-    let next_o = editor.offset( editor.row+drow, editor.col+dcol )
-    if 0 < next_o and next_o < editor.level.data.len:
-      editor.level.data[ next_o ] = editor.level.data[ cur_o ]
-      editor.level.mask[ next_o ] = editor.level.mask[ cur_o ]
-      editor.dirty = true
+    if editor.selection.x != editor.selection.z or editor.selection.y != editor.selection.w:
+      editor.brush_selection(editor.row + drow, editor.col + dcol)
+    else:
+      let cur_o = editor.offset()
+      let next_o = editor.offset( editor.row+drow, editor.col+dcol )
+      if 0 < next_o and next_o < editor.level.data.len:
+        editor.level.data[ next_o ] = editor.level.data[ cur_o ]
+        editor.level.mask[ next_o ] = editor.level.mask[ cur_o ]
+        editor.dirty = true
 
   editor.row += drow
   editor.col += dcol
+
+  if editor.selection.xy == editor.selection.zw:
+    editor.select_one()
+
+proc select_more(editor: Editor, drow, dcol: int) =
+  editor.brush = false
+
+  if editor.row < editor.selection.x or editor.row > editor.selection.z or editor.col < editor.selection.y or editor.col > editor.selection.w:
+    editor.select_one()
+
+  editor.row += drow
+  editor.col += dcol
+
+  if editor.row < editor.selection.x: editor.selection.x = editor.row.int32
+  if editor.col < editor.selection.y: editor.selection.y = editor.col.int32
+
+  if editor.row > editor.selection.z: editor.selection.z = editor.row.int32
+  if editor.col > editor.selection.w: editor.selection.w = editor.col.int32
 
 proc toggle_brush*(editor: Editor) =
   editor.brush = not editor.brush
@@ -88,12 +148,25 @@ proc delete(editor: Editor) =
 proc save(editor: Editor) =
   editor.level.save()
 
-proc handle_key*(editor: Editor, key: int32): bool =
+proc handle_key*(editor: Editor, key: int32, mods: int32): bool =
   #let io = igGetIO()
   #if not io.wantCaptureMouse:
   #  return
 
   result = true
+  if (mods and GLFWModShift) != 0:
+    case key
+    of GLFWKey.Up         : editor.select_more(-1, 0)
+    of GLFWKey.Down       : editor.select_more(+1, 0)
+    of GLFWKey.Left       : editor.select_more( 0,-1)
+    of GLFWKey.Right      : editor.select_more( 0,+1)
+    of GLFWKey.PageUp     : editor.select_more(-1,-1)
+    of GLFWKey.PageDown   : editor.select_more(+1,+1)
+    of GLFWKey.Home       : editor.select_more(+1,-1)
+    of GLFWKey.End        : editor.select_more(-1,+1)
+    else                  : editor.select_one()
+    return
+
   case key
   of GLFWKey.E          : editor.leave()
   of GLFWKey.B          : editor.toggle_brush()
@@ -134,6 +207,7 @@ proc handle_key*(editor: Editor, key: int32): bool =
   of GLFWKey.W          : editor.save()
   else                  : result = false
 
+
 proc draw*(editor: Editor) =
   igSetNextWindowSizeConstraints ImVec2(x:300, y:300), ImVec2(x: 1000, y: 1000)
   igBegin("editor")
@@ -141,6 +215,7 @@ proc draw*(editor: Editor) =
   if level == nil: return
   var style = igGetStyle()
   let highlight_color = style.colors[ImGuiCol.TextSelectedBg.int32].igGetColorU32
+  let cursor_color    = style.colors[ImGuiCol.Text.int32].igGetColorU32
 
   igSameLine()
 
@@ -148,6 +223,11 @@ proc draw*(editor: Editor) =
   var draw_list = igGetWindowDrawList()
 
   proc draw_cursor =
+    var pos: ImVec2
+    igGetCursorScreenPosNonUDT(pos.addr)
+    draw_list.addRect pos, ImVec2(x: pos.x + highlight_width, y: pos.y + line_height), cursor_color
+
+  proc draw_selected =
     var pos: ImVec2
     igGetCursorScreenPosNonUDT(pos.addr)
     draw_list.addRectFilled pos, ImVec2(x: pos.x + highlight_width, y: pos.y + line_height), highlight_color
@@ -158,6 +238,9 @@ proc draw*(editor: Editor) =
 
       if i == editor.row and j == editor.col:
         draw_cursor()
+
+      if i >= editor.selection.x and i <= editor.selection.z and j >= editor.selection.y and j <= editor.selection.w:
+        draw_selected()
 
       let h = level.data[level.offset(i,j)].int
       var txt = $h

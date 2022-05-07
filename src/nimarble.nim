@@ -341,7 +341,7 @@ proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mod
   let press = (action != GLFWRelease)
 
   if editor.focused and press:
-    if editor.handle_key(key):
+    if editor.handle_key(key, mods):
       return
 
   if keymap.hasKey key:
