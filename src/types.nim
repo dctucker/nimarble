@@ -1,5 +1,6 @@
 import nimgl/[glfw,opengl]
 import glm
+import std/tables
 
 type
   Ind* = uint32
@@ -45,8 +46,14 @@ proc newVBO*[T](n: cint, data: var seq[T]): VBO[T] =
   result.dimensions = n
   result.n_verts = data.len.cint div n
   glGenBuffers 1, result.id.addr
-  glBindBuffer GL_ARRAY_BUFFER, result.id
-  glBufferData GL_ARRAY_BUFFER, cint(T.sizeof * result.data.len), result.data[0].addr, GL_STATIC_DRAW
+  glBindBuffer    GL_ARRAY_BUFFER, result.id
+  glBufferData    GL_ARRAY_BUFFER, cint(T.sizeof * result.data.len), result.data[0].addr, GL_DYNAMIC_DRAW
+
+proc update*[T](vbo: var VBO[T], data: var seq[T]) =
+  vbo.data = data
+  glBindBuffer    GL_ARRAY_BUFFER, vbo.id
+  glBufferData    GL_ARRAY_BUFFER, cint(T.sizeof * vbo.data.len), vbo.data[0].addr, GL_DYNAMIC_DRAW
+  #glBufferSubData GL_ARRAY_BUFFER, 0, cint(T.sizeof * vbo.data.len), vbo.data[0].addr
 
 proc newElemVBO*[T](data: var seq[T]): VBO[T] =
   result.data = data
@@ -166,12 +173,18 @@ type
     origin*: Vec3i
     mesh*: Mesh
 
+  CubePoint* = object
+    height*: float
+    color*: Vec4f
+    normal*: Vec3f
+
   Level* = ref object
     width*, height*, span*: int
     origin*: Vec3i
     data*: seq[float]
     mask*: seq[CliffMask]
     color*: Vec3f
+    floor_lookup*: TableRef[(cfloat, cfloat, cfloat), Ind]
     floor_colors*: seq[cfloat]
     floor_index*: seq[Ind]
     floor_verts*: seq[cfloat]

@@ -5,7 +5,7 @@ import std/tables
 
 import types
 
-from models import cube_vert, cube_normals, cube_colors
+from models import cube_vert, cube_verts, cube_colors, cube_index
 
 const EE = 0
 const sky* = 200f
@@ -272,15 +272,130 @@ proc add_color(colors: var seq[cfloat], c: Vec4f) =
   colors.add c.z
   colors.add c.w
 
+proc cube_point(level: Level, i,j, w: int): CubePoint =
+  let vert = cube_verts[ cube_index[w] ]
+
+  let m0 = level.mask[level.offset(i+0,j+0)]
+  let m1 = level.mask[level.offset(i+0,j+1)]
+  let m2 = level.mask[level.offset(i+1,j+0)]
+  let m3 = level.mask[level.offset(i+1,j+1)]
+
+  let y0 = level.data[level.offset(i+0,j+0)]
+  let y1 = level.data[level.offset(i+0,j+1)]
+  let y2 = level.data[level.offset(i+1,j+0)]
+  let y3 = level.data[level.offset(i+1,j+1)]
+
+  let color_w = cube_colors[w]
+  var y = level.data[level.offset(i+vert.z, j+vert.x)]
+  var c = level.point_color(i+vert.z, j+vert.x)
+  var m = level.mask[level.offset(i+vert.z, j+vert.x)]
+
+  let surface_normals = @[
+    vec3f(-1, -1, -1) * -y0,
+    vec3f(+1, -1, -1) * -y1,
+    vec3f(-1, -1, +1) * -y2,
+    vec3f(+1, -1, +1) * -y3,
+  ]
+  var surface_normal: Vec3f # = surface_normals[0] + surface_normals[1] + surface_normals[2] + surface_normals[3]
+  var normal: Vec3f         # = surface_normals[0] + surface_normals[1] + surface_normals[2] + surface_normals[3]
+
+  let na = vec3f(-1, y0 - y0, -1).normalize()
+  let nc = vec3f(+1, y1 - y0, -1).normalize()
+  let nb = vec3f(-1, y2 - y0, +1).normalize()
+  let nd = vec3f(+1, y3 - y0, +1).normalize()
+  surface_normal = normalize(
+    (nb - na).cross(nc - nb) +
+    (nc - nb).cross(nd - nc)
+  )
+
+  const abyss = -1
+
+  if vert.y == 1:
+    if   vert.z == 0 and vert.x == 0:
+      if m.has AA: y = y0
+      if m.has LL: y = y0
+      if m.has VV: y = y2
+      if m.has JJ: y = y1
+      if m1.has(VV) and m2.has(JJ): y = y3 # why does this work?
+      #normal = surface_normals[0]
+    elif vert.z == 0 and vert.x == 1:
+      if m.has AA: y = y1
+      if m.has LL: y = y0
+      if m.has VV: y = y3
+      if m.has JJ: y = y1
+      #normal = surface_normals[1]
+    elif vert.z == 1 and vert.x == 0:
+      if m.has AA: y = y0
+      if m.has VV: y = y2
+      if m.has JJ: y = y3
+      if m.has LL: y = y2
+      #normal = surface_normals[2]
+    elif vert.z == 1 and vert.x == 1:
+      if m.has AA: y = y1
+      if m.has LL: y = y2
+      if m.has JJ: y = y3
+      if m.has VV: y = y3
+      #normal = surface_normals[3]
+  else:
+    y = abyss
+    #c = vec4f(0,0,0,1.0)
+
+  if y == 0:
+    y = abyss
+
+  c = case color_w
+  of 0   : vec4f(0,0,0,0)
+  of 2, 4: level.cliff_color(JJ)
+  of 3, 5: level.cliff_color(VV)
+  else   : c
+
+  #if color_w == 4: c = vec4f(1,0,1,1)
+
+  normal = case color_w
+  of 3: vec3f(  0,  0, -1 )
+  of 4: vec3f( +1,  0,  0 )
+  of 5: vec3f(  0,  0, +1 )
+  of 2: vec3f( -1,  0,  0 )
+  of 1: surface_normal
+  else: vec3f(  0,  0,  0 )
+
+  return CubePoint( height: y, color: c, normal: normal )
+
+proc update_vbos*(level: Level) =
+  level.floor_plane.vert_vbo.update  level.floor_verts
+  level.floor_plane.color_vbo.update level.floor_colors
+  level.floor_plane.norm_vbo.update  level.floor_normals
+
+proc calculate_vbos*(level: Level, i,j: int) =
+  let color_span  = 4 * 33
+  let normal_span = 3 * 33
+  let vert_span   = 3 * 33
+
+  if i < 1 or j < 1 or j < i - 4 or j > i + 44: return
+
+  let o = (i-1) * 48 + (j-7)
+  for w in 22 .. 26:
+    let p = level.cube_point(i, j, w)
+    for n in cube_index.low .. cube_index.high:
+      if cube_index[n] == cube_index[w]:
+        level.floor_verts[   o *   vert_span + 3*n + 1 ] = p.height
+
+    level.floor_colors[  o *  color_span + 4*w + 0 ] = p.color.x
+    level.floor_colors[  o *  color_span + 4*w + 1 ] = p.color.y
+    level.floor_colors[  o *  color_span + 4*w + 2 ] = p.color.z
+    level.floor_colors[  o *  color_span + 4*w + 3 ] = p.color.w
+    level.floor_normals[ o * normal_span + 3*w + 0 ] = p.normal.x
+    level.floor_normals[ o * normal_span + 3*w + 1 ] = p.normal.y
+    level.floor_normals[ o * normal_span + 3*w + 2 ] = p.normal.z
+
 proc setup_floor(level: Level) =
-  const nv = 8
   let dim = level.height * level.width
   var cx: Vec4f
   var normals = newSeqOfCap[cfloat]( dim )
   var lookup  = newTable[(cfloat,cfloat,cfloat), Ind]()
-  var verts   = newSeqOfCap[cfloat]( dim )
-  var index   = newSeqOfCap[Ind]( nv * dim )
-  var colors  = newSeqOfCap[cfloat]( 4 * nv * dim )
+  var verts   = newSeqOfCap[cfloat]( 3 * dim )
+  var index   = newSeqOfCap[Ind]( cube_index.len * dim )
+  var colors  = newSeqOfCap[cfloat]( 4 * cube_verts.len * dim )
   var n = 0.Ind
   var x,z: float
   var y, y0, y1, y2, y3: float
@@ -290,6 +405,8 @@ proc setup_floor(level: Level) =
   var v10, v11, v12, v13: Vec3f
   var v20, v21, v22, v23: Vec3f
   var v30, v31, v32, v33: Vec3f
+  var surface_normal: Vec3f
+  var normal: Vec3f
 
   proc add_index =
     index.add n
@@ -299,17 +416,26 @@ proc setup_floor(level: Level) =
 
   proc add_point(x,y,z: cfloat, c: Vec4f) =
     if lookup.hasKey((x,y,z)):
-      index.add lookup[(x,y,z)]
+      let nn = lookup[(x,y,z)]
+      index.add nn
+      #echo "n: ", nn
     else:
       verts.add x
       verts.add y
       verts.add z
 
+      # TODO: lookup is current unused, and complicates the update calculations
+      #lookup[(x,y,z)] = n
+      #echo "n: ", $n, ", x: ", $x, ", y: ", $y, ", z: ", $z
       add_index()
       colors.add_color c
+      #normals.add_normal normal
 
   for i in  1..<level.height-1:
     for j in 1..<level.width-1:
+
+      #level.update_vbos(i, j)
+
       x = (j - level.origin.x).float
       z = (i - level.origin.z).float
 
@@ -333,8 +459,6 @@ proc setup_floor(level: Level) =
         vec3f(-1, -1, +1) * -y2,
         vec3f(+1, -1, +1) * -y3,
       ]
-      var surface_normal: Vec3f # = surface_normals[0] + surface_normals[1] + surface_normals[2] + surface_normals[3]
-      var normal: Vec3f         # = surface_normals[0] + surface_normals[1] + surface_normals[2] + surface_normals[3]
 
       let na = vec3f(-1, y0 - y0, -1).normalize()
       let nc = vec3f(+1, y1 - y0, -1).normalize()
@@ -390,7 +514,7 @@ proc setup_floor(level: Level) =
           #c = vec4f(0,0,0,1.0)
 
         if y == 0:
-          y = abyss
+          y = abyss - 1
 
         c = case color_w
         of 0   : vec4f(0,0,0,0)
@@ -408,15 +532,15 @@ proc setup_floor(level: Level) =
         of 1: surface_normal
         else: vec3f(  0,  0,  0 )
 
-        normals.add_normal surface_normal
+        normals.add_normal normal
 
         const margin = 0.98
         add_point x + vert.x.float * margin, y, z + vert.z.float * margin, c
-        let n = vert.x * 4 + vert.y * 2 + vert.z
+        #let n = vert.x * 4 + vert.y * 2 + vert.z
 
         inc w
 
-
+  level.floor_lookup = lookup
   level.floor_colors = colors
   level.floor_verts = verts
   level.floor_index = index

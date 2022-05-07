@@ -3,7 +3,7 @@ import nimgl/imgui
 import glm
 import strutils
 
-from leveldata import save, format, parseFloat, parseMask
+import leveldata
 import types
 
 const highlight_width = 16
@@ -16,26 +16,26 @@ proc offset(editor: Editor, row, col: int): int =
 proc offset(editor: Editor): int =
   result = editor.offset( editor.row, editor.col )
 
-proc inc(editor: Editor) =
-  let o = editor.offset()
-  let h = editor.level.data[o]
-  editor.level.data[o] = (h + 1).int.float
-  editor.dirty = true
-
-proc dec(editor: Editor) =
-  let o = editor.offset()
-  let h = editor.level.data[o]
-  editor.level.data[o] = (h - 1).int.float
-  editor.dirty = true
-
 proc leave(editor: Editor) =
   editor.focused = false
   igFocusWindow(nil)
 
+proc get_data(editor: Editor): float =
+  let o = editor.offset()
+  return editor.level.data[o]
+
 proc set_data(editor: Editor, value: float) =
   let o = editor.offset()
-  let cur = editor.level.data[o]
   editor.level.data[o] = value
+  editor.dirty = true
+
+proc inc(editor: Editor) =
+  let h = editor.get_data()
+  editor.set_data (h + 1).int.float
+
+proc dec(editor: Editor) =
+  let h = editor.get_data()
+  editor.set_data (h - 1).int.float
 
 proc set_number(editor: Editor, num: int) =
   if editor.input.len < 2:
@@ -43,7 +43,6 @@ proc set_number(editor: Editor, num: int) =
   editor.input = editor.input[1..^1] & $num
   let value: float = (editor.input.strip()).parseFloat
   editor.set_data value
-  echo editor.input
 
 proc set_mask(editor: Editor, mask: CliffMask) =
   var m = mask
@@ -61,6 +60,7 @@ proc set_mask(editor: Editor, mask: CliffMask) =
       m = mask
 
   editor.level.mask[o] = m
+  editor.dirty = true
 
 proc select_one(editor: Editor) =
   editor.selection.x = editor.row.int32
@@ -104,10 +104,16 @@ proc brush_selection(editor: Editor, i,j: int) =
       editor.level.mask[o] = stamp_mask[k]
       k.inc
 
+  for i in editor.selection.x - 1.. editor.selection.z + 1:
+    for j in editor.selection.y - 1 .. editor.selection.w + 1:
+      editor.level.calculate_vbos(i, j)
+      editor.level.calculate_vbos(i + oi, j + oj)
+
   editor.selection.x += oi.int32
   editor.selection.y += oj.int32
   editor.selection.z += oi.int32
   editor.selection.w += oj.int32
+  editor.level.update_vbos()
 
 proc has_selection(editor: Editor): bool =
   result = editor.selection.x != editor.selection.z or editor.selection.y != editor.selection.w
@@ -241,13 +247,13 @@ proc handle_key*(editor: Editor, key: int32, mods: int32): bool =
   result = true
   if (mods and GLFWModControl) != 0 or (mods and GLFWModSuper) != 0:
     if (mods and GLFWModShift) != 0:
+      discard
       #case key
       #of GLFWKey.Z          : editor.redo()
       #of GLFWKey.X          : editor.cut_both()
       #of GLFWKey.C          : editor.copy_both()
       #of GLFWKey.V          : editor.paste_both()
       #else                  : result = false
-      return
     else:
       case key
       of GLFWKey.Y          : editor.redo()
@@ -256,8 +262,7 @@ proc handle_key*(editor: Editor, key: int32, mods: int32): bool =
       of GLFWKey.C          : editor.copy_clipboard()
       of GLFWKey.V          : editor.paste_clipboard()
       else                  : result = false
-      return
-  if (mods and GLFWModShift) != 0:
+  elif (mods and GLFWModShift) != 0:
     case key
     of GLFWKey.Up         : editor.select_more(-1, 0)
     of GLFWKey.Down       : editor.select_more(+1, 0)
@@ -268,50 +273,63 @@ proc handle_key*(editor: Editor, key: int32, mods: int32): bool =
     of GLFWKey.Home       : editor.select_more(+1,-1)
     of GLFWKey.End        : editor.select_more(-1,+1)
     else                  : editor.select_one()
-    return
+  else:
+    case key
+    of GLFWKey.E          : editor.leave()
+    of GLFWKey.B          : editor.toggle_brush()
+    of GLFWKey.Up         : editor.cursor(-1, 0)
+    of GLFWKey.Down       : editor.cursor(+1, 0)
+    of GLFWKey.Left       : editor.cursor( 0,-1)
+    of GLFWKey.Right      : editor.cursor( 0,+1)
+    of GLFWKey.PageUp     : editor.cursor(-1,-1)
+    of GLFWKey.PageDown   : editor.cursor(+1,+1)
+    of GLFWKey.Home       : editor.cursor(+1,-1)
+    of GLFWKey.End        : editor.cursor(-1,+1)
+    of GLFWKey.Minus      ,
+       GLFWKey.KpSubtract : editor.dec
+    of GLFWKey.Equal      ,
+       GLFWKey.KpAdd      : editor.inc
+    of GLFWKey.K0,
+       K1, K2, K3,
+       K4, K5, K6,
+       K7, K8, K9         : editor.set_number(key.ord - GLFWKey.K0.ord)
+    of GLFWKey.Backspace  : editor.delete()
+    of GLFWKey.X          : editor.set_mask(XX)
+    of GLFWKey.C          : editor.set_mask(IC)
+    of GLFWKey.L          : editor.set_mask(LL)
+    of GLFWKey.V          : editor.set_mask(VV)
+    of GLFWKey.A          : editor.set_mask(AA)
+    of GLFWKey.J          : editor.set_mask(JJ)
+    of GLFWKey.I          : editor.set_mask(II)
+    of GLFWKey.H          : editor.set_mask(HH)
+    of GLFWKey.R          : editor.set_mask(RH)
+    of GLFWKey.G          : editor.set_mask(GG)
+    of GLFWKey.S          : editor.set_mask(SW)
+    of GLFWKey.P          : editor.set_mask(P1)
+    of GLFWKey.M          : editor.set_mask(EM)
+    of GLFWKey.Y          : editor.set_mask(EY)
+    of GLFWKey.T          : editor.set_mask(TU)
+    of GLFWKey.N          : editor.set_mask(IN)
+    of GLFWKey.O          : editor.set_mask(OU)
+    of GLFWKey.W          : editor.save()
+    of GLFWKey.Tab        : editor.toggle_cursor()
+    #of GLFWKey.LeftShift  : editor.select_one()
+    else                  : result = false
 
-  case key
-  of GLFWKey.E          : editor.leave()
-  of GLFWKey.B          : editor.toggle_brush()
-  of GLFWKey.Up         : editor.cursor(-1, 0)
-  of GLFWKey.Down       : editor.cursor(+1, 0)
-  of GLFWKey.Left       : editor.cursor( 0,-1)
-  of GLFWKey.Right      : editor.cursor( 0,+1)
-  of GLFWKey.PageUp     : editor.cursor(-1,-1)
-  of GLFWKey.PageDown   : editor.cursor(+1,+1)
-  of GLFWKey.Home       : editor.cursor(+1,-1)
-  of GLFWKey.End        : editor.cursor(-1,+1)
-  of GLFWKey.Minus      ,
-     GLFWKey.KpSubtract : editor.dec
-  of GLFWKey.Equal      ,
-     GLFWKey.KpAdd      : editor.inc
-  of GLFWKey.K0,
-     K1, K2, K3,
-     K4, K5, K6,
-     K7, K8, K9         : editor.set_number(key.ord - GLFWKey.K0.ord)
-  of GLFWKey.Backspace  : editor.delete()
-  of GLFWKey.X          : editor.set_mask(XX)
-  of GLFWKey.C          : editor.set_mask(IC)
-  of GLFWKey.L          : editor.set_mask(LL)
-  of GLFWKey.V          : editor.set_mask(VV)
-  of GLFWKey.A          : editor.set_mask(AA)
-  of GLFWKey.J          : editor.set_mask(JJ)
-  of GLFWKey.I          : editor.set_mask(II)
-  of GLFWKey.H          : editor.set_mask(HH)
-  of GLFWKey.R          : editor.set_mask(RH)
-  of GLFWKey.G          : editor.set_mask(GG)
-  of GLFWKey.S          : editor.set_mask(SW)
-  of GLFWKey.P          : editor.set_mask(P1)
-  of GLFWKey.M          : editor.set_mask(EM)
-  of GLFWKey.Y          : editor.set_mask(EY)
-  of GLFWKey.T          : editor.set_mask(TU)
-  of GLFWKey.N          : editor.set_mask(IN)
-  of GLFWKey.O          : editor.set_mask(OU)
-  of GLFWKey.W          : editor.save()
-  of GLFWKey.Tab        : editor.toggle_cursor()
-  #of GLFWKey.LeftShift  : editor.select_one()
-  else                  : result = false
-
+  if editor.dirty:
+    editor.level.calculate_vbos(editor.row, editor.col)
+    editor.level.calculate_vbos(editor.row+1, editor.col+1)
+    editor.level.calculate_vbos(editor.row-1, editor.col-1)
+    editor.level.calculate_vbos(editor.row-1, editor.col+1)
+    editor.level.calculate_vbos(editor.row+1, editor.col-1)
+    editor.level.calculate_vbos(editor.row+1, editor.col-1)
+    editor.level.calculate_vbos(editor.row-1, editor.col+1)
+    editor.level.calculate_vbos(editor.row  , editor.col+1)
+    editor.level.calculate_vbos(editor.row  , editor.col-1)
+    editor.level.calculate_vbos(editor.row+1, editor.col  )
+    editor.level.calculate_vbos(editor.row-1, editor.col  )
+    editor.level.update_vbos()
+    editor.dirty = false
 
 proc draw*(editor: Editor) =
   igSetNextWindowSizeConstraints ImVec2(x:300, y:300), ImVec2(x: 1000, y: 1000)

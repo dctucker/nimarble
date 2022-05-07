@@ -162,11 +162,11 @@ proc init_floor_plane(game: Game) =
   load_level game.level
   level.floor_plane = Mesh(
     vao: newVAO(),
-    vert_vbo: newVBO(3, level.floor_verts),
-    color_vbo: newVBO(4, level.floor_colors),
-    elem_vbo: newElemVBO(level.floor_index),
-    norm_vbo: newVBO(3, level.floor_normals),
-    program: game.player.mesh.program,
+    vert_vbo  : newVBO(3, level.floor_verts),
+    color_vbo : newVBO(4, level.floor_colors),
+    norm_vbo  : newVBO(3, level.floor_normals),
+    elem_vbo  : newElemVBO(level.floor_index),
+    program   : game.player.mesh.program,
   )
   var modelmat = mat4(1.0f).scale(1f, level_squash, 1f)
   level.floor_plane.model = game.player.mesh.program.newMatrix(modelmat, "M")

@@ -26,48 +26,12 @@ echo cube_verts.len
 
 let cube_index* = @[
   0,
-  0, 2, 4, 6, 6, 4,   # north
-  4, 6, 5, 7, 7, 5,    # east
-  5, 7, 1, 3, 3, 1,    # south
-  1, 3, 0, 2,     # west
-  2, 6, 3, 7, 7,  # top
-  7, 5, 5, 4, 4,  # reset
-]
-
-let cube_normals* = @[
-  cube_verts[0],
-  # north
-  -cube_verts[1],
-  -cube_verts[1],
-  -cube_verts[1],
-  -cube_verts[1],
-  -cube_verts[0],
-  -cube_verts[0],
-
-  # east
-  cube_verts[4],
-  cube_verts[4],
-  cube_verts[4],
-  cube_verts[4],
-  cube_verts[0],
-  cube_verts[0],
-
-  # south
-  cube_verts[1],
-  cube_verts[1],
-  cube_verts[1],
-  cube_verts[1],
-  cube_verts[0],
-  cube_verts[0],
-
-  # west
-  -cube_verts[4],
-  -cube_verts[4],
-  -cube_verts[4],
-  -cube_verts[4],
-
-  # top
-
+  0, 2, 4, 6, 6, 4,  # north
+  4, 6, 5, 7, 7, 5,  # east
+  5, 7, 1, 3, 3, 1,  # south
+  1, 3, 0, 2,        # west
+  2, 6, 3, 7, 7,     # top
+  7, 5, 5, 4, 4,     # reset
 ]
 
 let cube_colors* = @[
