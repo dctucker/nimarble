@@ -271,8 +271,11 @@ type
     level*: Level
     row*, col*: int
     selection*: Vec4i
+    cut*: Vec4i
     focused*: bool
     input*: string
+    cursor_mask*: bool
+    cursor_data*: bool
     brush*: bool
     dirty*: bool
 

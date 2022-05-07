@@ -111,12 +111,28 @@ proc init_level(data_src, mask_src: string, color: Vec3f): Level =
   result.actors = data.find_actors(mask, width, height)
   result.span   = result.find_span()
 
-proc save*(level: Level) =
-  proc format(value: float): string =
-    if value == value.floor:
-      return $value.int
-    else:
-      return $value
+proc format(value: float): string =
+  if value == value.floor:
+    return $value.int
+  else:
+    return $value
+
+proc parseMask*(level: Level, str: string): CliffMask =
+  return parse_mask(str)
+
+proc parseFloat*(level: Level, str: string): float =
+  try:
+    return str.parseFloat()
+  except:
+    return 0f
+
+proc format*(level: Level, value: float): string =
+  return format(value)
+
+proc format*(level: Level, value: CliffMask): string =
+  return $value
+
+proc save*(level: Level, filename: string) =
 
   let span = level.span
   let data = level.data
@@ -124,8 +140,10 @@ proc save*(level: Level) =
   let h = level.height
   let w = level.width
 
-  let data_out = "levels/data.tsv".open(fmWrite)
-  let mask_out = "levels/mask.tsv".open(fmWrite)
+  let data_fn = "levels/" & filename & ".tsv"
+  let mask_fn = "levels/" & filename & "mask.tsv"
+  let data_out = data_fn.open(fmWrite)
+  let mask_out = mask_fn.open(fmWrite)
   for i in 0..<h:
     for j in 0..<w:
       if j >= i and j <= i + span:

@@ -590,7 +590,7 @@ var time = 0.0f
 var event_time = 0.0f
 
 proc main =
-  editor = Editor()
+  editor = Editor(cursor_data: true)
   game = newGame()
   let w = setup_glfw()
 
