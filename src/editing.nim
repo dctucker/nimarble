@@ -10,15 +10,29 @@ const highlight_width = 16
 const line_height = 16
 const dark_color = ImVec4(x: 0.2, y: 0.2, z: 0.2, w: 1.0)
 
+proc leave(editor: Editor) =
+  editor.focused = false
+  igFocusWindow(nil)
+
 proc offset(editor: Editor, row, col: int): int =
   result = editor.level.offset( row, col )
 
 proc offset(editor: Editor): int =
   result = editor.offset( editor.row, editor.col )
 
-proc leave(editor: Editor) =
-  editor.focused = false
-  igFocusWindow(nil)
+iterator selection_offsets(editor: Editor): int =
+  for i in editor.selection.x .. editor.selection.z:
+    for j in editor.selection.y .. editor.selection.w:
+      yield editor.offset(i,j)
+
+proc in_selection(editor: Editor, i,j: int): bool =
+  result = i >= editor.selection.x and
+           i <= editor.selection.z and
+           j >= editor.selection.y and
+           j <= editor.selection.w
+
+proc cursor_in_selection(editor: Editor): bool =
+  result = editor.in_selection(editor.row, editor.col)
 
 proc get_data(editor: Editor): float =
   let o = editor.offset()
@@ -30,19 +44,38 @@ proc set_data(editor: Editor, value: float) =
   editor.dirty = true
 
 proc inc(editor: Editor) =
-  let h = editor.get_data()
-  editor.set_data (h + 1).int.float
+  if editor.cursor_in_selection():
+    for o in editor.selection_offsets():
+      let h = editor.level.data[o]
+      editor.level.data[o] = (h + 1).int.float
+  else:
+    let h = editor.get_data()
+    editor.set_data (h + 1).int.float
 
 proc dec(editor: Editor) =
-  let h = editor.get_data()
-  editor.set_data (h - 1).int.float
+  if editor.cursor_in_selection():
+    for o in editor.selection_offsets():
+      let h = editor.level.data[o]
+      editor.level.data[o] = (h - 1).int.float
+  else:
+    let h = editor.get_data()
+    editor.set_data (h - 1).int.float
 
 proc set_number(editor: Editor, num: int) =
+  var value: float
   if editor.input.len < 2:
     editor.input = "  "
-  editor.input = editor.input[1..^1] & $num
-  let value: float = (editor.input.strip()).parseFloat
+  if editor.input.contains ".":
+    editor.input &= $num
+  else:
+    editor.input = editor.input[1..^1] & $num
+  value = (editor.input.strip()).parseFloat
   editor.set_data value
+
+proc decimal(editor: Editor) =
+  if editor.input.contains ".":
+    return
+  editor.input &= "."
 
 proc set_mask(editor: Editor, mask: CliffMask) =
   var m = mask
@@ -68,15 +101,6 @@ proc select_one(editor: Editor) =
   editor.selection.z = editor.row.int32
   editor.selection.w = editor.col.int32
 
-proc in_selection(editor: Editor, i,j: int): bool =
-  result = i >= editor.selection.x and
-           i <= editor.selection.z and
-           j >= editor.selection.y and
-           j <= editor.selection.w
-
-proc cursor_in_selection(editor: Editor): bool =
-  result = editor.in_selection(editor.row, editor.col)
-
 proc brush_selection(editor: Editor, i,j: int) =
   if not editor.cursor_in_selection():
     return
@@ -100,8 +124,10 @@ proc brush_selection(editor: Editor, i,j: int) =
   for i in editor.selection.x .. editor.selection.z:
     for j in editor.selection.y .. editor.selection.w:
       let o = editor.offset(i + oi, j + oj)
-      editor.level.data[o] = stamp_data[k]
-      editor.level.mask[o] = stamp_mask[k]
+      if editor.cursor_data:
+        editor.level.data[o] = stamp_data[k]
+      if editor.cursor_mask:
+        editor.level.mask[o] = stamp_mask[k]
       k.inc
 
   for i in editor.selection.x - 1.. editor.selection.z + 1:
@@ -119,6 +145,7 @@ proc has_selection(editor: Editor): bool =
   result = editor.selection.x != editor.selection.z or editor.selection.y != editor.selection.w
 
 proc cursor(editor: Editor, drow, dcol: int) =
+  editor.input = ""
   if editor.brush:
     if editor.has_selection():
       editor.brush_selection(editor.row + drow, editor.col + dcol)
@@ -156,8 +183,54 @@ proc toggle_brush*(editor: Editor) =
   if editor.has_selection() and not editor.cursor_in_selection():
     editor.select_one()
 
+proc delete_selection(editor: Editor, data: var seq[float]) =
+  for i in editor.selection.x .. editor.selection.z:
+    for j in editor.selection.y .. editor.selection.w:
+      let o = editor.offset(i,j)
+      data[o] = 0
+
+proc delete_selection(editor: Editor, mask: var seq[CliffMask]) =
+  for i in editor.selection.x .. editor.selection.z:
+    for j in editor.selection.y .. editor.selection.w:
+      let o = editor.offset(i,j)
+      mask[o] = XX
+
+proc all_zero(editor: Editor, data: var seq[float]): bool =
+  result = true
+  for i in editor.selection.x .. editor.selection.z:
+    for j in editor.selection.y .. editor.selection.w:
+      let o = editor.offset(i,j)
+      if data[o] != 0:
+        return false
+
+proc all_zero(editor: Editor, mask: var seq[CliffMask]): bool =
+  result = true
+  for i in editor.selection.x .. editor.selection.z:
+    for j in editor.selection.y .. editor.selection.w:
+      let o = editor.offset(i,j)
+      if mask[o] != XX:
+        return false
+
 proc delete(editor: Editor) =
   editor.dirty = true
+  editor.input = ""
+
+  if editor.cursor_in_selection():
+    var zero: bool
+    if editor.cursor_data:
+      zero = editor.all_zero(editor.level.data)
+      if zero:
+        editor.delete_selection(editor.level.mask)
+      else:
+        editor.delete_selection(editor.level.data)
+    if editor.cursor_mask:
+      zero = editor.all_zero(editor.level.mask)
+      if zero:
+        editor.delete_selection(editor.level.data)
+      else:
+        editor.delete_selection(editor.level.mask)
+    return
+
   let o = editor.offset()
   if editor.level.data[o] == 0:
     editor.level.mask[o] = XX
@@ -186,7 +259,7 @@ proc undo(editor: Editor) = discard
 proc redo(editor: Editor) = discard
 
 proc copy_clipboard(editor: Editor) =
-  setClipboardString nil, editor.serialize_selection()
+  setClipboardString nil, editor.serialize_selection().cstring
   editor.cut = vec4i(0,0,0,0)
 
 proc cut_clipboard(editor: Editor) =
@@ -234,10 +307,21 @@ proc paste_clipboard(editor: Editor) =
 #  editor.cursor_data = true
 #  editor.copy_clipboard()
 
+proc back(editor: Editor) =
+  if editor.brush:
+    editor.brush = false
+  elif editor.has_selection():
+    editor.select_one()
+  else:
+    editor.leave()
 
 proc toggle_cursor(editor: Editor) =
   editor.cursor_mask = not editor.cursor_mask
   editor.cursor_data = not editor.cursor_mask
+
+proc cursor_both(editor: Editor) =
+  editor.cursor_mask = true
+  editor.cursor_data = true
 
 proc handle_key*(editor: Editor, key: int32, mods: int32): bool =
   #let io = igGetIO()
@@ -272,11 +356,13 @@ proc handle_key*(editor: Editor, key: int32, mods: int32): bool =
     of GLFWKey.PageDown   : editor.select_more(+1,+1)
     of GLFWKey.Home       : editor.select_more(+1,-1)
     of GLFWKey.End        : editor.select_more(-1,+1)
+    of GLFWKey.Tab        : editor.cursor_both()
     else                  : editor.select_one()
   else:
     case key
     of GLFWKey.E          : editor.leave()
     of GLFWKey.B          : editor.toggle_brush()
+    of GLFWKey.Escape     : editor.back()
     of GLFWKey.Up         : editor.cursor(-1, 0)
     of GLFWKey.Down       : editor.cursor(+1, 0)
     of GLFWKey.Left       : editor.cursor( 0,-1)
@@ -289,11 +375,14 @@ proc handle_key*(editor: Editor, key: int32, mods: int32): bool =
        GLFWKey.KpSubtract : editor.dec
     of GLFWKey.Equal      ,
        GLFWKey.KpAdd      : editor.inc
+    of GLFWKey.Period,
+       KpDecimal          : editor.decimal()
     of GLFWKey.K0,
        K1, K2, K3,
        K4, K5, K6,
        K7, K8, K9         : editor.set_number(key.ord - GLFWKey.K0.ord)
-    of GLFWKey.Backspace  : editor.delete()
+    of GLFWKey.Backspace,
+       GLFWKey.Delete     : editor.delete()
     of GLFWKey.X          : editor.set_mask(XX)
     of GLFWKey.C          : editor.set_mask(IC)
     of GLFWKey.L          : editor.set_mask(LL)
@@ -317,17 +406,9 @@ proc handle_key*(editor: Editor, key: int32, mods: int32): bool =
     else                  : result = false
 
   if editor.dirty:
-    editor.level.calculate_vbos(editor.row, editor.col)
-    editor.level.calculate_vbos(editor.row+1, editor.col+1)
-    editor.level.calculate_vbos(editor.row-1, editor.col-1)
-    editor.level.calculate_vbos(editor.row-1, editor.col+1)
-    editor.level.calculate_vbos(editor.row+1, editor.col-1)
-    editor.level.calculate_vbos(editor.row+1, editor.col-1)
-    editor.level.calculate_vbos(editor.row-1, editor.col+1)
-    editor.level.calculate_vbos(editor.row  , editor.col+1)
-    editor.level.calculate_vbos(editor.row  , editor.col-1)
-    editor.level.calculate_vbos(editor.row+1, editor.col  )
-    editor.level.calculate_vbos(editor.row-1, editor.col  )
+    for i in -1 .. 1:
+      for j in -1 .. 1:
+        editor.level.calculate_vbos(editor.row + i, editor.col + j)
     editor.level.update_vbos()
     editor.dirty = false
 
@@ -343,13 +424,15 @@ proc draw*(editor: Editor) =
 
   igSameLine()
 
-  var color: ImColor
   var draw_list = igGetWindowDrawList()
 
-  proc draw_cursor =
+  proc draw_cursor(active: bool) =
     var pos: ImVec2
     igGetCursorScreenPosNonUDT(pos.addr)
-    draw_list.addRect ImVec2(x: pos.x - 3, y: pos.y - 1), ImVec2(x: pos.x + 3 + highlight_width, y: pos.y + line_height + 1), cursor_color
+    var color = cursor_color
+    if not active:
+      color = dark_color.igGetColorU32
+    draw_list.addRect ImVec2(x: pos.x - 3, y: pos.y - 1), ImVec2(x: pos.x + 3 + highlight_width, y: pos.y + line_height + 1), color
 
   proc draw_selected =
     var pos: ImVec2
@@ -359,17 +442,23 @@ proc draw*(editor: Editor) =
       color = brush_color
     draw_list.addRectFilled ImVec2(x: pos.x - 3, y: pos.y - 1), ImVec2(x: pos.x + 3 + highlight_width, y: pos.y + line_height + 1), color
 
-  for i in editor.row - 5 .. editor.row + 5:
-    for j in editor.col - 5 .. editor.col + 5:
+  var color: ImColor
+
+  const edit_width = 20
+  const ew2 = edit_width div 2
+  for i in editor.row - ew2 .. editor.row + ew2:
+
+    for j in editor.col - ew2 .. editor.col + ew2:
       igSameLine()
 
-      if (not editor.cursor_mask) and i == editor.row and j == editor.col:
-        draw_cursor()
+      if i == editor.row and j == editor.col:
+        draw_cursor(editor.cursor_data)
 
       if editor.in_selection(i, j):
         draw_selected()
 
-      let h = level.data[level.offset(i,j)].int
+      let hf = level.data[level.offset(i,j)]
+      let h = hf.int
       var txt = $h
       if txt.len < 2: txt = " " & txt
       var text = txt.cstring
@@ -378,22 +467,31 @@ proc draw*(editor: Editor) =
         color.value = dark_color
       else:
         const period = 8
+        var alpha = 1.0
         let hmod = (h mod period).float / period.float
         let hdiv = (h div period).float / 16f
+        var sat  = 0.5
+        if hf - hf.floor > 0:
+          sat = 0.125
+          alpha = 0.5 + (hf - hf.floor) * 0.5
+          if hf - hf.floor > 0.5:
+            sat = 0.875
 
-        color.addr.setHSV( hmod, 0.5, 0.4 + hdiv, 1.0 )
+        color.addr.setHSV( hmod, sat, 0.4 + hdiv, alpha )
 
+      if i < 0 or j < 0 or j < i or i >= editor.level.height or j >= editor.level.width or j-i > editor.level.span:
+        color.value = ImVec4(x: 0.0, y: 0.0, z: 0.0, w: 0.0)
       igTextColored(color.value, text)
 
     igSameLine()
     color.value = ImVec4(x: 0, y: 0, z: 0, w: 1.0)
     igTextColored(color.value, " | ")
 
-    for j in editor.col - 5 .. editor.col + 5:
+    for j in editor.col - ew2 .. editor.col + ew2:
       igSameLine()
 
-      if editor.cursor_mask and i == editor.row and j == editor.col:
-        draw_cursor()
+      if i == editor.row and j == editor.col:
+        draw_cursor(editor.cursor_mask)
 
       if editor.in_selection(i, j):
         draw_selected()
@@ -407,6 +505,8 @@ proc draw*(editor: Editor) =
       #let hmod = 0.6 + 0.1 * sin( 2 * 3.14159265 * (h mod period).float / period.float )
       color.value = ImVec4(x: 0.8, y: 0.8, z: 0.8, w: 1.0)
       if m == XX: color.value = dark_color
+      if i < 0 or j < 0 or j < i or i >= editor.level.height or j >= editor.level.width or j-i > editor.level.span:
+        color.value = ImVec4(x: 0.0, y: 0.0, z: 0.0, w: 0.0)
       igTextColored(color.value, text)
 
     igText("")

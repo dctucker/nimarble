@@ -181,12 +181,16 @@ const level_2_mask_src = staticRead("../levels/2mask.tsv")
 const level_3_src      = staticRead("../levels/3.tsv")
 const level_3_mask_src = staticRead("../levels/3mask.tsv")
 
+const level_4_src      = staticRead("../levels/4.tsv")
+const level_4_mask_src = staticRead("../levels/4mask.tsv")
+
 let levels = @[
   Level(),
   init_level(level_0_src, level_0_mask_src, vec3f(1f, 0.0f, 1f)),
   init_level(level_1_src, level_1_mask_src, vec3f(1f, 0.8f, 0f)),
   init_level(level_2_src, level_2_mask_src, vec3f(0f, 0.4f, 0.8f)),
   init_level(level_3_src, level_3_mask_src, vec3f(0.4f, 0.4f, 0.4f)),
+  init_level(level_4_src, level_4_mask_src, vec3f(1f, 0.4f, 0.1f)),
 ]
 let n_levels* = levels.len()
 
@@ -371,7 +375,7 @@ proc calculate_vbos*(level: Level, i,j: int) =
   let normal_span = 3 * 33
   let vert_span   = 3 * 33
 
-  if i < 1 or j < 1 or j < i - 4 or j > i + 44: return
+  if i < 0 or j < 0 or j < i - 4 or j > i + 44: return
 
   let o = (i-1) * 48 + (j-7)
   for w in 22 .. 26:
