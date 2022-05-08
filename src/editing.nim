@@ -60,6 +60,11 @@ proc set_data(editor: Editor, value: float) =
   editor.data[o] = value
   editor.dirty = true
 
+proc update_selection_vbos(editor: Editor) =
+  for i in editor.selection.x - 1.. editor.selection.z + 1:
+    for j in editor.selection.y - 1 .. editor.selection.w + 1:
+      editor.level.calculate_vbos(i, j)
+
 proc inc_dec(editor: Editor, d: float) =
   editor.dirty = true
   if editor.cursor_in_selection():
@@ -69,6 +74,7 @@ proc inc_dec(editor: Editor, d: float) =
       if d == 1:
         value = value.int.float
       editor.data[o] = value
+    editor.update_selection_vbos()
   else:
     let h = editor.get_data()
     var value = h + d
@@ -132,11 +138,6 @@ proc select_one(editor: Editor) =
   editor.selection.y = editor.col.int32
   editor.selection.z = editor.row.int32
   editor.selection.w = editor.col.int32
-
-proc update_selection_vbos(editor: Editor) =
-  for i in editor.selection.x - 1.. editor.selection.z + 1:
-    for j in editor.selection.y - 1 .. editor.selection.w + 1:
-      editor.level.calculate_vbos(i, j)
 
 proc get_selection_stamp(editor: Editor): Stamp =
   result.width = editor.selection.w - editor.selection.y
