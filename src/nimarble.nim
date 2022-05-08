@@ -594,7 +594,7 @@ var time = 0.0f
 var event_time = 0.0f
 
 proc main =
-  editor = Editor(cursor_data: true)
+  editor = Editor(cursor_data: true, cursor_mask: true)
   game = newGame()
   let w = setup_glfw()
 
@@ -733,11 +733,20 @@ proc main =
     glDisableVertexAttribArray 1
 
   proc camera_physics(game: Game) {.inline.} =
+    var pan_maxvel, camera_maxvel: float
+    if editor.focused:
+      pan_maxvel = 10f
+      camera_maxvel = 1f
+    else:
+      pan_maxvel = 0.125f
+      camera_maxvel = 1f/20f
     game.pan_target += game.pan_acc
-    game.pan_vel = (game.pan_vel + game.pan_acc).clamp(-0.125, 0.125)
+    game.pan_vel = game.pan_vel + game.pan_acc
+    game.pan_vel.x = game.pan_vel.x.clamp(-pan_maxvel, pan_maxvel)
+    game.pan_vel.y = game.pan_vel.y.clamp(-pan_maxvel, pan_maxvel)
+    game.pan_vel.z = game.pan_vel.z.clamp(-pan_maxvel, pan_maxvel)
     game.pan += game.pan_vel
 
-    const camera_maxvel = 1f/10f
     let pan_delta = game.pan_target - game.pan
     if pan_delta.length > 0f:
       if pan_delta.length < camera_maxvel:

@@ -486,11 +486,16 @@ proc data_at(level: Level, x,z: float): float =
   if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return EE.float
   return level.data[i * level.width + j].float
 
+proc wave_height*(level: Level, x,z: float): float =
+  let phase = 15f * -x + level.clock.float
+  const max_height = 3f
+  result = max_height * sin(phase.radians)
+  result = clamp( result, 0, max_height )
+
 proc floor_height*(level: Level, x,z: float): float =
   result = level.data_at(x,z)
-  if level.mask_at(x,z) == SW:
-    let phase = 15f * -x + level.clock.float
-    result += 3.0f * (1f + sin(phase.radians))
+  if level.mask_at(x,z).has(SW):
+    result += level.wave_height(x,z)
     #let (i,j) = level.xlat_coord(x,z)
     #if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return
     #level.floor_verts[4 * (i * level.width + j)] = result

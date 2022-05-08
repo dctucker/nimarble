@@ -70,6 +70,8 @@ proc inc_dec(editor: Editor, d: float) =
   if editor.cursor_in_selection():
     for o in editor.selection_offsets():
       let h = editor.data[o]
+      if h == 0:
+        continue
       var value = h + d
       if d == 1:
         value = value.int.float
@@ -77,6 +79,8 @@ proc inc_dec(editor: Editor, d: float) =
     editor.update_selection_vbos()
   else:
     let h = editor.get_data()
+    if h == 0:
+      return
     var value = h + d
     if d == 1:
       value = value.int.float
@@ -467,6 +471,8 @@ proc handle_key*(editor: Editor, key: int32, mods: int32): bool =
     for i in -1 .. 1:
       for j in -1 .. 1:
         editor.level.calculate_vbos(editor.row + i, editor.col + j)
+    if editor.has_selection():
+      editor.update_selection_vbos()
     editor.level.update_vbos()
     editor.dirty = false
 

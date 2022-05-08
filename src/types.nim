@@ -200,11 +200,11 @@ type
 
 
 proc cliff*(a: CliffMask): bool =
-  return XX.ord < a.ord and a.ord < GG.ord
+  return XX.ord < a.ord and a.ord <= IH.ord
 
 proc has*(a,b: CliffMask): bool =
   result = a == b
-  if a.cliff:
+  if a.cliff and b.cliff:
     return (a.ord and b.ord) != 0
 
 proc offset*[T:Ordinal](level: Level, i,j: T): T =
