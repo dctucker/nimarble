@@ -103,6 +103,9 @@ proc set_mask(editor: Editor, mask: CliffMask) =
     elif mask == II: m = RI
   elif cur == EY or cur == EM:
     if   mask == AA: m = EA
+    if   mask == P1: m = EP
+    if   mask == HH: m = EH
+    if   mask == VV: m = EV
   elif mask.cliff():
     if cur.cliff():
       m = CliffMask(cur.ord xor mask.ord)
@@ -127,6 +130,7 @@ proc brush_selection(editor: Editor, i,j: int) =
   var stamp_mask = newSeqOfCap[CliffMask](dim)
   for i in editor.selection.x .. editor.selection.z:
     for j in editor.selection.y .. editor.selection.w:
+      if j < i or j - i > editor.level.span: continue
       let o = editor.offset(i,j)
       stamp_data.add editor.level.data[o]
       stamp_mask.add editor.level.mask[o]
@@ -140,6 +144,7 @@ proc brush_selection(editor: Editor, i,j: int) =
   var k = 0
   for i in editor.selection.x .. editor.selection.z:
     for j in editor.selection.y .. editor.selection.w:
+      if j < i or j - i > editor.level.span: continue
       let o = editor.offset(i + oi, j + oj)
       if editor.cursor_data:
         editor.level.data[o] = stamp_data[k]
@@ -402,6 +407,7 @@ proc handle_key*(editor: Editor, key: int32, mods: int32): bool =
        GLFWKey.Delete     : editor.delete()
     of GLFWKey.X          : editor.set_mask(XX)
     of GLFWKey.C          : editor.set_mask(IC)
+    of GLFWKey.U          : editor.set_mask(CU)
     of GLFWKey.L          : editor.set_mask(LL)
     of GLFWKey.V          : editor.set_mask(VV)
     of GLFWKey.A          : editor.set_mask(AA)
@@ -430,6 +436,8 @@ proc handle_key*(editor: Editor, key: int32, mods: int32): bool =
     editor.dirty = false
 
 proc draw*(editor: Editor) =
+  if not editor.visible: return
+
   igSetNextWindowSizeConstraints ImVec2(x:300, y:300), ImVec2(x: 1000, y: 1000)
   igBegin("editor")
   var level = editor.level

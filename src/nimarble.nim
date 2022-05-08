@@ -81,6 +81,7 @@ proc reset_mesh(mesh: Mesh) =
 proc reset_player(game: Game) =
   let player_top = game.get_level().origin.y.float
   game.player.mesh.reset_mesh()
+  game.player.mesh.pos += 0.5
   game.player.mesh.pos.y = player_top
 
 proc do_reset_player(press: bool) =
@@ -300,11 +301,13 @@ proc do_quit(press: bool) =
 proc toggle_god(press: bool) =
   if press: game.god = not game.god
 
+proc god: bool = return game.god or editor.focused
+
 proc focus_editor(press: bool) =
   if not press: return
+  editor.visible = true
 
   editor.focused = not editor.focused
-  game.god = editor.focused
 
   if editor.focused:
     igSetWindowFocus("editor")
@@ -631,24 +634,25 @@ proc main =
     let sinz = sin(thz)
     var ramp_a = vec3f( -ramp.x, sinx + sinz, -ramp.z ) * gravity
     var icy = level.around(IC, x,z)
+    var copper = level.around(CU, x,z)
     var traction: float
     if bh - fh > 0.25:
       traction = 0f
     else:
       traction = 1f
 
-    if game.god:
+    if god():
       ramp_a *= 0
       traction = 1f
 
     let flat = ramp.length == 0
     let nonzero = level.point_height(x.floor, z.floor) > 0f
-    if flat and nonzero and cur_mask == XX and not icy:
+    if flat and nonzero and cur_mask == XX and not icy and not copper:
       game.respawn_pos = vec3f(mesh.pos.x.floor, mesh.pos.y, mesh.pos.z.floor)
 
     const max_acc = 50f
     var m = vec3f(0,0,0)
-    if not game.paused and not game.goal and not icy:
+    if not game.paused and not game.goal and not icy and not copper:
       m = rotate_mouse(mouse)
       if m.length > max_acc:
         m = m.normalize() * max_acc
@@ -658,7 +662,7 @@ proc main =
     mesh.acc += vec3f(0, (1f-traction) * gravity, 0)   # free fall
     mesh.acc += ramp_a * traction
 
-    if game.god: mesh.acc.y = gravity * 0.125
+    if god(): mesh.acc.y = gravity * 0.125
 
     let lateral_dir = mesh.vel.xz.normalize()
     let lateral_vel = mesh.vel.xz.length()
@@ -681,10 +685,12 @@ proc main =
       var dir = -mesh.vel.normalize()
       var axis = mesh.normal.cross(dir).normalize()
       let angle = mesh.vel.xz.length * dt / 0.5f / Pi / player_radius
-      mesh.rot = normalize(quatf(axis, angle) * mesh.rot)
+      let quat = quatf(axis, angle)
+      if quat.length > 0:
+        mesh.rot = normalize(quat * mesh.rot)
 
     const brake = 0.986
-    if not icy:
+    if not icy and not copper:
       mesh.vel  *= brake
 
     mouse *= 0
@@ -696,7 +702,7 @@ proc main =
     if level.around(TU,x,z):
       mesh.vel.y = clamp(mesh.vel.y, -max_vel.y, max_vel.y)
 
-    if game.god: return # a god neither dies nor achieves goals
+    if god(): return # a god neither dies nor achieves goals
 
     if game.dead:
       respawn(true)

@@ -251,6 +251,8 @@ proc point_cliff_color(level: Level, i,j: int): Vec4f =
     return vec4f(0,0,0,0)
   elif level.around(IC, j.float - level.origin.x.float, i.float - level.origin.z.float):
     return vec4f( 0.0, 1.0, 1.0, 1.0)
+  elif level.around(CU, j.float - level.origin.x.float, i.float - level.origin.z.float):
+    return vec4f( 0.8, 0.6, 0.3, 0.9)
   else:
     return level.cliff_color(level.mask[k])
 
@@ -261,6 +263,8 @@ proc point_color(level: Level, i,j: int): Vec4f =
     return vec4f(0,0,0,0)
   elif level.around(IC, j.float - level.origin.x.float, i.float - level.origin.z.float):
     return vec4f( 0.0, 1.0, 1.0, 1.0)
+  elif level.around(CU, j.float - level.origin.x.float, i.float - level.origin.z.float):
+    return vec4f( 0.8, 0.6, 0.3, 0.9)
   else:
     return level.mask_color(level.mask[k])
 

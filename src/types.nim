@@ -161,12 +161,16 @@ type
     GG,         # goal
     TU, IN, OU, # tubes
     IC,         # icy
+    CU,         # copper
     SW,         # sine wave
     P1,         # player 1 start position
     P2,         # player 2 start position
     EM,         # enemy: marble
     EY,         # enemy: yum
     EA,         # enemy: acid
+    EV,         # enemy: vacuum
+    EP,         # enemy: piston
+    EH,         # enemy: hammer
 
   Actor* = ref object
     kind*: CliffMask
@@ -281,6 +285,7 @@ proc newGame*: Game =
 
 type
   Editor* = ref object
+    visible*: bool
     level*: Level
     name*: string
     row*, col*: int
