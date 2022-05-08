@@ -51,6 +51,10 @@ proc all_ints(editor: Editor): bool =
 proc cursor_in_selection(editor: Editor): bool =
   result = editor.in_selection(editor.row, editor.col)
 
+proc get_mask(editor: Editor): CliffMask =
+  let o = editor.offset()
+  return editor.mask[o]
+
 proc get_data(editor: Editor): float =
   let o = editor.offset()
   return editor.data[o]
@@ -508,6 +512,36 @@ proc handle_key*(editor: Editor, key: int32, mods: int32): bool =
     editor.level.update_vbos()
     editor.dirty = false
 
+proc letter(j: int): string =
+  result = ""
+  var v = j
+  var c = 0
+
+  if j < 0:
+    return ""
+  if j < 26:
+    return $char(j + 65)
+  if j < 676:
+    c = v mod 26
+    v = j div 26
+    return $char(v + 64) & $char(c + 65)
+  else:
+    return "MAX"
+
+proc cell_name(editor: Editor): string =
+  result = editor.col.letter
+  if editor.row < 0:
+    return
+  result &= $(editor.row + 1)
+
+proc cell_value(editor: Editor): string =
+  if editor.row < 0 or editor.row >= editor.level.height or editor.col < 0 or editor.col >= editor.level.width or editor.col < editor.row:
+    return ""
+  result = $editor.level.format(editor.get_data())
+  let mask = editor.get_mask()
+  if mask != XX:
+    result &= " " & $mask
+
 proc draw*(editor: Editor) =
   if not editor.visible: return
 
@@ -549,8 +583,16 @@ proc draw*(editor: Editor) =
 
   var color: ImColor
 
+  let cell = editor.cell_name()
+  igText(cell.cstring)
+  igSameLine()
+  let status = "=" & editor.cell_value()
+  igText(status.cstring)
+  igNewLine()
+
   let ew2 = editor.width div 2
-  for i in editor.row - ew2 .. editor.row + ew2:
+  let last_row = editor.row + ew2
+  for i in editor.row - ew2 .. last_row:
 
     for j in editor.col - ew2 .. editor.col + ew2:
       igSameLine()
@@ -613,9 +655,9 @@ proc draw*(editor: Editor) =
         color.value = ImVec4(x: 0.0, y: 0.0, z: 0.0, w: 0.0)
       igTextColored(color.value, text)
 
-    igText("")
+    if i < last_row:
+      igText("")
 
-    editor.focused = igIsWindowFocused()
-
+  editor.focused = igIsWindowFocused()
   igEnd()
 
