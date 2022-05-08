@@ -39,8 +39,8 @@ and normal mouse mode.
 | PageDown     | pan_out           |
 | Home         | pan_ccw           |
 | End          | pan_cw            |
-| LeftBracket  | prev_level        |
-| RightBracket | next_level        |
+| `[`          | prev_level        |
+| `]`          | next_level        |
 | `L`          | toggle_mouse_lock |
 | `P`          | pause             |
 | `S`          | step_frame        |
@@ -101,7 +101,7 @@ such as entity start points, surface type, or whether there is a cliff.
 
 Levels are stored as TSV files making spreadsheet interoperability relatively
 straightforward. Generally each level will have two TSV files which are arranged
-with each row's starting column increasing every row, which enables what I call 
+with each row's starting column increasing every row, which enables what I call
 the "vertical is diagonal" perspective of the playing field.
 
 ## Masks
@@ -109,12 +109,12 @@ the "vertical is diagonal" perspective of the playing field.
 | Mask                | Description                       |
 |---------------------|-----------------------------------|
 | `XX`                | none / regular slope              |
-| `LL`                | L is left                         |
-| `JJ`                | J is right                        |
-| `AA`                | A is up                           |
-| `VV`                | V is down                         |
-| `HH`                | H is left and right               |
-| `II`                | I is top and bottom               |
+| `LL`                | `L` is left                       |
+| `JJ`                | `J` is right                      |
+| `AA`                | `A` is up                         |
+| `VV`                | `V` is down                       |
+| `HH`                | `H` is left and right             |
+| `II`                | `I` is top and bottom             |
 | `LA` `AJ` `LV` `VJ` | corners combine two orthogonals   |
 | `AH` `VH` `IL` `IJ` | all but one active edge           |
 | `IH`                | oops! all cliffs                  |
