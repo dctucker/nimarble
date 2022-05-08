@@ -285,6 +285,11 @@ proc newGame*: Game =
 
 
 type
+  Stamp* = object
+    width*, height*: int
+    data*: seq[float]
+    mask*: seq[CliffMask]
+
   Editor* = ref object
     visible*: bool
     level*: Level
@@ -299,6 +304,8 @@ type
     cursor_data*: bool
     brush*: bool
     dirty*: bool
+    stamp*: Stamp
+
 
 proc data*(editor: Editor): var seq[float]     = editor.level.data
 proc mask*(editor: Editor): var seq[CliffMask] = editor.level.mask

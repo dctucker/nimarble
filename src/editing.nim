@@ -133,46 +133,57 @@ proc select_one(editor: Editor) =
   editor.selection.z = editor.row.int32
   editor.selection.w = editor.col.int32
 
-proc brush_selection(editor: Editor, i,j: int) =
-  if not editor.cursor_in_selection():
-    return
+proc update_selection_vbos(editor: Editor) =
+  for i in editor.selection.x - 1.. editor.selection.z + 1:
+    for j in editor.selection.y - 1 .. editor.selection.w + 1:
+      editor.level.calculate_vbos(i, j)
 
+proc get_selection_stamp(editor: Editor): Stamp =
   let dim = (editor.selection.z - editor.selection.x) * (editor.selection.w - editor.selection.y)
-  var stamp_data = newSeqOfCap[float](dim)
-  var stamp_mask = newSeqOfCap[CliffMask](dim)
+  result.data = newSeqOfCap[float](dim)
+  result.mask = newSeqOfCap[CliffMask](dim)
   for i in editor.selection.x .. editor.selection.z:
     for j in editor.selection.y .. editor.selection.w:
       if j < i or j - i > editor.level.span: continue
       let o = editor.offset(i,j)
-      stamp_data.add editor.data[o]
-      stamp_mask.add editor.mask[o]
+      result.data.add editor.data[o]
+      result.mask.add editor.mask[o]
 
-  var oi, oj: int
-  if   i < editor.selection.x: oi = i - editor.selection.x
-  elif i > editor.selection.z: oi = i - editor.selection.z
-  if   j < editor.selection.y: oj = j - editor.selection.y
-  elif j > editor.selection.w: oj = j - editor.selection.w
-
+proc put_selection_stamp(editor: Editor, stamp: Stamp, drow, dcol: int) =
   var k = 0
   for i in editor.selection.x .. editor.selection.z:
     for j in editor.selection.y .. editor.selection.w:
       if j < i or j - i > editor.level.span: continue
-      let o = editor.offset(i + oi, j + oj)
+      let o = editor.offset(i + drow, j + dcol)
       if editor.cursor_data:
-        editor.data[o] = stamp_data[k]
+        editor.data[o] = stamp.data[k]
       if editor.cursor_mask:
-        editor.mask[o] = stamp_mask[k]
+        editor.mask[o] = stamp.mask[k]
       k.inc
 
-  for i in editor.selection.x - 1.. editor.selection.z + 1:
-    for j in editor.selection.y - 1 .. editor.selection.w + 1:
-      editor.level.calculate_vbos(i, j)
-      editor.level.calculate_vbos(i + oi, j + oj)
+proc shift_selection(editor: Editor, drow, dcol: int) =
+  editor.selection.x += drow.int32
+  editor.selection.y += dcol.int32
+  editor.selection.z += drow.int32
+  editor.selection.w += dcol.int32
 
-  editor.selection.x += oi.int32
-  editor.selection.y += oj.int32
-  editor.selection.z += oi.int32
-  editor.selection.w += oj.int32
+proc brush_selection(editor: Editor, i, j: int) =
+  if not editor.cursor_in_selection():
+    return
+
+  let stamp = editor.get_selection_stamp()
+
+  var drow, dcol: int
+  if   i < editor.selection.x: drow = i - editor.selection.x
+  elif i > editor.selection.z: drow = i - editor.selection.z
+  if   j < editor.selection.y: dcol = j - editor.selection.y
+  elif j > editor.selection.w: dcol = j - editor.selection.w
+
+  editor.put_selection_stamp(stamp, drow, dcol)
+
+  editor.update_selection_vbos()
+  editor.shift_selection(drow, dcol)
+  editor.update_selection_vbos()
   editor.level.update_vbos()
 
 proc has_selection(editor: Editor): bool =
@@ -316,20 +327,22 @@ proc paste_clipboard(editor: Editor) =
       j.inc
     i.inc
 
-#proc cut_both()
-#  editor.cursor_mask = true
-#  editor.cursor_data = true
-#  editor.cut_clipboard()
-#
-#proc paste_both()
-#  editor.cursor_mask = true
-#  editor.cursor_data = true
-#  editor.paste_clipboard()
-#
-#proc copy_both()
-#  editor.cursor_mask = true
-#  editor.cursor_data = true
-#  editor.copy_clipboard()
+proc copy_both(editor: Editor) =
+  editor.cursor_mask = true
+  editor.cursor_data = true
+  editor.stamp = editor.get_selection_stamp()
+  editor.cut = vec4i(0,0,0,0)
+
+proc cut_both(editor: Editor) =
+  editor.copy_both()
+  editor.cut = editor.selection
+
+proc paste_both(editor: Editor) =
+  editor.cursor_mask = true
+  editor.cursor_data = true
+  editor.selection = vec4i( editor.row.int32, editor.col.int32, editor.row.int32 + editor.stamp.height.int32, editor.col.int32 + editor.stamp.width.int32 )
+  editor.put_selection_stamp(editor.stamp, 0, 0)
+  editor.cut = vec4i(0,0,0,0)
 
 proc back(editor: Editor) =
   if editor.brush:
@@ -355,13 +368,12 @@ proc handle_key*(editor: Editor, key: int32, mods: int32): bool =
   result = true
   if (mods and GLFWModControl) != 0 or (mods and GLFWModSuper) != 0:
     if (mods and GLFWModShift) != 0:
-      discard
-      #case key
-      #of GLFWKey.Z          : editor.redo()
-      #of GLFWKey.X          : editor.cut_both()
-      #of GLFWKey.C          : editor.copy_both()
-      #of GLFWKey.V          : editor.paste_both()
-      #else                  : result = false
+      case key
+      of GLFWKey.Z          : editor.redo()
+      of GLFWKey.X          : editor.cut_both()
+      of GLFWKey.C          : editor.copy_both()
+      of GLFWKey.V          : editor.paste_both()
+      else                  : result = false
     else:
       case key
       of GLFWKey.Y          : editor.redo()
