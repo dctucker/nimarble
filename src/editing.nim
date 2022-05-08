@@ -20,10 +20,20 @@ proc offset(editor: Editor, row, col: int): int =
 proc offset(editor: Editor): int =
   result = editor.offset( editor.row, editor.col )
 
-iterator selection_offsets(editor: Editor): int =
-  for i in editor.selection.x .. editor.selection.z:
-    for j in editor.selection.y .. editor.selection.w:
+iterator offsets(editor: Editor, rect: Vec4i): int =
+  for i in rect.x .. rect.z:
+    for j in rect.y .. rect.w:
       yield editor.offset(i,j)
+
+iterator offsets(editor: Editor): int =
+  #let all = vec4i( x: 0, y: 0, z: editor.level.height - 1, w: editor.level.width - 1)
+  let all = vec4i( 0.int32, 0.int32, editor.level.height.int32 - 1, editor.level.width.int32 - 1)
+  for o in editor.offsets(all): yield o
+
+iterator selection_offsets(editor: Editor): int =
+  for o in editor.offsets(editor.selection): yield o
+iterator cut_offsets(editor: Editor): int =
+  for o in editor.offsets(editor.cut): yield o
 
 proc in_selection(editor: Editor, i,j: int): bool =
   result = i >= editor.selection.x and
@@ -34,7 +44,7 @@ proc in_selection(editor: Editor, i,j: int): bool =
 proc all_ints(editor: Editor): bool =
   result = true
   for o in editor.selection_offsets:
-    let h = editor.level.data[o]
+    let h = editor.data[o]
     if h - h.floor > 0:
       return false
 
@@ -43,22 +53,22 @@ proc cursor_in_selection(editor: Editor): bool =
 
 proc get_data(editor: Editor): float =
   let o = editor.offset()
-  return editor.level.data[o]
+  return editor.data[o]
 
 proc set_data(editor: Editor, value: float) =
   let o = editor.offset()
-  editor.level.data[o] = value
+  editor.data[o] = value
   editor.dirty = true
 
 proc inc_dec(editor: Editor, d: float) =
   editor.dirty = true
   if editor.cursor_in_selection():
     for o in editor.selection_offsets():
-      let h = editor.level.data[o]
+      let h = editor.data[o]
       var value = h + d
       if d == 1:
         value = value.int.float
-      editor.level.data[o] = value
+      editor.data[o] = value
   else:
     let h = editor.get_data()
     var value = h + d
@@ -97,7 +107,7 @@ proc decimal(editor: Editor) =
 proc set_mask(editor: Editor, mask: CliffMask) =
   var m = mask
   let o = editor.offset()
-  let cur = editor.level.mask[o]
+  let cur = editor.mask[o]
   if   cur == RH or cur == RI:
     if   mask == HH: m = RH
     elif mask == II: m = RI
@@ -114,7 +124,7 @@ proc set_mask(editor: Editor, mask: CliffMask) =
     else:
       m = mask
 
-  editor.level.mask[o] = m
+  editor.mask[o] = m
   editor.dirty = true
 
 proc select_one(editor: Editor) =
@@ -134,8 +144,8 @@ proc brush_selection(editor: Editor, i,j: int) =
     for j in editor.selection.y .. editor.selection.w:
       if j < i or j - i > editor.level.span: continue
       let o = editor.offset(i,j)
-      stamp_data.add editor.level.data[o]
-      stamp_mask.add editor.level.mask[o]
+      stamp_data.add editor.data[o]
+      stamp_mask.add editor.mask[o]
 
   var oi, oj: int
   if   i < editor.selection.x: oi = i - editor.selection.x
@@ -149,9 +159,9 @@ proc brush_selection(editor: Editor, i,j: int) =
       if j < i or j - i > editor.level.span: continue
       let o = editor.offset(i + oi, j + oj)
       if editor.cursor_data:
-        editor.level.data[o] = stamp_data[k]
+        editor.data[o] = stamp_data[k]
       if editor.cursor_mask:
-        editor.level.mask[o] = stamp_mask[k]
+        editor.mask[o] = stamp_mask[k]
       k.inc
 
   for i in editor.selection.x - 1.. editor.selection.z + 1:
@@ -176,9 +186,9 @@ proc cursor(editor: Editor, drow, dcol: int) =
     else:
       let cur_o = editor.offset()
       let next_o = editor.offset( editor.row+drow, editor.col+dcol )
-      if 0 < next_o and next_o < editor.level.data.len:
-        editor.level.data[ next_o ] = editor.level.data[ cur_o ]
-        editor.level.mask[ next_o ] = editor.level.mask[ cur_o ]
+      if 0 < next_o and next_o < editor.data.len:
+        editor.data[ next_o ] = editor.data[ cur_o ]
+        editor.mask[ next_o ] = editor.mask[ cur_o ]
         editor.dirty = true
 
   editor.row += drow
@@ -208,32 +218,24 @@ proc toggle_brush*(editor: Editor) =
     editor.select_one()
 
 proc delete_selection(editor: Editor, data: var seq[float]) =
-  for i in editor.selection.x .. editor.selection.z:
-    for j in editor.selection.y .. editor.selection.w:
-      let o = editor.offset(i,j)
-      data[o] = 0
+  for o in editor.selection_offsets:
+    data[o] = 0
 
 proc delete_selection(editor: Editor, mask: var seq[CliffMask]) =
-  for i in editor.selection.x .. editor.selection.z:
-    for j in editor.selection.y .. editor.selection.w:
-      let o = editor.offset(i,j)
-      mask[o] = XX
+  for o in editor.selection_offsets:
+    mask[o] = XX
 
 proc all_zero(editor: Editor, data: var seq[float]): bool =
   result = true
-  for i in editor.selection.x .. editor.selection.z:
-    for j in editor.selection.y .. editor.selection.w:
-      let o = editor.offset(i,j)
-      if data[o] != 0:
-        return false
+  for o in editor.selection_offsets:
+    if data[o] != 0:
+      return false
 
 proc all_zero(editor: Editor, mask: var seq[CliffMask]): bool =
   result = true
-  for i in editor.selection.x .. editor.selection.z:
-    for j in editor.selection.y .. editor.selection.w:
-      let o = editor.offset(i,j)
-      if mask[o] != XX:
-        return false
+  for o in editor.selection_offsets:
+    if mask[o] != XX:
+      return false
 
 proc delete(editor: Editor) =
   editor.dirty = true
@@ -242,24 +244,24 @@ proc delete(editor: Editor) =
   if editor.cursor_in_selection():
     var zero: bool
     if editor.cursor_data:
-      zero = editor.all_zero(editor.level.data)
+      zero = editor.all_zero(editor.data)
       if zero:
-        editor.delete_selection(editor.level.mask)
+        editor.delete_selection(editor.mask)
       else:
-        editor.delete_selection(editor.level.data)
+        editor.delete_selection(editor.data)
     if editor.cursor_mask:
-      zero = editor.all_zero(editor.level.mask)
+      zero = editor.all_zero(editor.mask)
       if zero:
-        editor.delete_selection(editor.level.data)
+        editor.delete_selection(editor.data)
       else:
-        editor.delete_selection(editor.level.mask)
+        editor.delete_selection(editor.mask)
     return
 
   let o = editor.offset()
-  if editor.level.data[o] == 0:
-    editor.level.mask[o] = XX
+  if editor.data[o] == 0:
+    editor.mask[o] = XX
     return
-  editor.level.data[o] = 0
+  editor.data[o] = 0
 
 proc save(editor: Editor) =
   editor.level.save()
@@ -275,9 +277,9 @@ proc serialize_selection[T](editor: Editor, data: seq[T]): string =
 
 proc serialize_selection(editor: Editor): string =
   if editor.cursor_mask:
-    return editor.serialize_selection(editor.level.mask)
+    return editor.serialize_selection(editor.mask)
   if editor.cursor_data:
-    return editor.serialize_selection(editor.level.data)
+    return editor.serialize_selection(editor.data)
 
 proc undo(editor: Editor) = discard
 proc redo(editor: Editor) = discard
@@ -292,13 +294,11 @@ proc cut_clipboard(editor: Editor) =
 
 proc execute_cut(editor: Editor) =
   if editor.cut != vec4i(0,0,0,0):
-    for i in editor.cut.x .. editor.cut.z:
-      for j in editor.cut.y .. editor.cut.w:
-        let o = editor.offset(i, j)
-        if editor.cursor_mask:
-          editor.level.mask[o] = XX
-        if editor.cursor_data:
-          editor.level.data[o] = 0f
+    for o in editor.cut_offsets:
+      if editor.cursor_mask:
+        editor.mask[o] = XX
+      if editor.cursor_data:
+        editor.data[o] = 0f
     editor.cut = vec4i(0,0,0,0)
 
 proc paste_clipboard(editor: Editor) =
@@ -310,9 +310,9 @@ proc paste_clipboard(editor: Editor) =
     for value in line.split("\t"):
       let o = editor.offset(i, j)
       if editor.cursor_mask:
-        editor.level.mask[o] = editor.level.parseMask(value)
+        editor.mask[o] = editor.level.parseMask(value)
       if editor.cursor_data:
-        editor.level.data[o] = editor.level.parseFloat(value)
+        editor.data[o] = editor.level.parseFloat(value)
       j.inc
     i.inc
 
@@ -468,11 +468,11 @@ proc draw*(editor: Editor) =
       color = dark_color.igGetColorU32
     draw_list.addRect ImVec2(x: pos.x - 3, y: pos.y - 1), ImVec2(x: pos.x + 3 + highlight_width, y: pos.y + line_height + 1), color
 
-  proc draw_selected =
+  proc draw_selected(active: bool) =
     var pos: ImVec2
     igGetCursorScreenPosNonUDT(pos.addr)
     var color = highlight_color
-    if editor.brush:
+    if editor.brush and active:
       color = brush_color
     draw_list.addRectFilled ImVec2(x: pos.x - 3, y: pos.y - 1), ImVec2(x: pos.x + 3 + highlight_width, y: pos.y + line_height + 1), color
 
@@ -488,7 +488,7 @@ proc draw*(editor: Editor) =
         draw_cursor(editor.cursor_data)
 
       if editor.in_selection(i, j):
-        draw_selected()
+        draw_selected(editor.cursor_data)
 
       let hf = level.data[level.offset(i,j)]
       let h = hf.int
@@ -527,7 +527,7 @@ proc draw*(editor: Editor) =
         draw_cursor(editor.cursor_mask)
 
       if editor.in_selection(i, j):
-        draw_selected()
+        draw_selected(editor.cursor_mask)
 
       let m = level.mask[level.offset(i,j)]
       var txt = $m

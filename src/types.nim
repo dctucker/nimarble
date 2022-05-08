@@ -300,3 +300,6 @@ type
     brush*: bool
     dirty*: bool
 
+proc data*(editor: Editor): var seq[float]     = editor.level.data
+proc mask*(editor: Editor): var seq[CliffMask] = editor.level.mask
+
