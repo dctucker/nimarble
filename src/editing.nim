@@ -139,7 +139,9 @@ proc update_selection_vbos(editor: Editor) =
       editor.level.calculate_vbos(i, j)
 
 proc get_selection_stamp(editor: Editor): Stamp =
-  let dim = (editor.selection.z - editor.selection.x) * (editor.selection.w - editor.selection.y)
+  result.width = editor.selection.w - editor.selection.y
+  result.height = editor.selection.z - editor.selection.x
+  let dim = result.width * result.height
   result.data = newSeqOfCap[float](dim)
   result.mask = newSeqOfCap[CliffMask](dim)
   for i in editor.selection.x .. editor.selection.z:
@@ -295,6 +297,23 @@ proc serialize_selection(editor: Editor): string =
 proc undo(editor: Editor) = discard
 proc redo(editor: Editor) = discard
 
+proc copy_both(editor: Editor) =
+  editor.cursor_mask = true
+  editor.cursor_data = true
+  editor.stamp = editor.get_selection_stamp()
+  editor.cut = vec4i(0,0,0,0)
+
+proc cut_both(editor: Editor) =
+  editor.copy_both()
+  editor.cut = editor.selection
+
+proc paste_both(editor: Editor) =
+  editor.cursor_mask = true
+  editor.cursor_data = true
+  editor.selection = vec4i( editor.row.int32, editor.col.int32, editor.row.int32 + editor.stamp.height.int32, editor.col.int32 + editor.stamp.width.int32 )
+  editor.put_selection_stamp(editor.stamp, 0, 0)
+  editor.cut = vec4i(0,0,0,0)
+
 proc copy_clipboard(editor: Editor) =
   setClipboardString nil, editor.serialize_selection().cstring
   editor.cut = vec4i(0,0,0,0)
@@ -327,22 +346,23 @@ proc paste_clipboard(editor: Editor) =
       j.inc
     i.inc
 
-proc copy_both(editor: Editor) =
-  editor.cursor_mask = true
-  editor.cursor_data = true
-  editor.stamp = editor.get_selection_stamp()
-  editor.cut = vec4i(0,0,0,0)
+proc do_copy(editor: Editor) =
+  if editor.cursor_mask == true and editor.cursor_data == true:
+    editor.copy_both()
+  else:
+    editor.copy_clipboard()
 
-proc cut_both(editor: Editor) =
-  editor.copy_both()
-  editor.cut = editor.selection
+proc do_cut(editor: Editor) =
+  if editor.cursor_mask == true and editor.cursor_data == true:
+    editor.cut_both()
+  else:
+    editor.cut_clipboard()
 
-proc paste_both(editor: Editor) =
-  editor.cursor_mask = true
-  editor.cursor_data = true
-  editor.selection = vec4i( editor.row.int32, editor.col.int32, editor.row.int32 + editor.stamp.height.int32, editor.col.int32 + editor.stamp.width.int32 )
-  editor.put_selection_stamp(editor.stamp, 0, 0)
-  editor.cut = vec4i(0,0,0,0)
+proc do_paste(editor: Editor) =
+  if editor.cursor_mask == true and editor.cursor_data == true:
+    editor.paste_both()
+  else:
+    editor.paste_clipboard()
 
 proc back(editor: Editor) =
   if editor.brush:
@@ -367,20 +387,20 @@ proc handle_key*(editor: Editor, key: int32, mods: int32): bool =
 
   result = true
   if (mods and GLFWModControl) != 0 or (mods and GLFWModSuper) != 0:
-    if (mods and GLFWModShift) != 0:
-      case key
-      of GLFWKey.Z          : editor.redo()
-      of GLFWKey.X          : editor.cut_both()
-      of GLFWKey.C          : editor.copy_both()
-      of GLFWKey.V          : editor.paste_both()
-      else                  : result = false
-    else:
+    #if (mods and GLFWModShift) != 0:
+    #  case key
+    #  of GLFWKey.Z          : editor.redo()
+    #  of GLFWKey.X          : editor.cut_both()
+    #  of GLFWKey.C          : editor.copy_both()
+    #  of GLFWKey.V          : editor.paste_both()
+    #  else                  : result = false
+    #else:
       case key
       of GLFWKey.Y          : editor.redo()
       of GLFWKey.Z          : editor.undo()
-      of GLFWKey.X          : editor.cut_clipboard()
-      of GLFWKey.C          : editor.copy_clipboard()
-      of GLFWKey.V          : editor.paste_clipboard()
+      of GLFWKey.X          : editor.do_cut()
+      of GLFWKey.C          : editor.do_copy()
+      of GLFWKey.V          : editor.do_paste()
       else                  : result = false
   elif (mods and GLFWModShift) != 0:
     case key
