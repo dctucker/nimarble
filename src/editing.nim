@@ -106,6 +106,8 @@ proc set_mask(editor: Editor, mask: CliffMask) =
     if   mask == P1: m = EP
     if   mask == HH: m = EH
     if   mask == VV: m = EV
+  elif cur == P1:
+    if   mask == P1: m = P2
   elif mask.cliff():
     if cur.cliff():
       m = CliffMask(cur.ord xor mask.ord)
