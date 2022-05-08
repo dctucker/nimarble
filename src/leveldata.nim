@@ -54,18 +54,20 @@ proc find_p1(data: seq[float], mask: seq[CliffMask], w,h: int): Vec3i =
 proc find_actors(data: seq[float], mask: seq[CliffMask], w,h: int): seq[Actor] =
   for i in 0..<h:
     for j in 0..<w:
-      let mask = mask[i * w + j]
-      if mask in {EY, EM, EA}:
+      let o = i * w + j
+      #if o >= mask.len: return
+      let mask = mask[o]
+      if mask in {EY, EM, EA, EV, EP, EH}:
         result.add Actor(
-          origin: vec3i(
-            j.int32,
-            data[i*w+j].int32,
-            i.int32,
-          ),
+          origin: vec3i( j.int32, data[o].int32, i.int32 ),
           kind: mask,
         )
 
-proc validate(level: Level) =
+proc validate(level: Level): bool =
+  let size = level.width * level.height
+  if (size > level.data.len) or (size > level.mask.len):
+    echo "Level height:" & $level.height & " width:" & $level.width & " size:" & $size & " do not match data length (" & $level.data.len & ") or mask length (" & $level.mask.len & ")"
+    return false
   let w = level.width
   for i in 0..<level.height:
     for j in 0..<w:
@@ -92,21 +94,23 @@ proc find_span(level: Level): int =
       if level.data[ level.offset(i,j) ] != 0:
         result = max(result, j - i)
 
-proc init_level(data_src, mask_src: string, color: Vec3f): Level =
+proc init_level(name, data_src, mask_src: string, color: Vec3f): Level =
   var i,j: int
 
-  let source_lines = data_src.splitLines()
+  let source_lines = data_src.splitLines().filter(proc(line:string): bool = return line.len > 0)
   let data = source_lines.map(tsv_floats).flatten()
   let mask = mask_src.splitLines.map(tsv_masks).flatten()
   let height = source_lines.len()
   let width = source_lines[0].split("\t").len()
   result = Level(
+    name: name,
     height: height,
     width: width,
     data: data,
     mask: mask,
     color: color,
   )
+  discard result.validate()
   result.origin = data.find_p1(mask, width, height)
   result.actors = data.find_actors(mask, width, height)
   result.span   = result.find_span()
@@ -132,26 +136,26 @@ proc format*(level: Level, value: float): string =
 proc format*(level: Level, value: CliffMask): string =
   return $value
 
-proc save*(level: Level, filename: string) =
-
+proc save*(level: Level) =
+  if level.name == "":
+    level.name = "_"
   let span = level.span
   let data = level.data
   let mask = level.mask
   let h = level.height
   let w = level.width
 
-  let data_fn = "levels/" & filename & ".tsv"
-  let mask_fn = "levels/" & filename & "mask.tsv"
+  let data_fn = "levels/" & level.name & ".tsv"
+  let mask_fn = "levels/" & level.name & "mask.tsv"
   let data_out = data_fn.open(fmWrite)
   let mask_out = mask_fn.open(fmWrite)
   for i in 0..<h:
     for j in 0..<w:
       if j >= i and j <= i + span:
         data_out.write data[i * w + j].format
-      data_out.write "\t"
-    data_out.setFilePos data_out.getFilePos - 1
-    if i < h - 1:
-      data_out.write "\l"
+      if j < w - 1:
+        data_out.write "\t"
+    data_out.write "\l"
 
     for j in 0..<w:
       let height = data[i * w + j].format
@@ -161,10 +165,9 @@ proc save*(level: Level, filename: string) =
           mask_out.write height
         else:
           mask_out.write $value
-      mask_out.write "\t"
-    mask_out.setFilePos mask_out.getFilePos - 1
-    if i < h - 1:
-      mask_out.write "\l"
+      if j < w - 1:
+        mask_out.write "\t"
+    mask_out.write "\l"
 
   data_out.close()
   mask_out.close()
@@ -186,17 +189,13 @@ const level_4_mask_src = staticRead("../levels/4mask.tsv")
 
 let levels = @[
   Level(),
-  init_level(level_0_src, level_0_mask_src, vec3f(1f, 0.0f, 1f)),
-  init_level(level_1_src, level_1_mask_src, vec3f(1f, 0.8f, 0f)),
-  init_level(level_2_src, level_2_mask_src, vec3f(0f, 0.4f, 0.8f)),
-  init_level(level_3_src, level_3_mask_src, vec3f(0.4f, 0.4f, 0.4f)),
-  init_level(level_4_src, level_4_mask_src, vec3f(1f, 0.4f, 0.1f)),
+  init_level("0", level_0_src, level_0_mask_src, vec3f(1f, 0.0f, 1f)),
+  init_level("1", level_1_src, level_1_mask_src, vec3f(1f, 0.8f, 0f)),
+  init_level("2", level_2_src, level_2_mask_src, vec3f(0f, 0.4f, 0.8f)),
+  init_level("3", level_3_src, level_3_mask_src, vec3f(0.4f, 0.4f, 0.4f)),
+  init_level("4", level_4_src, level_4_mask_src, vec3f(1f, 0.4f, 0.1f)),
 ]
 let n_levels* = levels.len()
-
-for l in 1..levels.high:
-  echo "Level ", $l
-  levels[l].validate()
 
 proc xlat_coord(level: Level, x,z: float): (int,int) =
   return ((z.floor+level.origin.z.float).int, (x.floor+level.origin.x.float).int)

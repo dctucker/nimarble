@@ -212,7 +212,7 @@ proc set_level(game: Game) =
     reset_view()
     following = f
   editor.level = game.get_level()
-  editor.name = $(game.level - 1)
+  editor.name = editor.level.name
 
 proc init(game: var Game) =
   game.init_player()

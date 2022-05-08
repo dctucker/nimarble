@@ -262,7 +262,7 @@ proc delete(editor: Editor) =
   editor.level.data[o] = 0
 
 proc save(editor: Editor) =
-  editor.level.save(editor.name)
+  editor.level.save()
 
 proc serialize_selection[T](editor: Editor, data: seq[T]): string =
   result = ""

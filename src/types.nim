@@ -165,12 +165,12 @@ type
     SW,         # sine wave
     P1,         # player 1 start position
     P2,         # player 2 start position
-    EM,         # enemy: marble
-    EY,         # enemy: yum
-    EA,         # enemy: acid
-    EV,         # enemy: vacuum
-    EP,         # enemy: piston
-    EH,         # enemy: hammer
+    EM,         # entity: marble
+    EY,         # entity: yum
+    EA,         # entity: acid
+    EV,         # entity: vacuum
+    EP,         # entity: piston
+    EH,         # entity: hammer
 
   Actor* = ref object
     kind*: CliffMask
@@ -185,17 +185,18 @@ type
   Level* = ref object
     width*, height*, span*: int
     origin*: Vec3i
+    clock*: int
+    color*: Vec3f
     data*: seq[float]
     mask*: seq[CliffMask]
-    color*: Vec3f
     floor_lookup*: TableRef[(cfloat, cfloat, cfloat), Ind]
     floor_colors*: seq[cfloat]
     floor_index*: seq[Ind]
     floor_verts*: seq[cfloat]
     floor_normals*: seq[cfloat]
     floor_plane*: Mesh
-    clock*: int
     actors*: seq[Actor]
+    name*: string
 
 
 proc cliff*(a: CliffMask): bool =
@@ -207,7 +208,7 @@ proc has*(a,b: CliffMask): bool =
     return (a.ord and b.ord) != 0
 
 proc offset*[T:Ordinal](level: Level, i,j: T): T =
-  if j >= level.width or j < 0: return 0
+  if j >= level.width  or j < 0: return 0
   if i >= level.height or i < 0: return 0
   result = level.width * i + j
 
