@@ -178,7 +178,7 @@ type
     mesh*: Mesh
 
   CubePoint* = object
-    height*: float
+    pos*: Vec3f
     color*: Vec4f
     normal*: Vec3f
 
