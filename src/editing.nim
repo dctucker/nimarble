@@ -216,19 +216,51 @@ proc cursor(editor: Editor, drow, dcol: int) =
     editor.select_one()
 
 proc select_more(editor: Editor, drow, dcol: int) =
+  var i,j: int
+  let sel = editor.selection
+
   editor.brush = false
 
   if not editor.cursor_in_selection():
     editor.select_one()
 
+  if editor.cursor_in_selection():
+    i = editor.row
+    j = editor.col
+    if (sel.y + 1 <= j and j <= sel.w - 1) or (sel.x + 1 <= i and i <= sel.z - 1):
+      # pan
+      editor.selection.x += drow.int32
+      editor.selection.z += drow.int32
+      editor.selection.y += dcol.int32
+      editor.selection.w += dcol.int32
+      editor.row += drow
+      editor.col += dcol
+      return
+
   editor.row += drow
   editor.col += dcol
 
-  if editor.row < editor.selection.x: editor.selection.x = editor.row.int32
-  if editor.col < editor.selection.y: editor.selection.y = editor.col.int32
+  i = editor.row
+  j = editor.col
 
-  if editor.row > editor.selection.z: editor.selection.z = editor.row.int32
-  if editor.col > editor.selection.w: editor.selection.w = editor.col.int32
+  if editor.cursor_in_selection():
+    # shrink
+    if j - sel.y < sel.w - j:
+      editor.selection.y = j.int32
+    else:
+      editor.selection.w = j.int32
+
+    if i - sel.x < sel.z - i:
+      editor.selection.x = i.int32
+    else:
+      editor.selection.z = i.int32
+
+  else:
+    # grow
+    if j < sel.y: editor.selection.y = j.int32
+    if j > sel.w: editor.selection.w = j.int32
+    if i < sel.x: editor.selection.x = i.int32
+    if i > sel.z: editor.selection.z = i.int32
 
 proc toggle_brush*(editor: Editor) =
   editor.brush = not editor.brush
