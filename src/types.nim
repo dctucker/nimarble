@@ -210,7 +210,7 @@ proc has*(a,b: CliffMask): bool =
 proc offset*[T:Ordinal](level: Level, i,j: T): T =
   if j >= level.width  or j < 0: return 0
   if i >= level.height or i < 0: return 0
-  result = level.width * i + j
+  result = (level.width * i + j).T
 
 type
   GameState* = enum

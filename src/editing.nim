@@ -14,8 +14,8 @@ proc leave(editor: Editor) =
   editor.focused = false
   igFocusWindow(nil)
 
-proc offset(editor: Editor, row, col: int): int =
-  result = editor.level.offset( row, col )
+proc offset[T: Ordinal](editor: Editor, row, col: T): int =
+  result = editor.level.offset( row, col ).int
 
 proc offset(editor: Editor): int =
   result = editor.offset( editor.row, editor.col )
@@ -50,6 +50,9 @@ proc all_ints(editor: Editor): bool =
 
 proc cursor_in_selection(editor: Editor): bool =
   result = editor.in_selection(editor.row, editor.col)
+
+proc cursor_in_level(editor: Editor): bool =
+  result = editor.level.has_coord(editor.row, editor.col)
 
 proc get_mask(editor: Editor): CliffMask =
   let o = editor.offset()
@@ -155,22 +158,29 @@ proc get_selection_stamp(editor: Editor): Stamp =
   result.mask = newSeqOfCap[CliffMask](dim)
   for i in editor.selection.x .. editor.selection.z:
     for j in editor.selection.y .. editor.selection.w:
-      if j < i or j - i > editor.level.span: continue
-      let o = editor.offset(i,j)
-      result.data.add editor.data[o]
-      result.mask.add editor.mask[o]
+      if editor.level.has_coord(i,j):
+        let o = editor.offset(i,j)
+        result.data.add editor.data[o]
+        result.mask.add editor.mask[o]
+      else:
+        result.data.add 0
+        result.mask.add XX
 
 proc put_selection_stamp(editor: Editor, stamp: Stamp, drow, dcol: int) =
-  var k = 0
-  for i in editor.selection.x .. editor.selection.z:
-    for j in editor.selection.y .. editor.selection.w:
-      if j < i or j - i > editor.level.span: continue
-      let o = editor.offset(i + drow, j + dcol)
-      if editor.cursor_data:
-        editor.data[o] = stamp.data[k]
-      if editor.cursor_mask:
-        editor.mask[o] = stamp.mask[k]
+  var k: int
+  let h = min( editor.selection.z, editor.selection.x + editor.stamp.height )
+  let w = min( editor.selection.w, editor.selection.y + editor.stamp.width )
+  let max_k = min( stamp.data.len, stamp.mask.len )
+  for i in editor.selection.x .. h:
+    for j in editor.selection.y .. w:
+      if editor.level.has_coord(i.int,j.int):
+        let o = editor.offset(i + drow, j + dcol)
+        if editor.cursor_data:
+          editor.data[o] = stamp.data[k]
+        if editor.cursor_mask:
+          editor.mask[o] = stamp.mask[k]
       k.inc
+      if k >= max_k: return
 
 proc shift_selection(editor: Editor, drow, dcol: int) =
   editor.selection.x += drow.int32
@@ -535,12 +545,15 @@ proc cell_name(editor: Editor): string =
   result &= $(editor.row + 1)
 
 proc cell_value(editor: Editor): string =
-  if editor.row < 0 or editor.row >= editor.level.height or editor.col < 0 or editor.col >= editor.level.width or editor.col < editor.row:
-    return ""
-  result = $editor.level.format(editor.get_data())
-  let mask = editor.get_mask()
-  if mask != XX:
-    result &= " " & $mask
+  result = ""
+  if not editor.cursor_in_level():
+    return
+  if editor.cursor_data:
+    result &= $editor.level.format(editor.get_data())
+  if editor.cursor_mask:
+    let mask = editor.get_mask()
+    if mask != XX:
+      result &= " " & $mask
 
 proc draw*(editor: Editor) =
   if not editor.visible: return
@@ -625,7 +638,7 @@ proc draw*(editor: Editor) =
 
         color.addr.setHSV( hmod, sat, 0.4 + hdiv, alpha )
 
-      if i < 0 or j < 0 or j < i or i >= editor.level.height or j >= editor.level.width or j-i > editor.level.span:
+      if not editor.level.has_coord(i,j):
         color.value = ImVec4(x: 0.0, y: 0.0, z: 0.0, w: 0.0)
       igTextColored(color.value, text)
 
@@ -651,7 +664,7 @@ proc draw*(editor: Editor) =
       #let hmod = 0.6 + 0.1 * sin( 2 * 3.14159265 * (h mod period).float / period.float )
       color.value = ImVec4(x: 0.8, y: 0.8, z: 0.8, w: 1.0)
       if m == XX: color.value = dark_color
-      if i < 0 or j < 0 or j < i or i >= editor.level.height or j >= editor.level.width or j-i > editor.level.span:
+      if not editor.level.has_coord(i,j):
         color.value = ImVec4(x: 0.0, y: 0.0, z: 0.0, w: 0.0)
       igTextColored(color.value, text)
 

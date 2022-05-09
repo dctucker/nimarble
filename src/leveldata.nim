@@ -200,6 +200,14 @@ let n_levels* = levels.len()
 proc xlat_coord(level: Level, x,z: float): (int,int) =
   return ((z.floor+level.origin.z.float).int, (x.floor+level.origin.x.float).int)
 
+proc has_coord*(level: Level, i,j: int): bool =
+  result = i >= 0            and
+           j >= 0            and
+           i <  level.height and
+           j <  level.width  and
+           j >= i            and
+           j - i <= level.span
+
 proc mask_at*(level: Level, x,z: float): CliffMask =
   let (i,j) = level.xlat_coord(x,z)
   if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return XX
