@@ -2,6 +2,7 @@ import nimgl/[glfw,opengl]
 import glm
 import std/tables
 import wrapper
+from scene import Mesh
 
 type
   CliffMask* = enum

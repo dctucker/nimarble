@@ -12,7 +12,7 @@ import types
 import models
 import leveldata
 import editing
-import contrib/heightmap
+import scene
 
 const vert_source = readFile("src/shaders/player.vert")
 var verts = vert_source.cstring
@@ -40,7 +40,7 @@ var mouse: Vec3f
 const level_squash = 0.5f
 const start_level = 1
 
-proc update_light =
+proc update_light* =
   glUniform3f light_id          , game.light_pos.x, game.light_pos.y, game.light_pos.z
   glUniform3f light_color_id    , game.light_color.x, game.light_color.y, game.light_color.z
   glUniform3f light_specular_id , game.light_specular_color.x, game.light_specular_color.y, game.light_specular_color.z
@@ -70,19 +70,10 @@ proc reset_view(game: Game) =
   game.update_camera()
   game.pan_vel = vec3f(0,0,0)
 
-proc reset_mesh(mesh: Mesh) =
-  mesh.pos = vec3f(0f, 0f, 0f)
-  mesh.vel = vec3f(0,0,0)
-  mesh.acc = vec3f(0,0,0)
-  mesh.rot = quatf(vec3f(0,-1,0),0).normalize
-  mesh.normal = vec3f(0,-1,0)
-  #mesh.rvel = vec3f(0,0,0)
-  #mesh.racc = vec3f(0,0,0)
-
 proc reset_player(game: Game) =
   let player_top = game.get_level().origin.y.float
-  game.player.mesh.reset_mesh()
-  game.player.mesh.pos += 0.5
+  game.player.mesh.reset()
+  game.player.mesh.pos += vec3f(0.5, 0.5, 0.5)
   game.player.mesh.pos.y = player_top
 
 proc do_reset_player(press: bool) =
@@ -189,7 +180,7 @@ proc init_actors(game: Game) =
       program   : game.player.mesh.program,
       model     : game.player.mesh.program.newMatrix(modelmat, "M"),
     )
-    actor.mesh.reset_mesh()
+    actor.mesh.reset()
     let x = (actor.origin.x - level.origin.x).float
     let y = actor.origin.y.float
     let z = (actor.origin.z - level.origin.z).float
@@ -220,11 +211,11 @@ proc init(game: var Game) =
   var viewmat = game.view.mat
   game.view = game.player.mesh.program.newMatrix(viewmat, "V")
 
-  light_id = glGetUniformLocation(game.player.mesh.program.id, "LightPosition_worldspace")
-  light_power_id = glGetUniformLocation(game.player.mesh.program.id, "LightPower")
-  light_color_id = glGetUniformLocation(game.player.mesh.program.id, "LightColor")
+  light_id          = glGetUniformLocation(game.player.mesh.program.id, "LightPosition_worldspace")
+  light_power_id    = glGetUniformLocation(game.player.mesh.program.id, "LightPower")
+  light_color_id    = glGetUniformLocation(game.player.mesh.program.id, "LightColor")
   light_specular_id = glGetUniformLocation(game.player.mesh.program.id, "SpecularColor")
-  light_ambient_id = glGetUniformLocation(game.player.mesh.program.id, "AmbientWeight")
+  light_ambient_id  = glGetUniformLocation(game.player.mesh.program.id, "AmbientWeight")
 
   with game:
     level = start_level

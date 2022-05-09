@@ -5,6 +5,9 @@ type
   Ind* = uint32
 
 type
+  Uniform*[T] = object
+    id: GLint
+    data: T
   VAO* = object
     id: uint32
   VBO*[T] = object
@@ -131,16 +134,4 @@ proc draw_elem*(vbo: VBO, kind: GLEnum = GL_TRIANGLES) {.inline.} =
 proc use*(program: Program) =
   glUseProgram program.id
 
-
-type Mesh* = ref object
-  pos*, vel*, acc*: Vec3f
-  rot*: Quatf
-  vao*: VAO
-  vert_vbo*, color_vbo*: VBO[cfloat]
-  elem_vbo*: VBO[Ind]
-  norm_vbo*: VBO[cfloat]
-  model*: Matrix
-  normal*: Vec3f
-  mvp*: Matrix
-  program*: Program
 
