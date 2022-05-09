@@ -200,7 +200,7 @@ let n_levels* = levels.len()
 proc xlat_coord(level: Level, x,z: float): (int,int) =
   return ((z.floor+level.origin.z.float).int, (x.floor+level.origin.x.float).int)
 
-proc has_coord*(level: Level, i,j: int): bool =
+proc has_coord*[T](level: Level, i,j: T): bool =
   result = i >= 0            and
            j >= 0            and
            i <  level.height and

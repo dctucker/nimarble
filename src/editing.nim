@@ -35,18 +35,18 @@ iterator selection_offsets(editor: Editor): int =
 iterator cut_offsets(editor: Editor): int =
   for o in editor.offsets(editor.cut): yield o
 
-proc in_selection(editor: Editor, i,j: int): bool =
-  result = i >= editor.selection.x and
-           i <= editor.selection.z and
-           j >= editor.selection.y and
-           j <= editor.selection.w
-
 proc all_ints(editor: Editor): bool =
   result = true
   for o in editor.selection_offsets:
     let h = editor.data[o]
     if h - h.floor > 0:
       return false
+
+proc in_selection(editor: Editor, i,j: int): bool =
+  result = i >= editor.selection.x and
+           i <= editor.selection.z and
+           j >= editor.selection.y and
+           j <= editor.selection.w
 
 proc cursor_in_selection(editor: Editor): bool =
   result = editor.in_selection(editor.row, editor.col)
@@ -151,8 +151,8 @@ proc select_one(editor: Editor) =
   editor.selection.w = editor.col.int32
 
 proc get_selection_stamp(editor: Editor): Stamp =
-  result.width = editor.selection.w - editor.selection.y
-  result.height = editor.selection.z - editor.selection.x
+  result.width = editor.selection.w - editor.selection.y + 1
+  result.height = editor.selection.z - editor.selection.x + 1
   let dim = result.width * result.height
   result.data = newSeqOfCap[float](dim)
   result.mask = newSeqOfCap[CliffMask](dim)
@@ -168,12 +168,12 @@ proc get_selection_stamp(editor: Editor): Stamp =
 
 proc put_selection_stamp(editor: Editor, stamp: Stamp, drow, dcol: int) =
   var k: int
-  let h = min( editor.selection.z, editor.selection.x + editor.stamp.height )
-  let w = min( editor.selection.w, editor.selection.y + editor.stamp.width )
+  let h = min( editor.selection.z, editor.selection.x + stamp.height - 1 )
+  let w = min( editor.selection.w, editor.selection.y + stamp.width  - 1)
   let max_k = min( stamp.data.len, stamp.mask.len )
   for i in editor.selection.x .. h:
     for j in editor.selection.y .. w:
-      if editor.level.has_coord(i.int,j.int):
+      if editor.level.has_coord(i + drow, j + dcol):
         let o = editor.offset(i + drow, j + dcol)
         if editor.cursor_data:
           editor.data[o] = stamp.data[k]
@@ -233,44 +233,50 @@ proc select_more(editor: Editor, drow, dcol: int) =
   var i,j: int
   let sel = editor.selection
 
+  template update_cursor =
+    editor.row += drow
+    editor.col += dcol
+
+  template update_ij =
+    i = editor.row
+    j = editor.col
+
   editor.brush = false
 
   if not editor.cursor_in_selection():
     editor.select_one()
 
   if editor.cursor_in_selection():
-    i = editor.row
-    j = editor.col
+    update_ij
     if (sel.y + 1 <= j and j <= sel.w - 1) or (sel.x + 1 <= i and i <= sel.z - 1):
       # pan
       editor.selection.x += drow.int32
       editor.selection.z += drow.int32
       editor.selection.y += dcol.int32
       editor.selection.w += dcol.int32
-      editor.row += drow
-      editor.col += dcol
+      update_cursor
       return
 
-  editor.row += drow
-  editor.col += dcol
+  update_ij
 
-  i = editor.row
-  j = editor.col
-
-  if editor.cursor_in_selection():
+  if editor.in_selection(editor.row + drow, editor.col + dcol):
     # shrink
+    update_cursor
+
     if j - sel.y < sel.w - j:
-      editor.selection.y = j.int32
+      editor.selection.y = editor.col.int32
     else:
-      editor.selection.w = j.int32
+      editor.selection.w = editor.col.int32
 
     if i - sel.x < sel.z - i:
-      editor.selection.x = i.int32
+      editor.selection.x = editor.row.int32
     else:
-      editor.selection.z = i.int32
+      editor.selection.z = editor.row.int32
 
   else:
     # grow
+    update_cursor
+    update_ij
     if j < sel.y: editor.selection.y = j.int32
     if j > sel.w: editor.selection.w = j.int32
     if i < sel.x: editor.selection.x = i.int32
@@ -348,23 +354,6 @@ proc serialize_selection(editor: Editor): string =
 proc undo(editor: Editor) = discard
 proc redo(editor: Editor) = discard
 
-proc copy_both(editor: Editor) =
-  editor.cursor_mask = true
-  editor.cursor_data = true
-  editor.stamp = editor.get_selection_stamp()
-  editor.cut = vec4i(0,0,0,0)
-
-proc cut_both(editor: Editor) =
-  editor.copy_both()
-  editor.cut = editor.selection
-
-proc paste_both(editor: Editor) =
-  editor.cursor_mask = true
-  editor.cursor_data = true
-  editor.selection = vec4i( editor.row.int32, editor.col.int32, editor.row.int32 + editor.stamp.height.int32, editor.col.int32 + editor.stamp.width.int32 )
-  editor.put_selection_stamp(editor.stamp, 0, 0)
-  editor.cut = vec4i(0,0,0,0)
-
 proc copy_clipboard(editor: Editor) =
   setClipboardString nil, editor.serialize_selection().cstring
   editor.cut = vec4i(0,0,0,0)
@@ -374,6 +363,7 @@ proc cut_clipboard(editor: Editor) =
   editor.cut = editor.selection
 
 proc execute_cut(editor: Editor) =
+  editor.dirty = true
   if editor.cut != vec4i(0,0,0,0):
     for o in editor.cut_offsets:
       if editor.cursor_mask:
@@ -396,6 +386,24 @@ proc paste_clipboard(editor: Editor) =
         editor.data[o] = editor.level.parseFloat(value)
       j.inc
     i.inc
+
+proc copy_both(editor: Editor) =
+  editor.cursor_mask = true
+  editor.cursor_data = true
+  editor.stamp = editor.get_selection_stamp()
+  editor.cut = vec4i(0,0,0,0)
+
+proc cut_both(editor: Editor) =
+  editor.copy_both()
+  editor.cut = editor.selection
+
+proc paste_both(editor: Editor) =
+  editor.cursor_mask = true
+  editor.cursor_data = true
+  editor.execute_cut()
+  editor.selection = vec4i( editor.row.int32, editor.col.int32, editor.row.int32 + editor.stamp.height.int32 - 1, editor.col.int32 + editor.stamp.width.int32 - 1)
+  editor.put_selection_stamp(editor.stamp, 0, 0)
+  editor.dirty = true
 
 proc do_copy(editor: Editor) =
   if editor.cursor_mask == true and editor.cursor_data == true:
@@ -431,6 +439,57 @@ proc cursor_both(editor: Editor) =
   editor.cursor_mask = true
   editor.cursor_data = true
 
+proc rotate_stamp(editor: Editor) =
+  let s1 = editor.stamp
+  let w = s1.width
+  let dim = s1.height * w
+  var s2 = Stamp(
+    width : s1.height,
+    height: s1.width,
+    data: newSeqOfCap[float](dim),
+    mask: newSeqOfCap[CliffMask](dim),
+  )
+  for j in 0 ..< w:
+    for i in countdown(s1.height - 1,  0):
+      let o1 = w * i + j
+      s2.data.add s1.data[o1]
+      s2.mask.add s1.mask[o1]
+  editor.stamp = s2
+
+proc flip_stamp(editor: Editor) =
+  let s1 = editor.stamp
+  let w = s1.width
+  let dim = s1.height * w
+  var s2 = Stamp(
+    width : s1.width,
+    height: s1.height,
+    data: newSeqOfCap[float](dim),
+    mask: newSeqOfCap[CliffMask](dim),
+  )
+  for i in countdown(editor.stamp.height - 1, 0):
+    for j in 0 ..< editor.stamp.width:
+      let o = w * i + j
+      s2.data.add s1.data[o]
+      s2.mask.add s1.mask[o]
+  editor.stamp = s2
+
+proc reverse_stamp(editor: Editor) =
+  let s1 = editor.stamp
+  let w = s1.width
+  let dim = s1.height * w
+  var s2 = Stamp(
+    width : s1.width,
+    height: s1.height,
+    data: newSeqOfCap[float](dim),
+    mask: newSeqOfCap[CliffMask](dim),
+  )
+  for i in 0 ..< editor.stamp.height:
+    for j in countdown(editor.stamp.width - 1, 0):
+      let o = w * i + j
+      s2.data.add s1.data[o]
+      s2.mask.add s1.mask[o]
+  editor.stamp = s2
+
 proc handle_key*(editor: Editor, key: int32, mods: int32): bool =
   #let io = igGetIO()
   #if not io.wantCaptureMouse:
@@ -464,6 +523,8 @@ proc handle_key*(editor: Editor, key: int32, mods: int32): bool =
     of GLFWKey.Home       : editor.select_more(+1,-1)
     of GLFWKey.End        : editor.select_more(-1,+1)
     of GLFWKey.Tab        : editor.cursor_both()
+    of GLFWKey.Minus      : editor.flip_stamp()
+    of GLFWKey.Backslash  : editor.reverse_stamp()
     else                  : editor.select_one()
   else:
     case key
@@ -508,8 +569,9 @@ proc handle_key*(editor: Editor, key: int32, mods: int32): bool =
     of GLFWKey.T          : editor.set_mask(TU)
     of GLFWKey.N          : editor.set_mask(IN)
     of GLFWKey.O          : editor.set_mask(OU)
-    of GLFWKey.W          : editor.save()
     of GLFWKey.Tab        : editor.toggle_cursor()
+    of GLFWKey.Slash      : editor.rotate_stamp()
+    of GLFWKey.W          : editor.save()
     #of GLFWKey.LeftShift  : editor.select_one()
     else                  : result = false
 
@@ -558,32 +620,19 @@ proc cell_value(editor: Editor): string =
 proc draw*(editor: Editor) =
   if not editor.visible: return
 
-  igSetNextWindowSizeConstraints ImVec2(x:300, y:300), ImVec2(x: 1000, y: 1000)
-  igBegin("editor")
-  var level = editor.level
-  if level == nil: return
   var style = igGetStyle()
   let highlight_color = style.colors[ImGuiCol.TextSelectedBg.int32].igGetColorU32
   let cursor_color    = style.colors[ImGuiCol.Text.int32].igGetColorU32
   let brush_color     = ImVec4(x: 0.4, y: 0.2, z: 0.2, w: 0.7).igGetColorU32
-  var wh = igGetWindowWidth()
-  wh -= style.windowPadding.x * 2 - style.framePadding.x * 2
-  wh -= highlight_width * 2
-  wh /= 2
-  wh /= highlight_width + style.itemSpacing.x
 
-  editor.width = wh.floor.int
-
-  igSameLine()
-
-  var draw_list = igGetWindowDrawList()
-
+  var color: ImColor
   proc draw_cursor(active: bool) =
     var pos: ImVec2
     igGetCursorScreenPosNonUDT(pos.addr)
     var color = cursor_color
     if not active:
       color = dark_color.igGetColorU32
+    var draw_list = igGetWindowDrawList()
     draw_list.addRect ImVec2(x: pos.x - 3, y: pos.y - 1), ImVec2(x: pos.x + 3 + highlight_width, y: pos.y + line_height + 1), color
 
   proc draw_selected(active: bool) =
@@ -592,9 +641,67 @@ proc draw*(editor: Editor) =
     var color = highlight_color
     if editor.brush and active:
       color = brush_color
+    var draw_list = igGetWindowDrawList()
     draw_list.addRectFilled ImVec2(x: pos.x - 3, y: pos.y - 1), ImVec2(x: pos.x + 3 + highlight_width, y: pos.y + line_height + 1), color
 
-  var color: ImColor
+  proc draw_data_cell(hf: float, enabled: bool = true) =
+    let h = hf.int
+    var txt = $h
+    if txt.len < 2: txt = " " & txt
+    var text = txt.cstring
+
+    if h == 0:
+      color.value = dark_color
+    else:
+      const period = 8
+      var alpha = 1.0
+      let hmod = (h mod period).float / period.float
+      let hdiv = (h div period).float / 16f
+      var sat  = 0.5
+      if hf - hf.floor > 0:
+        sat = 0.125
+        alpha = 0.5 + (hf - hf.floor) * 0.5
+        if hf - hf.floor > 0.5:
+          sat = 0.875
+
+      color.addr.setHSV( hmod, sat, 0.4 + hdiv, alpha )
+
+    if not enabled:
+      color.value = ImVec4(x: 0.0, y: 0.0, z: 0.0, w: 0.0)
+    igTextColored(color.value, text)
+
+  proc draw_mask_cell(m: CliffMask, enabled: bool = true) =
+    var txt = $m
+    if txt.len < 2: txt = " " & txt
+    var text = txt.cstring
+
+    #const period = 10
+    #let hmod = 0.6 + 0.1 * sin( 2 * 3.14159265 * (h mod period).float / period.float )
+    color.value = ImVec4(x: 0.8, y: 0.8, z: 0.8, w: 1.0)
+    if m == XX: color.value = dark_color
+    if not enabled:
+      color.value = ImVec4(x: 0.0, y: 0.0, z: 0.0, w: 0.0)
+    igTextColored(color.value, text)
+
+  proc draw_hbar =
+    igSameLine()
+    color.value = ImVec4(x: 0, y: 0, z: 0, w: 1.0)
+    igTextColored(color.value, " | ")
+
+  igSetNextWindowSizeConstraints ImVec2(x:300, y:300), ImVec2(x: 1000, y: 1000)
+  igBegin("editor")
+  var level = editor.level
+  if level == nil: return
+
+  var wh = igGetWindowWidth()
+  wh -= style.windowPadding.x * 2 - style.framePadding.x * 2
+  wh -= highlight_width * 2
+  wh /= 2
+  wh /= highlight_width + style.itemSpacing.x
+  editor.width = wh.floor.int
+
+  igSameLine()
+
 
   let cell = editor.cell_name()
   igText(cell.cstring)
@@ -617,34 +724,9 @@ proc draw*(editor: Editor) =
         draw_selected(editor.cursor_data)
 
       let hf = level.data[level.offset(i,j)]
-      let h = hf.int
-      var txt = $h
-      if txt.len < 2: txt = " " & txt
-      var text = txt.cstring
+      draw_data_cell(hf, editor.level.has_coord(i,j))
 
-      if h == 0:
-        color.value = dark_color
-      else:
-        const period = 8
-        var alpha = 1.0
-        let hmod = (h mod period).float / period.float
-        let hdiv = (h div period).float / 16f
-        var sat  = 0.5
-        if hf - hf.floor > 0:
-          sat = 0.125
-          alpha = 0.5 + (hf - hf.floor) * 0.5
-          if hf - hf.floor > 0.5:
-            sat = 0.875
-
-        color.addr.setHSV( hmod, sat, 0.4 + hdiv, alpha )
-
-      if not editor.level.has_coord(i,j):
-        color.value = ImVec4(x: 0.0, y: 0.0, z: 0.0, w: 0.0)
-      igTextColored(color.value, text)
-
-    igSameLine()
-    color.value = ImVec4(x: 0, y: 0, z: 0, w: 1.0)
-    igTextColored(color.value, " | ")
+    draw_hbar()
 
     for j in editor.col - ew2 .. editor.col + ew2:
       igSameLine()
@@ -656,21 +738,34 @@ proc draw*(editor: Editor) =
         draw_selected(editor.cursor_mask)
 
       let m = level.mask[level.offset(i,j)]
-      var txt = $m
-      if txt.len < 2: txt = " " & txt
-      var text = txt.cstring
-
-      #const period = 10
-      #let hmod = 0.6 + 0.1 * sin( 2 * 3.14159265 * (h mod period).float / period.float )
-      color.value = ImVec4(x: 0.8, y: 0.8, z: 0.8, w: 1.0)
-      if m == XX: color.value = dark_color
-      if not editor.level.has_coord(i,j):
-        color.value = ImVec4(x: 0.0, y: 0.0, z: 0.0, w: 0.0)
-      igTextColored(color.value, text)
+      draw_mask_cell(m, editor.level.has_coord(i,j))
 
     if i < last_row:
-      igText("")
+      igNewLine()
 
   editor.focused = igIsWindowFocused()
+  let editor_window = igGetCurrentWindow()
   igEnd()
+
+  let stamp = editor.stamp
+  if stamp.width * stamp.height > 0:
+    let tbh = editor_window.titleBarHeight()
+    igSetNextWindowSize ImVec2(
+      x: (stamp.width * 2 + 1).float  * (highlight_width + style.itemSpacing.x) + style.windowPadding.x * 2 - style.framePadding.x * 2 + style.scrollbarSize,
+      y: stamp.height.float * (line_height     + style.itemSpacing.y) + style.windowPadding.y * 2 - style.framePadding.y * 2 + tbh,
+    )
+    var b = true
+    igBegin("stamp", b.addr, (NoFocusOnAppearing.ord or NoScrollbar.ord).ImGuiWindowFlags)
+    for i in 0 ..< stamp.height:
+      for j in 0 ..< stamp.width:
+        igSameLine()
+        let o = i * stamp.width + j
+        draw_data_cell( stamp.data[o] )
+      draw_hbar()
+      for j in 0 ..< stamp.width:
+        let o = i * stamp.width + j
+        igSameLine()
+        draw_mask_cell( stamp.mask[o] )
+      igNewLine()
+    igEnd()
 
