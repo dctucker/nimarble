@@ -1,5 +1,5 @@
 import glm
-from types import Ind
+from wrapper import Ind
 
 #[
 

@@ -3,6 +3,7 @@ import sequtils
 import strutils
 import std/tables
 
+import wrapper
 import types
 
 from models import cube_vert, cube_verts, cube_colors, cube_index

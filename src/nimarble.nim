@@ -6,6 +6,7 @@ import nimgl/[glfw,opengl]
 import nimgl/imgui
 import nimgl/imgui/[impl_opengl, impl_glfw]
 import glm
+import wrapper
 
 import types
 import models
