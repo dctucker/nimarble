@@ -6,8 +6,16 @@ import nimgl/imgui
 import nimgl/imgui/[impl_opengl, impl_glfw]
 import zippy
 
-const terminus_ttf_asset = staticRead("../assets/fonts/TerminusTTF.ttf.gz")
-var terminus_ttf = uncompress(terminus_ttf_asset).cstring
+const terminus_ttf_asset = staticRead("../assets/fonts/TerminusTTF.ttf")
+const terminus_ttf_len = terminus_ttf_asset.len
+var terminus_ttf = terminus_ttf_asset.cstring
+
+#[
+const terminus_ttf_gz_asset = staticRead("../assets/fonts/TerminusTTF.ttf.gz")
+var terminus_ttf_gz = terminus_ttf_gz_asset.uncompress
+var terminus_ttf_gz_len = terminus_ttf_gz.len
+var terminus_ttf = terminus_ttf_gz_asset.cstring
+]#
 
 var width*, height*: int32
 var aspect*: float32
@@ -32,8 +40,8 @@ proc setup_imgui*(w: GLFWWindow) =
   doAssert igOpenGL3Init()
   igStyleColorsDark()
   var atlas = ig_context.io.fonts
-  small_font = atlas.addFontFromMemoryTTF(terminus_ttf, terminus_ttf_asset.len.int32, 14)
-  large_font = atlas.addFontFromMemoryTTF(terminus_ttf, terminus_ttf_asset.len.int32, 36)
+  small_font = atlas.addFontFromMemoryTTF(terminus_ttf, terminus_ttf_len.int32, 14)
+  large_font = atlas.addFontFromMemoryTTF(terminus_ttf, terminus_ttf_len.int32, 36)
   igSetNextWindowPos(ImVec2(x:5, y:5))
 
 proc draw_goal* =

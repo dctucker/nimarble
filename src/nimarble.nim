@@ -1,4 +1,3 @@
-{.link:"assets/cimgui.a".}
 {. warning[HoleEnumConv]:off .}
 
 import std/tables
