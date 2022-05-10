@@ -2,7 +2,7 @@ import nimgl/[glfw,opengl]
 import glm
 import std/tables
 import wrapper
-from scene import Mesh
+from scene import Mesh, Light, newLight
 
 type
   CliffMask* = enum
@@ -108,11 +108,7 @@ type
     fov*: float32
     camera_distance*: float32
     camera_target*, camera_pos*, camera_up*: Vec3f
-    light_pos*: Vec3f
-    light_power*: float32
-    light_color*: Vec3f
-    light_specular_color*: Vec3f
-    light_ambient_weight*: float32
+    light*: Light
     paused*: bool
     mouse_mode*: MouseMode
     following*: bool
@@ -128,10 +124,13 @@ proc newGame*: Game =
     level: 1,
     player: Player(),
     fov: 30f,
-    light_color: vec3f(1,1,1),
-    light_specular_color: vec3f(1.0, 0.825, 0.75) * 0.375,
-    light_ambient_weight: 0.875f,
-    light_power: 20000f,
+    light: newLight(
+      pos            = vec3f( 0, 200, 200 ),
+      color          = vec3f(1,1,1),
+      specular       = vec3f(1.0, 0.825, 0.75) * 0.375,
+      ambient        = 0.875f,
+      power          = 20000f,
+    ),
     camera_distance: 30f,
     paused : false,
     mouse_mode : MouseAcc,

@@ -1,7 +1,7 @@
-import os
+{.link:"assets/cimgui.a".}
+{. warning[HoleEnumConv]:off .}
+
 import std/tables
-import std/with
-import strutils
 import nimgl/[glfw,opengl]
 import nimgl/imgui
 import nimgl/imgui/[impl_opengl, impl_glfw]
@@ -13,300 +13,10 @@ import models
 import leveldata
 import editing
 import scene
+import gaming
+import window
 
-const vert_source = readFile("src/shaders/player.vert")
-var verts = vert_source.cstring
-
-const frag_source = readFile("src/shaders/player.frag")
-var frags = frag_source.cstring
-
-const geom_source = readFile("src/shaders/player.geom")
-var geoms = "".cstring
-
-if os.getEnv("CI") != "": quit()
-
-var light_id, light_power_id, light_color_id, light_specular_id, light_ambient_id: GLint
-var width, height: int32
-width = 1600
-height = 1200
-var aspect: float32 = width / height
-
-proc middle(): Vec2f = vec2f(width.float * 0.5f, height.float * 0.5f)
-
-var editor: Editor
 var game: Game
-var mouse: Vec3f
-
-const level_squash = 0.5f
-const start_level = 1
-
-proc update_light* =
-  glUniform3f light_id          , game.light_pos.x, game.light_pos.y, game.light_pos.z
-  glUniform3f light_color_id    , game.light_color.x, game.light_color.y, game.light_color.z
-  glUniform3f light_specular_id , game.light_specular_color.x, game.light_specular_color.y, game.light_specular_color.z
-  glUniform1f light_power_id    , game.light_power
-  glUniform1f light_ambient_id  , game.light_ambient_weight
-
-proc update_camera(game: Game) =
-  let level = game.get_level()
-
-  let distance = game.camera_distance
-  game.camera_target = vec3f( 0, level.origin.y.float * level_squash, 0 )
-  game.camera_pos = vec3f( distance, game.camera_target.y + distance, distance )
-  game.camera_up = vec3f( 0f,  1.0f,  0f )
-  #let target = vec3f( 10, 0, 10 )
-  #let pos = vec3f( level.origin.z.float * 2, 0, level.origin.z.float * 2)
-  game.view.update lookAt( game.camera_pos, game.camera_target, game.camera_up )
-  update_light()
-
-const field_width = 10f
-proc update_fov(game: Game) =
-  let r: float32 = radians(game.fov)
-  game.proj = perspective(r, aspect, 0.125f, sky)
-  #game.proj = ortho(aspect * -field_width, aspect * field_width, -field_width, field_width, 0f, sky) # In world coordinates
-
-proc reset_view(game: Game) =
-  game.update_fov()
-  game.update_camera()
-  game.pan_vel = vec3f(0,0,0)
-
-proc reset_player(game: Game) =
-  let player_top = game.get_level().origin.y.float
-  game.player.mesh.reset()
-  game.player.mesh.pos += vec3f(0.5, 0.5, 0.5)
-  game.player.mesh.pos.y = player_top
-
-proc do_reset_player(press: bool) =
-  if press:
-    game.reset_player()
-
-proc respawn(press: bool) =
-  if press:
-    game.reset_player()
-    game.player.mesh.pos = game.respawn_pos
-    game.reset_view()
-    inc game.respawns
-
-proc rotate_coord(v: Vec3f): Vec3f =
-  let v4 = mat4f(1f).translate(v).rotateY(radians(45f))[3]
-  result = vec3f(v4.x, v4.y, v4.z)
-
-proc follow_player(game: Game) =
-  let level = game.get_level()
-  let coord = game.player.mesh.pos.rotate_coord
-  let target = game.player.mesh.pos# * 0.5f
-
-  let y = (game.player.mesh.pos.y - level.origin.y.float) * 0.5
-  game.pan_target = vec3f( coord.x, y, coord.z )
-
-  let ly = target.y
-  game.light_pos = vec3f( 0, 200, 200 )
-  if game.goal:
-    return
-
-proc update_mouse_mode =
-  case game.mouse_mode
-  of MouseOff:
-    game.window.setInputMode GLFW_CURSOR_SPECIAL, GLFWCursorNormal
-  of MouseAcc:
-    let mid = middle()
-    game.window.setCursorPos mid.x, mid.y
-    mouse *= 0
-    game.window.setInputMode GLFW_CURSOR_SPECIAL, GLFWCursorDisabled
-  else:
-    discard
-
-proc toggle_mouse_lock(press: bool) =
-  if not press:
-    return
-  if game.mouse_mode == MouseOff:
-    game.mouse_mode = MouseAcc
-  else:
-    game.mouse_mode = MouseOff
-  update_mouse_mode()
-
-proc toggle_pause(w: GLFWWindow) =
-  game.paused = not game.paused
-  if game.paused:
-    game.mouse_mode = MouseOff
-    update_mouse_mode()
-
-proc init_player(game: var Game) =
-  game.player.mesh = Mesh(
-    vao: newVAO(),
-    vert_vbo: newVBO(3, sphere),
-    color_vbo: newVBO(4, sphere_colors),
-    norm_vbo: newVBO(3, sphere_normals),
-    elem_vbo: newElemVBO(sphere_index),
-    program: newProgram(frags, verts, geoms),
-  )
-  game.reset_player()
-
-  var modelmat = mat4(1.0f)
-  game.player.mesh.model = game.player.mesh.program.newMatrix(modelmat, "M")
-  var mvp = game.proj * game.view.mat.translate(-game.pan) * game.player.mesh.model.mat
-  game.player.mesh.mvp = game.player.mesh.program.newMatrix(mvp, "MVP")
-
-
-proc init_floor_plane(game: Game) =
-  let level = game.get_level()
-  if level.floor_plane != nil:
-    return
-  load_level game.level
-  level.floor_plane = Mesh(
-    vao: newVAO(),
-    vert_vbo  : newVBO(3, level.floor_verts),
-    color_vbo : newVBO(4, level.floor_colors),
-    norm_vbo  : newVBO(3, level.floor_normals),
-    elem_vbo  : newElemVBO(level.floor_index),
-    program   : game.player.mesh.program,
-  )
-  var modelmat = mat4(1.0f).scale(1f, level_squash, 1f)
-  level.floor_plane.model = game.player.mesh.program.newMatrix(modelmat, "M")
-  var mvp = game.proj * game.view.mat.translate(-game.pan) * level.floor_plane.model.mat
-  level.floor_plane.mvp = level.floor_plane.program.newMatrix(mvp, "MVP")
-
-proc init_actors(game: Game) =
-  let level = game.get_level()
-  for actor in level.actors.mitems:
-    if actor.mesh != nil:
-      continue
-    var modelmat = mat4(1.0f)
-    actor.mesh = Mesh(
-      vao       : newVAO(),
-      vert_vbo  : newVBO(3, sphere),
-      color_vbo : newVBO(4, sphere_enemy_colors),
-      elem_vbo  : newElemVBO(sphere_index),
-      program   : game.player.mesh.program,
-      model     : game.player.mesh.program.newMatrix(modelmat, "M"),
-    )
-    actor.mesh.reset()
-    let x = (actor.origin.x - level.origin.x).float
-    let y = actor.origin.y.float
-    let z = (actor.origin.z - level.origin.z).float
-
-    actor.mesh.pos    = vec3f(x, y, z)
-    var mvp = game.proj * game.view.mat.translate(-game.pan) * actor.mesh.model.mat
-    actor.mesh.mvp = game.player.mesh.program.newMatrix(mvp, "MVP")
-
-proc set_level(game: Game) =
-  let f = game.following
-  with game:
-    following = false
-    goal = false
-    hourglass = 0
-    reset_player()
-    init_floor_plane()
-    init_actors()
-    reset_player()
-    follow_player()
-    pan = game.pan_target
-    reset_view()
-    following = f
-  editor.level = game.get_level()
-  editor.name = editor.level.name
-
-proc init(game: var Game) =
-  game.init_player()
-  var viewmat = game.view.mat
-  game.view = game.player.mesh.program.newMatrix(viewmat, "V")
-
-  light_id          = glGetUniformLocation(game.player.mesh.program.id, "LightPosition_worldspace")
-  light_power_id    = glGetUniformLocation(game.player.mesh.program.id, "LightPower")
-  light_color_id    = glGetUniformLocation(game.player.mesh.program.id, "LightColor")
-  light_specular_id = glGetUniformLocation(game.player.mesh.program.id, "SpecularColor")
-  light_ambient_id  = glGetUniformLocation(game.player.mesh.program.id, "AmbientWeight")
-
-  with game:
-    level = start_level
-    set_level()
-    init_floor_plane()
-    init_actors()
-  update_light()
-
-
-proc pan_stop =
-  game.pan_acc = vec3f(0f,0f,0f)
-
-proc pan_up(press: bool) =
-  if press: game.pan_acc.xz = vec2f(-0.125f, -0.125)
-  else: pan_stop()
-proc pan_down(press: bool) =
-  if press: game.pan_acc.xz = vec2f(+0.125, +0.125)
-  else: pan_stop()
-proc pan_left(press: bool) =
-  if press: game.pan_acc.xz = vec2f(-0.125, +0.125)
-  else: pan_stop()
-proc pan_right(press: bool) =
-  if press: game.pan_acc.xz = vec2f(+0.125, -0.125)
-  else: pan_stop()
-proc pan_in(press: bool) =
-  if press: game.pan_acc.y = +0.125
-  else: pan_stop()
-proc pan_out(press: bool) =
-  if press: game.pan_acc.y = -0.125
-  else: pan_stop()
-
-proc pan_cw(press: bool) =
-  if press:
-    let y = game.camera_pos.y
-    let pos = game.camera_pos.xz
-    let distance = game.camera_pos.xz.length
-    let xz = distance * normalize(pos + vec2f(1,-1))
-    game.camera_pos = vec3f(xz.x, y, xz.y)
-    game.view.update lookAt( game.camera_pos, game.camera_target, game.camera_up )
-
-proc pan_ccw(press: bool) =
-  if press:
-    let y = game.camera_pos.y
-    let pos = game.camera_pos.xz
-    let distance = game.camera_pos.xz.length
-    let xz = distance * normalize(pos + vec2f(-1,1))
-    game.camera_pos = vec3f(xz.x, y, xz.y)
-    game.view.update lookAt( game.camera_pos, game.camera_target, game.camera_up )
-
-proc step_frame(press: bool) =
-  if press: game.frame_step = true
-proc prev_level(press: bool) =
-  if press:
-    dec game.level
-    game.set_level()
-proc next_level(press: bool) =
-  if press:
-    inc game.level
-    game.set_level()
-proc follow(press: bool) =
-  if press:
-    game.following = not game.following
-  if not game.following:
-    game.pan_target = game.pan
-    game.pan_vel *= 0
-proc do_goal(press: bool) =
-  if press: game.goal = not game.goal
-proc toggle_wireframe(press: bool) =
-  if press: game.wireframe = not game.wireframe
-proc pause(press: bool) =
-  if press: game.window.toggle_pause()
-proc do_quit(press: bool) =
-  game.window.setWindowShouldClose(true)
-
-proc toggle_god(press: bool) =
-  if press: game.god = not game.god
-
-proc god: bool = return game.god or editor.focused
-
-proc focus_editor(press: bool) =
-  if not press: return
-  editor.visible = true
-
-  editor.focused = not editor.focused
-
-  if editor.focused:
-    igSetWindowFocus("editor")
-  else:
-    #game.player.mesh.pos.z = editor.row.float
-    #game.player.mesh.pos.x = editor.col.float
-    igFocusWindow(nil)
 
 const keymap = {
   GLFWKey.R            : do_reset_player   ,
@@ -342,7 +52,7 @@ proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mod
 
   if keymap.hasKey key:
     game.window = window
-    keymap[key](press)
+    keymap[key](game, press)
 
 proc rotate_mouse(mouse: Vec3f): Vec3f =
   const th = radians(45f)
@@ -373,11 +83,6 @@ proc scrollProc(window: GLFWWindow, xoffset, yoffset: cdouble): void {.cdecl.} =
   #game.update_camera()
   #game.update_fov()
 
-proc display_size(): (int32, int32) =
-  var monitor = glfwGetPrimaryMonitor()
-  var videoMode = monitor.getVideoMode()
-  return (videoMode.width, videoMode.height)
-
 proc setup_glfw(): GLFWWindow =
   doAssert glfwInit()
 
@@ -389,7 +94,7 @@ proc setup_glfw(): GLFWWindow =
   glfwWindowHint(GLFWTransparentFramebuffer, GLFW_FALSE);
 
   #(width, height) = display_size()
-  let w = glfwCreateWindow(width, height, "NimGL", nil, nil)
+  let w = glfwCreateWindow(width, height, "Nimarble", nil, nil)
   doAssert w != nil
 
   w.setInputMode GLFW_CURSOR_SPECIAL, GLFWCursorDisabled
@@ -420,55 +125,6 @@ proc setup_opengl() =
   glEnable GL_BLEND
   glBlendFunc GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
   glShadeModel GL_FLAT
-
-var ig_context: ptr ImGuiContext
-var small_font: ptr ImFont
-var large_font: ptr ImFont
-proc setup_imgui(w: GLFWWindow) =
-  ig_context = igCreateContext()
-  #var io = igGetIO()
-  #io.configFlags = NoMouseCursorChange
-  doAssert igGlfwInitForOpenGL(w, true)
-  doAssert igOpenGL3Init()
-  igStyleColorsDark()
-  small_font = ig_context.io.fonts.addFontFromFileTTF("fonts/TerminusTTF.ttf", 14)
-  large_font = ig_context.io.fonts.addFontFromFileTTF("fonts/TerminusTTF.ttf", 36)
-  #igPushStyleColor ImGuiCol.Text, ImVec4(x:1f, y:0f, z:1f, w:1f)
-  igSetNextWindowPos(ImVec2(x:5, y:5))
-
-proc str(f: float): string =
-  return f.formatFloat(ffDecimal, 3)
-
-proc str(v: Vec3f): string =
-  return "x=" & v.x.str & ", y=" & v.y.str & ", z=" & v.z.str
-proc str(v: Vec4f): string =
-  return "x=" & v.x.str & ", y=" & v.y.str & ", z=" & v.z.str & ", w=" & v.w.str
-
-proc draw_clock(game: Game) =
-  let level = game.get_level()
-  let mid = middle()
-  igSetNextWindowPos(ImVec2(x:mid.x - 28, y: 0))
-  igSetNextWindowSize(ImVec2(x:56, y:48))
-  igPushFont( large_font )
-  igBegin("CLOCK", nil, ImGuiWindowFlags(171))
-  let clk_value = 60 - (level.clock / 100)
-  var clk = $clk_value.int
-  if clk.len < 2: clk = "0" & clk
-  igPushStyleColor(ImGuiCol.Text, ImVec4(x:0.5,y:0.1,z:0.1, w:1.0))
-  igText clk
-  igPopStyleColor()
-  igEnd()
-  igPopFont()
-
-proc draw_goal =
-  let mid = middle()
-  igSetNextWindowPos(ImVec2(x:mid.x - 150, y:mid.y))
-  igSetNextWindowSize(ImVec2(x:300f, y:48))
-  igPushFont( large_font )
-  igBegin("GOAL", nil, ImGuiWindowFlags.NoDecoration)
-  igText("Level complete!")
-  igPopFont()
-  igEnd()
 
 proc draw_imgui =
   var dirty = false
@@ -542,14 +198,14 @@ proc draw_imgui =
     game.update_camera()
 
   igBegin("light")
-  dirty = igDragFloat3("pos"     , game.light_pos.arr             , 0.125, -sky, +sky          ) or dirty
-  dirty = igColorEdit3("color"   , game.light_color.arr         ) or dirty
-  dirty = igDragFloat( "power"   , game.light_power.addr          , 100f, 0f, 900000f       ) or dirty
-  dirty = igDragFloat( "ambient" , game.light_ambient_weight.addr , 0.125, 0f, 1f  ) or dirty
-  dirty = igColorEdit3("specular", game.light_specular_color.arr ) or dirty
+  dirty = igDragFloat3("pos"     , game.light.pos.data.arr      , 0.125, -sky, +sky  ) or dirty
+  dirty = igColorEdit3("color"   , game.light.color.data.arr                         ) or dirty
+  dirty = igDragFloat( "power"   , game.light.power.data.addr   , 100f, 0f, 900000f  ) or dirty
+  dirty = igDragFloat( "ambient" , game.light.ambient.data.addr , 0.125, 0f, 1f      ) or dirty
+  dirty = igColorEdit3("specular", game.light.specular.data.arr                      ) or dirty
   igEnd()
   if dirty:
-    update_light()
+    game.light.update()
 
   if not editor.focused:
     editor.col = level.origin.x + coord.x.floor.int
@@ -571,7 +227,7 @@ proc imgui_frame =
   if game.goal:
     draw_goal()
 
-  game.draw_clock()
+  draw_clock(game.get_level().clock)
 
   igRender()
   igOpenGL3RenderDrawData(igGetDrawData())
@@ -585,6 +241,8 @@ var dt = 0.0f
 var time = 0.0f
 var event_time = 0.0f
 
+proc god: bool = return game.god or editor.focused
+
 proc main =
   editor = Editor(cursor_data: true, cursor_mask: true, stamp: Stamp(width:0, height: 0))
   game = newGame()
@@ -594,10 +252,7 @@ proc main =
   setup_imgui(w)
 
   game.init()
-  update_light()
-
-  proc toString[T: float](f: T, prec: int = 8): string =
-    result = f.formatFloat(ffDecimal, prec)
+  game.light.update()
 
   proc physics(game: var Game, mesh: var Mesh) {.inline.} =
     const mass = player_radius
@@ -697,7 +352,7 @@ proc main =
     if god(): return # a god neither dies nor achieves goals
 
     if game.dead:
-      respawn(true)
+      game.respawn(true)
 
     if game.goal:
       mesh.vel *= 0.97f
@@ -706,7 +361,7 @@ proc main =
       if time - event_time > 3.0f:
         game.goal = false
         event_time = 0
-        next_level(true)
+        game.next_level(true)
     else:
       game.goal = game.goal or cur_mask == GG
 

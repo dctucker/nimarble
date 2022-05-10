@@ -13,3 +13,4 @@ bin           = @["nimarble"]
 requires "nim >= 1.6.0"
 requires "nimgl >= 1.3.2"
 requires "glm"
+requires "zippy"

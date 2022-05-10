@@ -1,3 +1,5 @@
+{. warning[HoleEnumConv]:off .}
+
 from nimgl/glfw import GLFWKey, GLFWModShift, GLFWModControl, GLFWModSuper, getClipboardString, setClipboardString
 import nimgl/imgui
 import glm
@@ -10,9 +12,13 @@ const highlight_width = 16
 const line_height = 16
 const dark_color = ImVec4(x: 0.2, y: 0.2, z: 0.2, w: 1.0)
 
-proc leave(editor: Editor) =
+proc leave*(editor: Editor) =
   editor.focused = false
   igFocusWindow(nil)
+
+proc focus*(editor: Editor) =
+  editor.focused = true
+  igSetWindowFocus("editor")
 
 proc offset[T: Ordinal](editor: Editor, row, col: T): int =
   result = editor.level.offset( row, col ).int
