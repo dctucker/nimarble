@@ -14,6 +14,7 @@ import editing
 import scene
 import gaming
 import window
+import keymapper
 
 var game: Game
 
@@ -227,6 +228,7 @@ proc imgui_frame =
     draw_goal()
 
   draw_clock(game.get_level().clock)
+  draw_keymap(keymap)
 
   igRender()
   igOpenGL3RenderDrawData(igGetDrawData())
