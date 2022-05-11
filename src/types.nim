@@ -169,3 +169,14 @@ type
 proc data*(editor: Editor): var seq[float]     = editor.level.data
 proc mask*(editor: Editor): var seq[CliffMask] = editor.level.mask
 
+
+type
+  Action*[T] = ref object
+    name*: string
+    callback*: T
+  KeyMap*[T] = ref object
+    map*:   Table[GLFWKey, Action[T]]
+
+#{.experimental: "callOperator".}
+#proc `()`*[T](action: Action[T], args: varargs[untyped]) =
+#  action.action(args)

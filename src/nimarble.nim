@@ -18,30 +18,30 @@ import keymapper
 
 var game: Game
 
-const keymap = {
-  GLFWKey.R            : do_reset_player   ,
-  GLFWKey.Up           : pan_up            ,
-  GLFWKey.Down         : pan_down          ,
-  GLFWKey.Left         : pan_left          ,
-  GLFWKey.Right        : pan_right         ,
-  GLFWKey.PageUp       : pan_in            ,
-  GLFWKey.PageDown     : pan_out           ,
-  GLFWKey.S            : step_frame        ,
-  GLFWKey.LeftBracket  : prev_level        ,
-  GLFWKey.RightBracket : next_level        ,
-  GLFWKey.F            : follow            ,
-  GLFWKey.G            : do_goal           ,
-  GLFWKey.X            : respawn           ,
-  GLFWKey.W            : toggle_wireframe  ,
-  GLFWKey.P            : pause             ,
-  GLFWKey.Q            : do_quit           ,
-  GLFWKey.L            : toggle_mouse_lock ,
-  GLFWKey.Home         : pan_ccw           ,
-  GLFWKey.End          : pan_cw            ,
-  GLFWKey.G            : toggle_god        ,
-  GLFWKey.E            : focus_editor      ,
-  #GLFWKey.O            : reload_level      ,
-}.toTable
+let keymap = {
+    GLFWKey.R            : do_reset_player   ,
+    GLFWKey.Up           : pan_up            ,
+    GLFWKey.Down         : pan_down          ,
+    GLFWKey.Left         : pan_left          ,
+    GLFWKey.Right        : pan_right         ,
+    GLFWKey.PageUp       : pan_in            ,
+    GLFWKey.PageDown     : pan_out           ,
+    GLFWKey.S            : step_frame        ,
+    GLFWKey.LeftBracket  : prev_level        ,
+    GLFWKey.RightBracket : next_level        ,
+    GLFWKey.F            : follow            ,
+    GLFWKey.G            : do_goal           ,
+    GLFWKey.X            : do_respawn        ,
+    GLFWKey.W            : toggle_wireframe  ,
+    GLFWKey.P            : pause             ,
+    GLFWKey.Q            : do_quit           ,
+    GLFWKey.L            : toggle_mouse_lock ,
+    GLFWKey.Home         : pan_ccw           ,
+    GLFWKey.End          : pan_cw            ,
+    GLFWKey.G            : toggle_god        ,
+    GLFWKey.E            : focus_editor      ,
+    #GLFWKey.O            : reload_level      ,
+  }.toOrderedTable
 
 proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mods: int32): void {.cdecl.} =
   let press = (action != GLFWRelease)
@@ -52,7 +52,8 @@ proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mod
 
   if keymap.hasKey key:
     game.window = window
-    keymap[key](game, press)
+    let act = keymap[key].callback
+    act(game, press)
 
 proc rotate_mouse(mouse: Vec3f): Vec3f =
   const th = radians(45f)
@@ -353,7 +354,7 @@ proc main =
     if god(): return # a god neither dies nor achieves goals
 
     if game.dead:
-      game.respawn(true)
+      game.respawn()
 
     if game.goal:
       mesh.vel *= 0.97f
@@ -362,7 +363,7 @@ proc main =
       if time - event_time > 3.0f:
         game.goal = false
         event_time = 0
-        game.next_level(true)
+        next_level.callback(game, true)
     else:
       game.goal = game.goal or cur_mask == GG
 

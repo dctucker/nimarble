@@ -9,6 +9,7 @@ import scene
 import shaders
 from leveldata import get_level, sky, load_level
 from editing import focus, leave
+from keymapper import action
 
 const level_squash* = 0.5f
 const start_level* = 1
@@ -48,17 +49,6 @@ proc reset_player*(game: Game) =
   game.player.mesh.pos += vec3f(0.5, 0.5, 0.5)
   game.player.mesh.pos.y = player_top
 
-proc do_reset_player*(game: Game, press: bool) =
-  if press:
-    game.reset_player()
-
-proc respawn*(game: Game, press: bool) =
-  if press:
-    game.reset_player()
-    game.player.mesh.pos = game.respawn_pos
-    game.reset_view()
-    inc game.respawns
-
 proc follow_player*(game: Game) =
   let level = game.get_level()
   let coord = game.player.mesh.pos.rotate_coord
@@ -83,20 +73,11 @@ proc update_mouse_mode*(game: Game) =
   else:
     discard
 
-proc toggle_pause*(game: Game) =
+proc toggle_pause*(game: var Game) =
   game.paused = not game.paused
   if game.paused:
     game.mouse_mode = MouseOff
     game.update_mouse_mode()
-
-proc toggle_mouse_lock*(game: Game, press: bool) =
-  if not press:
-    return
-  if game.mouse_mode == MouseOff:
-    game.mouse_mode = MouseAcc
-  else:
-    game.mouse_mode = MouseOff
-  game.update_mouse_mode()
 
 proc init_player*(game: var Game) =
   game.player.mesh = Mesh(
@@ -185,83 +166,108 @@ proc init*(game: var Game) =
   game.init_actors()
   game.light.update()
 
+proc respawn*(game: var Game) =
+    game.reset_player()
+    game.player.mesh.pos = game.respawn_pos
+    game.reset_view()
+    inc game.respawns
 
 proc pan_stop(game: Game) =
   game.pan_acc = vec3f(0f,0f,0f)
 
-proc pan_up*(game: Game, press: bool) =
-  if press: game.pan_acc.xz = vec2f(-0.125f, -0.125)
-  else: game.pan_stop()
-proc pan_down*(game: Game, press: bool) =
-  if press: game.pan_acc.xz = vec2f(+0.125, +0.125)
-  else: game.pan_stop()
-proc pan_left*(game: Game, press: bool) =
-  if press: game.pan_acc.xz = vec2f(-0.125, +0.125)
-  else: game.pan_stop()
-proc pan_right*(game: Game, press: bool) =
-  if press: game.pan_acc.xz = vec2f(+0.125, -0.125)
-  else: game.pan_stop()
-proc pan_in*(game: Game, press: bool) =
-  if press: game.pan_acc.y = +0.125
-  else: game.pan_stop()
-proc pan_out*(game: Game, press: bool) =
-  if press: game.pan_acc.y = -0.125
-  else: game.pan_stop()
+action:
+  proc do_reset_player*(game: var Game, press: bool) =
+    if press:
+      game.reset_player()
 
-proc pan_cw*(game: Game, press: bool) =
-  if press:
-    let y = game.camera_pos.y
-    let pos = game.camera_pos.xz
-    let distance = game.camera_pos.xz.length
-    let xz = distance * normalize(pos + vec2f(1,-1))
-    game.camera_pos = vec3f(xz.x, y, xz.y)
-    game.view.update lookAt( game.camera_pos, game.camera_target, game.camera_up )
+  proc do_respawn*(game: var Game, press: bool) =
+    if press:
+      game.respawn()
 
-proc pan_ccw*(game: Game, press: bool) =
-  if press:
-    let y = game.camera_pos.y
-    let pos = game.camera_pos.xz
-    let distance = game.camera_pos.xz.length
-    let xz = distance * normalize(pos + vec2f(-1,1))
-    game.camera_pos = vec3f(xz.x, y, xz.y)
-    game.view.update lookAt( game.camera_pos, game.camera_target, game.camera_up )
+  proc toggle_mouse_lock*(game: var Game, press: bool) =
+    if not press:
+      return
+    if game.mouse_mode == MouseOff:
+      game.mouse_mode = MouseAcc
+    else:
+      game.mouse_mode = MouseOff
+    game.update_mouse_mode()
 
-proc step_frame*(game: Game, press: bool) =
-  if press: game.frame_step = true
-proc prev_level*(game: Game, press: bool) =
-  if press:
-    dec game.level
-    game.set_level()
-proc next_level*(game: Game, press: bool) =
-  if press:
-    inc game.level
-    game.set_level()
-proc follow*(game: Game, press: bool) =
-  if press:
-    game.following = not game.following
-  if not game.following:
-    game.pan_target = game.pan
-    game.pan_vel *= 0
-proc do_goal*(game: Game, press: bool) =
-  if press: game.goal = not game.goal
-proc toggle_wireframe*(game: Game, press: bool) =
-  if press: game.wireframe = not game.wireframe
-proc pause*(game: Game, press: bool) =
-  if press: game.toggle_pause()
-proc do_quit*(game: Game, press: bool) =
-  game.window.setWindowShouldClose(true)
+  proc pan_up*(game: var Game, press: bool) =
+    if press: game.pan_acc.xz = vec2f(-0.125f, -0.125)
+    else: game.pan_stop()
+  proc pan_down*(game: var Game, press: bool) =
+    if press: game.pan_acc.xz = vec2f(+0.125, +0.125)
+    else: game.pan_stop()
+  proc pan_left*(game: var Game, press: bool) =
+    if press: game.pan_acc.xz = vec2f(-0.125, +0.125)
+    else: game.pan_stop()
+  proc pan_right*(game: var Game, press: bool) =
+    if press: game.pan_acc.xz = vec2f(+0.125, -0.125)
+    else: game.pan_stop()
+  proc pan_in*(game: var Game, press: bool) =
+    if press: game.pan_acc.y = +0.125
+    else: game.pan_stop()
+  proc pan_out*(game: var Game, press: bool) =
+    if press: game.pan_acc.y = -0.125
+    else: game.pan_stop()
 
-proc toggle_god*(game: Game, press: bool) =
-  if press: game.god = not game.god
+  proc pan_cw*(game: var Game, press: bool) =
+    if press:
+      let y = game.camera_pos.y
+      let pos = game.camera_pos.xz
+      let distance = game.camera_pos.xz.length
+      let xz = distance * normalize(pos + vec2f(1,-1))
+      game.camera_pos = vec3f(xz.x, y, xz.y)
+      game.view.update lookAt( game.camera_pos, game.camera_target, game.camera_up )
 
-proc focus_editor*(game: Game, press: bool) =
-  if not press: return
-  editor.visible = true
+  proc pan_ccw*(game: var Game, press: bool) =
+    if press:
+      let y = game.camera_pos.y
+      let pos = game.camera_pos.xz
+      let distance = game.camera_pos.xz.length
+      let xz = distance * normalize(pos + vec2f(-1,1))
+      game.camera_pos = vec3f(xz.x, y, xz.y)
+      game.view.update lookAt( game.camera_pos, game.camera_target, game.camera_up )
 
-  editor.focused = not editor.focused
+  proc step_frame*(game: var Game, press: bool) =
+    if press: game.frame_step = true
 
-  if editor.focused:
-    editor.focus()
-  else:
-    editor.leave()
+  proc prev_level*(game: var Game, press: bool) =
+    if press:
+      dec game.level
+      game.set_level()
+
+  proc next_level*(game: var Game, press: bool) =
+    if press:
+      inc game.level
+      game.set_level()
+  proc follow*(game: var Game, press: bool) =
+    if press:
+      game.following = not game.following
+    if not game.following:
+      game.pan_target = game.pan
+      game.pan_vel *= 0
+  proc do_goal*(game: var Game, press: bool) =
+    if press: game.goal = not game.goal
+  proc toggle_wireframe*(game: var Game, press: bool) =
+    if press: game.wireframe = not game.wireframe
+  proc pause*(game: var Game, press: bool) =
+    if press: game.toggle_pause()
+  proc do_quit*(game: var Game, press: bool) =
+    game.window.setWindowShouldClose(true)
+
+  proc toggle_god*(game: var Game, press: bool) =
+    if press: game.god = not game.god
+
+  proc focus_editor*(game: var Game, press: bool) =
+    if not press: return
+    editor.visible = true
+
+    editor.focused = not editor.focused
+
+    if editor.focused:
+      editor.focus()
+    else:
+      editor.leave()
 
