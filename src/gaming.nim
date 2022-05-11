@@ -23,39 +23,39 @@ proc rotate_coord*(v: Vec3f): Vec3f =
 proc update_camera*(game: Game) =
   let level = game.get_level()
 
-  let distance = game.camera_distance
-  game.camera_target = vec3f( 0, level.origin.y.float * level_squash, 0 )
-  game.camera_pos = vec3f( distance, game.camera_target.y + distance, distance )
-  game.camera_up = vec3f( 0f,  1.0f,  0f )
+  let distance = game.camera.distance
+  game.camera.target = vec3f( 0, level.origin.y.float * level_squash, 0 )
+  game.camera.pos = vec3f( distance, game.camera.target.y + distance, distance )
+  game.camera.up = vec3f( 0f,  1.0f,  0f )
   #let target = vec3f( 10, 0, 10 )
   #let pos = vec3f( level.origin.z.float * 2, 0, level.origin.z.float * 2)
-  game.view.update lookAt( game.camera_pos, game.camera_target, game.camera_up )
+  game.view.update lookAt( game.camera.pos, game.camera.target, game.camera.up )
   game.light.update()
 
 const field_width = 10f
 proc update_fov*(game: Game) =
-  let r: float32 = radians(game.fov)
+  let r: float32 = radians(game.camera.fov)
   game.proj = perspective(r, aspect, 0.125f, sky)
   #game.proj = ortho(aspect * -field_width, aspect * field_width, -field_width, field_width, 0f, sky) # In world coordinates
 
-proc reset_view*(game: Game) =
+proc reset_view*(game: var Game) =
   game.update_fov()
   game.update_camera()
-  game.pan_vel = vec3f(0,0,0)
+  game.pan.vel = vec3f(0,0,0)
 
-proc reset_player*(game: Game) =
+proc reset_player*(game: var Game) =
   let player_top = game.get_level().origin.y.float
   game.player.mesh.reset()
   game.player.mesh.pos += vec3f(0.5, 0.5, 0.5)
   game.player.mesh.pos.y = player_top
 
-proc follow_player*(game: Game) =
+proc follow_player*(game: var Game) =
   let level = game.get_level()
   let coord = game.player.mesh.pos.rotate_coord
   let target = game.player.mesh.pos# * 0.5f
 
   let y = (game.player.mesh.pos.y - level.origin.y.float) * 0.5
-  game.pan_target = vec3f( coord.x, y, coord.z )
+  game.pan.target = vec3f( coord.x, y, coord.z )
 
   let ly = target.y
   if game.goal:
@@ -92,11 +92,11 @@ proc init_player*(game: var Game) =
 
   var modelmat = mat4(1.0f)
   game.player.mesh.model = game.player.mesh.program.newMatrix(modelmat, "M")
-  var mvp = game.proj * game.view.mat.translate(-game.pan) * game.player.mesh.model.mat
+  var mvp = game.proj * game.view.mat.translate(-game.pan.pos) * game.player.mesh.model.mat
   game.player.mesh.mvp = game.player.mesh.program.newMatrix(mvp, "MVP")
 
 
-proc init_floor_plane*(game: Game) =
+proc init_floor_plane*(game: var Game) =
   let level = game.get_level()
   if level.floor_plane != nil:
     return
@@ -111,10 +111,10 @@ proc init_floor_plane*(game: Game) =
   )
   var modelmat = mat4(1.0f).scale(1f, level_squash, 1f)
   level.floor_plane.model = game.player.mesh.program.newMatrix(modelmat, "M")
-  var mvp = game.proj * game.view.mat.translate(-game.pan) * level.floor_plane.model.mat
+  var mvp = game.proj * game.view.mat.translate(-game.pan.pos) * level.floor_plane.model.mat
   level.floor_plane.mvp = level.floor_plane.program.newMatrix(mvp, "MVP")
 
-proc init_actors*(game: Game) =
+proc init_actors*(game: var Game) =
   let level = game.get_level()
   for actor in level.actors.mitems:
     if actor.mesh != nil:
@@ -134,10 +134,10 @@ proc init_actors*(game: Game) =
     let z = (actor.origin.z - level.origin.z).float
 
     actor.mesh.pos    = vec3f(x, y, z)
-    var mvp = game.proj * game.view.mat.translate(-game.pan) * actor.mesh.model.mat
+    var mvp = game.proj * game.view.mat.translate(-game.pan.pos) * actor.mesh.model.mat
     actor.mesh.mvp = game.player.mesh.program.newMatrix(mvp, "MVP")
 
-proc set_level*(game: Game) =
+proc set_level*(game: var Game) =
   let f = game.following
   game.following = false
   game.goal = false
@@ -147,7 +147,7 @@ proc set_level*(game: Game) =
   game.init_actors()
   game.reset_player()
   game.follow_player()
-  game.pan = game.pan_target
+  game.pan.pos = game.pan.target
   game.reset_view()
   game.following = f
   editor.level = game.get_level()
@@ -172,8 +172,8 @@ proc respawn*(game: var Game) =
     game.reset_view()
     inc game.respawns
 
-proc pan_stop(game: Game) =
-  game.pan_acc = vec3f(0f,0f,0f)
+proc pan_stop(game: var Game) =
+  game.pan.acc = vec3f(0f,0f,0f)
 
 action:
   proc do_reset_player*(game: var Game, press: bool) =
@@ -194,41 +194,41 @@ action:
     game.update_mouse_mode()
 
   proc pan_up*(game: var Game, press: bool) =
-    if press: game.pan_acc.xz = vec2f(-0.125f, -0.125)
+    if press: game.pan.acc.xz = vec2f(-0.125f, -0.125)
     else: game.pan_stop()
   proc pan_down*(game: var Game, press: bool) =
-    if press: game.pan_acc.xz = vec2f(+0.125, +0.125)
+    if press: game.pan.acc.xz = vec2f(+0.125, +0.125)
     else: game.pan_stop()
   proc pan_left*(game: var Game, press: bool) =
-    if press: game.pan_acc.xz = vec2f(-0.125, +0.125)
+    if press: game.pan.acc.xz = vec2f(-0.125, +0.125)
     else: game.pan_stop()
   proc pan_right*(game: var Game, press: bool) =
-    if press: game.pan_acc.xz = vec2f(+0.125, -0.125)
+    if press: game.pan.acc.xz = vec2f(+0.125, -0.125)
     else: game.pan_stop()
   proc pan_in*(game: var Game, press: bool) =
-    if press: game.pan_acc.y = +0.125
+    if press: game.pan.acc.y = +0.125
     else: game.pan_stop()
   proc pan_out*(game: var Game, press: bool) =
-    if press: game.pan_acc.y = -0.125
+    if press: game.pan.acc.y = -0.125
     else: game.pan_stop()
 
   proc pan_cw*(game: var Game, press: bool) =
     if press:
-      let y = game.camera_pos.y
-      let pos = game.camera_pos.xz
-      let distance = game.camera_pos.xz.length
+      let y = game.camera.pos.y
+      let pos = game.camera.pos.xz
+      let distance = game.camera.pos.xz.length
       let xz = distance * normalize(pos + vec2f(1,-1))
-      game.camera_pos = vec3f(xz.x, y, xz.y)
-      game.view.update lookAt( game.camera_pos, game.camera_target, game.camera_up )
+      game.camera.pos = vec3f(xz.x, y, xz.y)
+      game.view.update lookAt( game.camera.pos, game.camera.target, game.camera.up )
 
   proc pan_ccw*(game: var Game, press: bool) =
     if press:
-      let y = game.camera_pos.y
-      let pos = game.camera_pos.xz
-      let distance = game.camera_pos.xz.length
+      let y = game.camera.pos.y
+      let pos = game.camera.pos.xz
+      let distance = game.camera.pos.xz.length
       let xz = distance * normalize(pos + vec2f(-1,1))
-      game.camera_pos = vec3f(xz.x, y, xz.y)
-      game.view.update lookAt( game.camera_pos, game.camera_target, game.camera_up )
+      game.camera.pos = vec3f(xz.x, y, xz.y)
+      game.view.update lookAt( game.camera.pos, game.camera.target, game.camera.up )
 
   proc step_frame*(game: var Game, press: bool) =
     if press: game.frame_step = true
@@ -246,8 +246,8 @@ action:
     if press:
       game.following = not game.following
     if not game.following:
-      game.pan_target = game.pan
-      game.pan_vel *= 0
+      game.pan.target = game.pan.pos
+      game.pan.vel *= 0
   proc do_goal*(game: var Game, press: bool) =
     if press: game.goal = not game.goal
   proc toggle_wireframe*(game: var Game, press: bool) =

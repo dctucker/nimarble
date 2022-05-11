@@ -1,9 +1,9 @@
 import macros
 import std/tables
 import nimgl/imgui
+import strutils
 
 from nimgl/glfw import GLFWKey, GLFWModShift, GLFWModControl, GLFWModSuper
-import types
 
 macro action*(procdefs: untyped): untyped =
   result = newStmtList()
@@ -19,13 +19,12 @@ macro action*(procdefs: untyped): untyped =
     let identnode = newIdentNode($name & "_handler")
     let params = procdef.params
     let stmtlist = procdef[6]
-    let brack = newTree(nnkBracketExpr,
-      newIdentNode("Action"),
-      newTree(nnkProcTy, params, newEmptyNode()),
-    )
     result.add newLetStmt(postfix(name, "*"),
       newTree(nnkObjConstr,
-        brack,
+        newTree(nnkBracketExpr,
+          newIdentNode("Action"),
+          newTree(nnkProcTy, params, newEmptyNode()),
+        ),
         newColonExpr(newIdentNode("name"), name.toStrLit),
         newColonExpr(newIdentNode("callback"), newTree(nnkLambda,
             newEmptyNode(),
@@ -70,8 +69,10 @@ proc draw_keymap*[T](kms: varargs[OrderedTable[GLFWKey, T]]) =
         for key, value in km.pairs:
           igTableNextRow()
           igTableSetColumnIndex(0)
-          igText(prefix & key.name)
+          let key_name = (prefix & key.name).cstring
+          igText(key_name)
           igTableSetColumnIndex(1)
-          igText(value.name)
+          let action_name = value.name.replace("do_","").replace("_"," ").cstring
+          igText(actionname)
     igEndTable()
   igEnd()

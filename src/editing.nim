@@ -130,7 +130,7 @@ proc set_number(editor: var Editor, num: int) =
   editor.set_data value
 
 action:
-  proc decimal*(editor: var Editor) =
+  proc input_decimal*(editor: var Editor) =
     if editor.input.contains ".":
       return
     editor.input &= "."
@@ -557,14 +557,17 @@ action:
   proc cursor_diag_right(editor: var Editor) = editor.cursor(-1,+1)
 
 let editor_keymap_command* = {
-  GLFWKey.V          : do_paste          ,
+  GLFWKey.Z          : undo              ,
   GLFWKey.X          : do_cut            ,
   GLFWKey.C          : do_copy           ,
+  GLFWKey.V          : do_paste          ,
   GLFWKey.Y          : redo              ,
-  GLFWKey.Z          : undo              ,
 }.toOrderedTable
 
 let editor_keymap_shift* = {
+  GLFWKey.Tab        : cursor_both       ,
+  GLFWKey.Minus      : flip_stamp        ,
+  GLFWKey.Backslash  : reverse_stamp     ,
   GLFWKey.Up         : select_up         ,
   GLFWKey.Down       : select_down       ,
   GLFWKey.Left       : select_left       ,
@@ -573,9 +576,6 @@ let editor_keymap_shift* = {
   GLFWKey.PageDown   : select_diag_down  ,
   GLFWKey.Home       : select_diag_left  ,
   GLFWKey.End        : select_diag_right ,
-  GLFWKey.Tab        : cursor_both       ,
-  GLFWKey.Minus      : flip_stamp        ,
-  GLFWKey.Backslash  : reverse_stamp     ,
 }.toOrderedTable
 
 let editor_keymap* = {
@@ -591,8 +591,6 @@ let editor_keymap* = {
   GLFWKey.KpSubtract : do_dec            ,
   GLFWKey.Equal      : do_inc            ,
   GLFWKey.KpAdd      : do_inc            ,
-  GLFWKey.Period     : decimal           ,
-  GLFWKey.KpDecimal  : decimal           ,
   GLFWKey.K0         : input_number      ,
   GLFWKey.K1         : input_number      ,
   GLFWKey.K2         : input_number      ,
@@ -603,11 +601,8 @@ let editor_keymap* = {
   GLFWKey.K7         : input_number      ,
   GLFWKey.K8         : input_number      ,
   GLFWKey.K9         : input_number      ,
-  GLFWKey.Backspace  : do_delete         ,
-  GLFWKey.Delete     : do_delete         ,
-  GLFWKey.E          : do_leave          ,
-  GLFWKey.B          : toggle_brush      ,
-  GLFWKey.Escape     : go_back           ,
+  GLFWKey.Period     : input_decimal     ,
+  GLFWKey.KpDecimal  : input_decimal     ,
   GLFWKey.X          : input_mask        ,
   GLFWKey.C          : input_mask        ,
   GLFWKey.U          : input_mask        ,
@@ -626,9 +621,14 @@ let editor_keymap* = {
   GLFWKey.T          : input_mask        ,
   GLFWKey.N          : input_mask        ,
   GLFWKey.O          : input_mask        ,
+  GLFWKey.Backspace  : do_delete         ,
+  GLFWKey.Delete     : do_delete         ,
+  GLFWKey.B          : toggle_brush      ,
   GLFWKey.Tab        : toggle_cursor     ,
   GLFWKey.Slash      : rotate_stamp      ,
   GLFWKey.W          : do_save           ,
+  GLFWKey.E          : do_leave          ,
+  GLFWKey.Escape     : go_back           ,
 }.toOrderedTable
 
 proc handle_key*(editor: var Editor, key: int32, mods: int32): bool =
@@ -709,7 +709,7 @@ proc draw*(editor: Editor) =
     if not active:
       color = dark_color.igGetColorU32
     var draw_list = igGetWindowDrawList()
-    draw_list.addRect ImVec2(x: pos.x - 3, y: pos.y - 1), ImVec2(x: pos.x + 3 + highlight_width, y: pos.y + line_height + 1), color
+    draw_list.addRect ImVec2(x: pos.x - 4, y: pos.y - 1), ImVec2(x: pos.x + 2 + highlight_width, y: pos.y + line_height + 1), color
 
   proc draw_selected(active: bool) =
     var pos: ImVec2
@@ -718,7 +718,7 @@ proc draw*(editor: Editor) =
     if editor.brush and active:
       color = brush_color
     var draw_list = igGetWindowDrawList()
-    draw_list.addRectFilled ImVec2(x: pos.x - 3, y: pos.y - 1), ImVec2(x: pos.x + 3 + highlight_width, y: pos.y + line_height + 1), color
+    draw_list.addRectFilled ImVec2(x: pos.x - 4, y: pos.y - 1), ImVec2(x: pos.x + 2 + highlight_width, y: pos.y + line_height + 1), color
 
   proc draw_data_cell(hf: float, enabled: bool = true) =
     let h = hf.int
@@ -746,23 +746,53 @@ proc draw*(editor: Editor) =
       color.value = ImVec4(x: 0.0, y: 0.0, z: 0.0, w: 0.0)
     igTextColored(color.value, text)
 
+  #[
+  const mask_chars = {
+    LL: "⇐",
+    AA: "⇑",
+    JJ: "⇒",
+    VV: "⇓",
+    HH: "⇔",
+    II: "⇕",
+  }.toTable
+  ]#
+  #[
+    LA: "←↑"
+    LL: "←←"
+    LV: "←↓"
+    VV: "↓↓"
+    VJ: "↓→"
+    JJ: "→→"
+    AJ: "↑→"
+    AA: "↑↑"
+    HH: "←→"
+    II: "↕↕"
+    IH: "↕↔"
+    AH: "↑↔"
+    VH: "↓↔"
+    IL: "←↕"
+    IJ: "↕→"
+  ]#
+  const mask_chars = {
+    AA: "▀▀",
+    VV: "▄▄",
+    LL: "▌ ",
+    JJ: " ▐",
+    LA: "▛▀",
+    AJ: "▀▜",
+    LV: "▙▄",
+    VJ: "▄▟",
+    HH: "▌▐",
+    AH: "▛▜",
+    VH: "▙▟",
+    II: "◘◘",
+    IL: "▐◘",
+    IJ: "◘▌",
+    IH: "██",
+  }.toTable
   proc draw_mask_cell(m: CliffMask, enabled: bool = true) =
-    var txt = case m
-    of LA: "←↑"
-    of LL: "←←"
-    of LV: "←↓"
-    of VV: "↓↓"
-    of VJ: "↓→"
-    of JJ: "→→"
-    of AJ: "↑→"
-    of AA: "↑↑"
-    of HH: "←→"
-    of II: "↕↕"
-    of IH: "↕↔"
-    of AH: "↑↔"
-    of VH: "↓↔"
-    of IL: "←↕"
-    of IJ: "↕→"
+    var txt = if m.cliff():
+      mask_chars[m] #mask_chars[($m)[0]] & mask_chars[($m)[1]]
     else: $m
     if txt.len < 2: txt = " " & txt
     var text = txt.cstring

@@ -2,7 +2,7 @@ import nimgl/[glfw,opengl]
 import glm
 import std/tables
 import wrapper
-from scene import Mesh, Light, newLight
+from scene import Mesh, Light, newLight, Camera, Pan
 
 type
   CliffMask* = enum
@@ -100,14 +100,8 @@ type
     proj*: Mat4f
     view*: Matrix
     respawn_pos*: Vec3f
-    pan_vel*: Vec3f
-    pan_acc*: Vec3f
-    pan*: Vec3f
-    pan_target*: Vec3f
     window*: GLFWWindow
-    fov*: float32
-    camera_distance*: float32
-    camera_target*, camera_pos*, camera_up*: Vec3f
+    camera*: Camera
     light*: Light
     paused*: bool
     mouse_mode*: MouseMode
@@ -123,7 +117,6 @@ proc newGame*: Game =
     state: ATTRACT,
     level: 1,
     player: Player(),
-    fov: 30f,
     light: newLight(
       pos            = vec3f( 0, 200, 200 ),
       color          = vec3f(1,1,1),
@@ -131,7 +124,10 @@ proc newGame*: Game =
       ambient        = 0.875f,
       power          = 20000f,
     ),
-    camera_distance: 30f,
+    camera: Camera(
+      fov: 30f,
+      distance: 30f,
+    ),
     paused : false,
     mouse_mode : MouseAcc,
     following : true,
@@ -141,6 +137,7 @@ proc newGame*: Game =
     wireframe : false,
   )
 
+proc pan*(game: var Game): var Pan = return game.camera.pan
 
 type
   Stamp* = object

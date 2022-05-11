@@ -19,27 +19,26 @@ import keymapper
 var game: Game
 
 let game_keymap = {
-    GLFWKey.R            : do_reset_player   ,
     GLFWKey.Up           : pan_up            ,
     GLFWKey.Down         : pan_down          ,
     GLFWKey.Left         : pan_left          ,
     GLFWKey.Right        : pan_right         ,
     GLFWKey.PageUp       : pan_in            ,
     GLFWKey.PageDown     : pan_out           ,
-    GLFWKey.S            : step_frame        ,
+    GLFWKey.Home         : pan_ccw           ,
+    GLFWKey.End          : pan_cw            ,
     GLFWKey.LeftBracket  : prev_level        ,
     GLFWKey.RightBracket : next_level        ,
     GLFWKey.F            : follow            ,
-    GLFWKey.G            : do_goal           ,
+    GLFWKey.R            : do_reset_player   ,
     GLFWKey.X            : do_respawn        ,
     GLFWKey.W            : toggle_wireframe  ,
     GLFWKey.P            : pause             ,
-    GLFWKey.Q            : do_quit           ,
+    GLFWKey.S            : step_frame        ,
     GLFWKey.L            : toggle_mouse_lock ,
-    GLFWKey.Home         : pan_ccw           ,
-    GLFWKey.End          : pan_cw            ,
     GLFWKey.G            : toggle_god        ,
     GLFWKey.E            : focus_editor      ,
+    GLFWKey.Q            : do_quit           ,
     #GLFWKey.O            : reload_level      ,
   }.toOrderedTable
 
@@ -79,7 +78,7 @@ proc scrollProc(window: GLFWWindow, xoffset, yoffset: cdouble): void {.cdecl.} =
   #let angle = mouse.z
   #game.player.mesh.rot = normalize(quatf(axis, angle) * game.player.mesh.rot)
 
-  #game.fov -= mouse.z
+  #game.camera.fov -= mouse.z
   #game.update_camera()
   #game.update_fov()
 
@@ -126,11 +125,8 @@ proc setup_opengl() =
   glBlendFunc GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
   glShadeModel GL_FLAT
 
-proc draw_imgui =
-  var dirty = false
-
+proc info_vectors =
   igSetNextWindowSize(ImVec2(x:300f, y:400f))
-  igPushFont( small_font )
 
   igBegin("vectors")
 
@@ -173,47 +169,30 @@ proc draw_imgui =
   #igText("average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
   igEnd()
 
-  #igSetNextWindowPos(ImVec2(x:500, y:5))
-  igBegin("actor 0")
-  if level.actors.len > 0:
-    var actor0 = level.actors[0].mesh
-    igDragFloat3 "pos"     , actor0.pos.arr   , -sky, sky
-  igEnd()
+proc sync_editor =
+  let coord = game.player.mesh.pos.rotate_coord
+  if not editor.focused:
+    editor.col = editor.level.origin.x + coord.x.floor.int
+    editor.row = editor.level.origin.z + coord.z.floor.int
+  else:
+    game.player.mesh.pos.x = editor.col.float - editor.level.origin.x.float
+    game.player.mesh.pos.z = editor.row.float - editor.level.origin.z.float
+  editor.draw()
 
-  #igSetNextWindowPos(ImVec2(x:5, y:500))
-  dirty = false
-  igBegin("camera")
-  dirty = igDragFloat3("pos"       , game.camera_pos.arr   , 0.125, -sky, sky  ) or dirty
-  dirty = igDragFloat3("target"    , game.camera_target.arr, 0.125, -sky, sky  ) or dirty
-  dirty = igDragFloat3("up"        , game.camera_up.arr    , 0.125, -sky, sky  ) or dirty
-  igSeparator()
-  dirty = igDragFloat3("pan_target", game.pan_target.arr   , 0.125, -sky, sky  ) or dirty
-  dirty = igDragFloat3("pan"       , game.pan.arr          , 0.125, -sky, sky  ) or dirty
-  dirty = igDragFloat3("pan_vel"   , game.pan_vel.arr      , 0.125, -sky, sky  ) or dirty
-  dirty = igDragFloat3("pan_acc"   , game.pan_acc.arr      , 0.125, -sky, sky  ) or dirty
-  dirty = igDragFloat( "fov"       , game.fov.addr         , 0.125,   0f, 360f ) or dirty
-  igEnd()
-  if dirty:
-    game.view.mat = lookAt( game.camera_pos, game.camera_target, game.camera_up )
+proc draw_imgui =
+  igPushFont( small_font )
+
+  info_vectors()
+  game.get_level().actors.info_window()
+
+  if game.camera.info_window():
+    game.view.mat = lookAt( game.camera.pos, game.camera.target, game.camera.up )
     game.update_camera()
 
-  igBegin("light")
-  dirty = igDragFloat3("pos"     , game.light.pos.data.arr      , 0.125, -sky, +sky  ) or dirty
-  dirty = igColorEdit3("color"   , game.light.color.data.arr                         ) or dirty
-  dirty = igDragFloat( "power"   , game.light.power.data.addr   , 100f, 0f, 900000f  ) or dirty
-  dirty = igDragFloat( "ambient" , game.light.ambient.data.addr , 0.125, 0f, 1f      ) or dirty
-  dirty = igColorEdit3("specular", game.light.specular.data.arr                      ) or dirty
-  igEnd()
-  if dirty:
+  if game.light.info_window():
     game.light.update()
 
-  if not editor.focused:
-    editor.col = level.origin.x + coord.x.floor.int
-    editor.row = level.origin.z + coord.z.floor.int
-  else:
-    game.player.mesh.pos.x = editor.col.float - level.origin.x.float
-    game.player.mesh.pos.z = editor.row.float - level.origin.z.float
-  editor.draw()
+  sync_editor()
 
   igPopFont()
 
@@ -370,7 +349,7 @@ proc main =
       game.goal = game.goal or cur_mask == GG
 
   proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
-    mesh.mvp.update game.proj * game.view.mat.translate(-game.pan) * mesh.model.mat
+    mesh.mvp.update game.proj * game.view.mat.translate(-game.pan.pos) * mesh.model.mat
     mesh.model.update
     mesh.program.use()
     mesh.vert_vbo.apply 0
@@ -382,30 +361,6 @@ proc main =
       mesh.vert_vbo.draw kind
     glDisableVertexAttribArray 0
     glDisableVertexAttribArray 1
-
-  proc camera_physics(game: Game) {.inline.} =
-    var pan_maxvel, camera_maxvel: float
-    if editor.focused:
-      pan_maxvel = 10f
-      camera_maxvel = 1f
-    else:
-      pan_maxvel = 0.125f
-      camera_maxvel = 1f/20f
-    game.pan_target += game.pan_acc
-    game.pan_vel = game.pan_vel + game.pan_acc
-    game.pan_vel.x = game.pan_vel.x.clamp(-pan_maxvel, pan_maxvel)
-    game.pan_vel.y = game.pan_vel.y.clamp(-pan_maxvel, pan_maxvel)
-    game.pan_vel.z = game.pan_vel.z.clamp(-pan_maxvel, pan_maxvel)
-    game.pan += game.pan_vel
-
-    let pan_delta = game.pan_target - game.pan
-    if pan_delta.length > 0f:
-      if pan_delta.length < camera_maxvel:
-        game.pan = game.pan_target
-        game.pan_vel *= 0
-      else:
-        game.pan_vel = pan_delta * dt
-        game.pan_vel = clamp(game.pan_vel, -camera_maxvel, +camera_maxvel)
 
   # main loop
   while not w.windowShouldClose():
@@ -425,7 +380,13 @@ proc main =
       if game.following:
         game.follow_player()
 
-    game.camera_physics()
+    if editor.focused:
+      game.camera.pan.maxvel = 10f
+      game.camera.maxvel = 1f
+    else:
+      game.camera.pan.maxvel = 0.125f
+      game.camera.maxvel = 1f/20f
+    game.camera.physics(dt)
 
     glClear            GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
 
