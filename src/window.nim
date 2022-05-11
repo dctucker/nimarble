@@ -40,7 +40,9 @@ proc setup_imgui*(w: GLFWWindow) =
   doAssert igOpenGL3Init()
   igStyleColorsDark()
   var atlas = ig_context.io.fonts
-  small_font = atlas.addFontFromMemoryTTF(terminus_ttf, terminus_ttf_len.int32, 14)
+  var ranges = @[ 0x1.ImWchar, 0x3000.ImWchar, 0.ImWchar ]
+
+  small_font = atlas.addFontFromMemoryTTF(terminus_ttf, terminus_ttf_len.int32, 14, nil, ranges[0].addr)
   large_font = atlas.addFontFromMemoryTTF(terminus_ttf, terminus_ttf_len.int32, 36)
   igSetNextWindowPos(ImVec2(x:5, y:5))
 

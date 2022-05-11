@@ -18,7 +18,7 @@ import keymapper
 
 var game: Game
 
-let keymap = {
+let game_keymap = {
     GLFWKey.R            : do_reset_player   ,
     GLFWKey.Up           : pan_up            ,
     GLFWKey.Down         : pan_down          ,
@@ -50,10 +50,9 @@ proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mod
     if editor.handle_key(key, mods):
       return
 
-  if keymap.hasKey key:
+  if game_keymap.hasKey key:
     game.window = window
-    let act = keymap[key].callback
-    act(game, press)
+    game_keymap[key].callback(game, press)
 
 proc rotate_mouse(mouse: Vec3f): Vec3f =
   const th = radians(45f)
@@ -229,7 +228,10 @@ proc imgui_frame =
     draw_goal()
 
   draw_clock(game.get_level().clock)
-  draw_keymap(keymap)
+  if editor.focused:
+    draw_keymap(editor_keymap, editor_keymap_shift)
+  else:
+    draw_keymap(game_keymap)
 
   igRender()
   igOpenGL3RenderDrawData(igGetDrawData())

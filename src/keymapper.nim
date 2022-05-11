@@ -11,7 +11,11 @@ macro action*(procdefs: untyped): untyped =
     #echo "procdef = "
     #echo procdef.treerepr
     #echo ""
-    let name = procdef[0][1]
+    procdef.expectKind({nnkPostfix, nnkProcDef})
+    let name = case procdef[0].kind
+    of nnkPostfix: procdef[0][1]
+    of nnkIdent  : procdef[0]
+    else:  procdef[0]
     let identnode = newIdentNode($name & "_handler")
     let params = procdef.params
     let stmtlist = procdef[6]
@@ -37,32 +41,37 @@ macro action*(procdefs: untyped): untyped =
     )
     #echo result.treerepr
 
-proc name(km: KeyMap, key: GLFWKey): string =
-  return km[key].name
-
-proc draw_keymap*[T](km: OrderedTable[GLFWKey, T]) =
-  var p_open = false
-  let render = igBegin("keymap", p_open.addr)
-  if render:
-    igBeginTable("keymap", 2)
-    for key, value in km.pairs:
-      igTableNextRow()
-      igTableSetColumnIndex(0)
-      igText($key)
-      igTableSetColumnIndex(1)
-      igText(value.name)
-    igEndTable()
-  igEnd()
-
-#dumpTree:
-#  let do_nothing* = Action[proc(game: Game, press: bool)](
-#    name: "do_nothing",
-#    action: proc(game: Game, press: bool) =
-#      if press:
-#        echo "pressed!"
-#  )
+#[
+dumpTree:
+  let do_nothing* = Action[proc(game: Game, press: bool)](
+    name: "do_nothing",
+    action: proc(game: Game, press: bool) =
+      if press:
+        echo "pressed!"
+  )
 
 action:
   proc do_nothing*(game: Game, press: bool) =
     stdout.write("pressed!")
+]#
+proc name(k: GLFWKey): string =
+  if k.ord >= K0.ord and k.ord <= GraveAccent.ord:
+    return $k.ord.char
+  return $k
 
+proc draw_keymap*[T](kms: varargs[OrderedTable[GLFWKey, T]]) =
+  var p_open = false
+  if igBegin("keymap", p_open.addr):
+    if igBeginTable("keymap", 2):
+      var prefix = ""
+      for m,km in kms.pairs:
+        if m == 1:
+          prefix = "Shift+"
+        for key, value in km.pairs:
+          igTableNextRow()
+          igTableSetColumnIndex(0)
+          igText(prefix & key.name)
+          igTableSetColumnIndex(1)
+          igText(value.name)
+    igEndTable()
+  igEnd()
