@@ -4,7 +4,7 @@ import glm
 import nimgl/glfw
 import nimgl/imgui
 import nimgl/imgui/[impl_opengl, impl_glfw]
-import zippy
+#import zippy
 
 const terminus_ttf_asset = staticRead("../assets/fonts/TerminusTTF.ttf")
 const terminus_ttf_len = terminus_ttf_asset.len

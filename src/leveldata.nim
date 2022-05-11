@@ -8,20 +8,21 @@ import types
 
 from models import cube_vert, cube_verts, cube_colors, cube_index
 
-const level_0_src      = staticRead("../assets/levels/0.tsv")
-const level_0_mask_src = staticRead("../assets/levels/0mask.tsv")
+const level_dir = "assets/levels"
+const level_0_src      = staticRead("../" & level_dir & "/0.tsv")
+const level_0_mask_src = staticRead("../" & level_dir & "/0mask.tsv")
 
-const level_1_src      = staticRead("../assets/levels/1.tsv")
-const level_1_mask_src = staticRead("../assets/levels/1mask.tsv")
+const level_1_src      = staticRead("../" & level_dir & "/1.tsv")
+const level_1_mask_src = staticRead("../" & level_dir & "/1mask.tsv")
 
-const level_2_src      = staticRead("../assets/levels/2.tsv")
-const level_2_mask_src = staticRead("../assets/levels/2mask.tsv")
+const level_2_src      = staticRead("../" & level_dir & "/2.tsv")
+const level_2_mask_src = staticRead("../" & level_dir & "/2mask.tsv")
 
-const level_3_src      = staticRead("../assets/levels/3.tsv")
-const level_3_mask_src = staticRead("../assets/levels/3mask.tsv")
+const level_3_src      = staticRead("../" & level_dir & "/3.tsv")
+const level_3_mask_src = staticRead("../" & level_dir & "/3mask.tsv")
 
-const level_4_src      = staticRead("../assets/levels/4.tsv")
-const level_4_mask_src = staticRead("../assets/levels/4mask.tsv")
+const level_4_src      = staticRead("../" & level_dir & "/4.tsv")
+const level_4_mask_src = staticRead("../" & level_dir & "/4mask.tsv")
 
 const EE = 0
 const sky* = 200f
@@ -161,8 +162,8 @@ proc save*(level: Level) =
   let h = level.height
   let w = level.width
 
-  let data_fn = "levels/" & level.name & ".tsv"
-  let mask_fn = "levels/" & level.name & "mask.tsv"
+  let data_fn = level_dir & "/" & level.name & ".tsv"
+  let mask_fn = level_dir & "/" & level.name & "mask.tsv"
   let data_out = data_fn.open(fmWrite)
   let mask_out = mask_fn.open(fmWrite)
   for i in 0..<h:

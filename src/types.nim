@@ -163,6 +163,7 @@ type
     brush*: bool
     dirty*: bool
     stamp*: Stamp
+    recent_input*: GLFWKey
 
 
 proc data*(editor: Editor): var seq[float]     = editor.level.data

@@ -1,4 +1,5 @@
 {. warning[HoleEnumConv]:off .}
+import std/tables
 
 from nimgl/glfw import GLFWKey, GLFWModShift, GLFWModControl, GLFWModSuper, getClipboardString, setClipboardString
 import nimgl/imgui
@@ -12,11 +13,11 @@ const highlight_width = 16
 const line_height = 16
 const dark_color = ImVec4(x: 0.2, y: 0.2, z: 0.2, w: 1.0)
 
-proc leave*(editor: Editor) =
+proc leave*(editor: var Editor) =
   editor.focused = false
   igFocusWindow(nil)
 
-proc focus*(editor: Editor) =
+proc focus*(editor: var Editor) =
   editor.focused = true
   igSetWindowFocus("editor")
 
@@ -68,17 +69,17 @@ proc get_data(editor: Editor): float =
   let o = editor.offset()
   return editor.data[o]
 
-proc set_data(editor: Editor, value: float) =
+proc set_data(editor: var Editor, value: float) =
   let o = editor.offset()
   editor.data[o] = value
   editor.dirty = true
 
-proc update_selection_vbos(editor: Editor) =
+proc update_selection_vbos(editor: var Editor) =
   for i in editor.selection.x - 1.. editor.selection.z + 1:
     for j in editor.selection.y - 1 .. editor.selection.w + 1:
       editor.level.calculate_vbos(i, j)
 
-proc inc_dec(editor: Editor, d: float) =
+proc inc_dec(editor: var Editor, d: float) =
   editor.dirty = true
   if editor.cursor_in_selection():
     for o in editor.selection_offsets():
@@ -99,19 +100,19 @@ proc inc_dec(editor: Editor, d: float) =
       value = value.int.float
     editor.set_data (h + d).int.float
 
-proc inc(editor: Editor) =
+proc do_inc(editor: var Editor) =
   var d = 1f
   if editor.input.contains(".") or not editor.all_ints():
     d = 0.125
   editor.inc_dec(d)
 
-proc dec(editor: Editor) =
+proc do_dec(editor: var Editor) =
   var d = -1f
   if editor.input.contains(".") or not editor.all_ints():
     d = -0.125
   editor.inc_dec(d)
 
-proc set_number(editor: Editor, num: int) =
+proc set_number(editor: var Editor, num: int) =
   var value: float
   if editor.input.len < 2:
     editor.input = "  "
@@ -122,12 +123,15 @@ proc set_number(editor: Editor, num: int) =
   value = (editor.input.strip()).parseFloat
   editor.set_data value
 
-proc decimal(editor: Editor) =
+proc decimal(editor: var Editor) =
   if editor.input.contains ".":
     return
   editor.input &= "."
 
-proc set_mask(editor: Editor, mask: CliffMask) =
+proc input_number(editor: var Editor) =
+  editor.set_number(editor.recent_input.ord - K0.ord)
+
+proc set_mask(editor: var Editor, mask: CliffMask) =
   var m = mask
   let o = editor.offset()
   let cur = editor.mask[o]
@@ -150,7 +154,30 @@ proc set_mask(editor: Editor, mask: CliffMask) =
   editor.mask[o] = m
   editor.dirty = true
 
-proc select_one(editor: Editor) =
+proc input_mask(editor: var Editor) =
+  let mask = case editor.recent_input
+  of GLFWKey.X : XX
+  of GLFWKey.C : IC
+  of GLFWKey.U : CU
+  of GLFWKey.L : LL
+  of GLFWKey.V : VV
+  of GLFWKey.A : AA
+  of GLFWKey.J : JJ
+  of GLFWKey.I : II
+  of GLFWKey.H : HH
+  of GLFWKey.R : RH
+  of GLFWKey.G : GG
+  of GLFWKey.S : SW
+  of GLFWKey.P : P1
+  of GLFWKey.M : EM
+  of GLFWKey.Y : EY
+  of GLFWKey.T : TU
+  of GLFWKey.N : IN
+  of GLFWKey.O : OU
+  else: return
+  editor.set_mask mask
+
+proc select_one(editor: var Editor) =
   editor.selection.x = editor.row.int32
   editor.selection.y = editor.col.int32
   editor.selection.z = editor.row.int32
@@ -172,7 +199,7 @@ proc get_selection_stamp(editor: Editor): Stamp =
         result.data.add 0
         result.mask.add XX
 
-proc put_selection_stamp(editor: Editor, stamp: Stamp, drow, dcol: int) =
+proc put_selection_stamp(editor: var Editor, stamp: Stamp, drow, dcol: int) =
   var k: int
   let h = min( editor.selection.z, editor.selection.x + stamp.height - 1 )
   let w = min( editor.selection.w, editor.selection.y + stamp.width  - 1)
@@ -188,13 +215,13 @@ proc put_selection_stamp(editor: Editor, stamp: Stamp, drow, dcol: int) =
       k.inc
       if k >= max_k: return
 
-proc shift_selection(editor: Editor, drow, dcol: int) =
+proc shift_selection(editor: var Editor, drow, dcol: int) =
   editor.selection.x += drow.int32
   editor.selection.y += dcol.int32
   editor.selection.z += drow.int32
   editor.selection.w += dcol.int32
 
-proc brush_selection(editor: Editor, i, j: int) =
+proc brush_selection(editor: var Editor, i, j: int) =
   if not editor.cursor_in_selection():
     return
 
@@ -216,7 +243,7 @@ proc brush_selection(editor: Editor, i, j: int) =
 proc has_selection(editor: Editor): bool =
   result = editor.selection.x != editor.selection.z or editor.selection.y != editor.selection.w
 
-proc cursor(editor: Editor, drow, dcol: int) =
+proc cursor(editor: var Editor, drow, dcol: int) =
   editor.input = ""
   if editor.brush:
     if editor.has_selection():
@@ -235,7 +262,7 @@ proc cursor(editor: Editor, drow, dcol: int) =
   if editor.selection.xy == editor.selection.zw:
     editor.select_one()
 
-proc select_more(editor: Editor, drow, dcol: int) =
+proc select_more(editor: var Editor, drow, dcol: int) =
   var i,j: int
   let sel = editor.selection
 
@@ -288,16 +315,16 @@ proc select_more(editor: Editor, drow, dcol: int) =
     if i < sel.x: editor.selection.x = i.int32
     if i > sel.z: editor.selection.z = i.int32
 
-proc toggle_brush*(editor: Editor) =
+proc toggle_brush*(editor: var Editor) =
   editor.brush = not editor.brush
   if editor.has_selection() and not editor.cursor_in_selection():
     editor.select_one()
 
-proc delete_selection(editor: Editor, data: var seq[float]) =
+proc delete_selection(editor: var Editor, data: var seq[float]) =
   for o in editor.selection_offsets:
     data[o] = 0
 
-proc delete_selection(editor: Editor, mask: var seq[CliffMask]) =
+proc delete_selection(editor: var Editor, mask: var seq[CliffMask]) =
   for o in editor.selection_offsets:
     mask[o] = XX
 
@@ -313,7 +340,7 @@ proc all_zero(editor: Editor, mask: var seq[CliffMask]): bool =
     if mask[o] != XX:
       return false
 
-proc delete(editor: Editor) =
+proc do_delete(editor: var Editor) =
   editor.dirty = true
   editor.input = ""
 
@@ -339,7 +366,7 @@ proc delete(editor: Editor) =
     return
   editor.data[o] = 0
 
-proc save(editor: Editor) =
+proc do_save(editor: var Editor) =
   editor.level.save()
 
 proc serialize_selection[T](editor: Editor, data: seq[T]): string =
@@ -357,18 +384,18 @@ proc serialize_selection(editor: Editor): string =
   if editor.cursor_data:
     return editor.serialize_selection(editor.data)
 
-proc undo(editor: Editor) = discard
-proc redo(editor: Editor) = discard
+proc undo(editor: var Editor) = discard
+proc redo(editor: var Editor) = discard
 
-proc copy_clipboard(editor: Editor) =
+proc copy_clipboard(editor: var Editor) =
   setClipboardString nil, editor.serialize_selection().cstring
   editor.cut = vec4i(0,0,0,0)
 
-proc cut_clipboard(editor: Editor) =
+proc cut_clipboard(editor: var Editor) =
   editor.copy_clipboard()
   editor.cut = editor.selection
 
-proc execute_cut(editor: Editor) =
+proc execute_cut(editor: var Editor) =
   editor.dirty = true
   if editor.cut != vec4i(0,0,0,0):
     for o in editor.cut_offsets:
@@ -378,7 +405,7 @@ proc execute_cut(editor: Editor) =
         editor.data[o] = 0f
     editor.cut = vec4i(0,0,0,0)
 
-proc paste_clipboard(editor: Editor) =
+proc paste_clipboard(editor: var Editor) =
   editor.execute_cut()
   let clip = $getClipboardString(nil)
   var i = editor.row
@@ -393,17 +420,17 @@ proc paste_clipboard(editor: Editor) =
       j.inc
     i.inc
 
-proc copy_both(editor: Editor) =
+proc copy_both(editor: var Editor) =
   editor.cursor_mask = true
   editor.cursor_data = true
   editor.stamp = editor.get_selection_stamp()
   editor.cut = vec4i(0,0,0,0)
 
-proc cut_both(editor: Editor) =
+proc cut_both(editor: var Editor) =
   editor.copy_both()
   editor.cut = editor.selection
 
-proc paste_both(editor: Editor) =
+proc paste_both(editor: var Editor) =
   editor.cursor_mask = true
   editor.cursor_data = true
   editor.execute_cut()
@@ -411,25 +438,25 @@ proc paste_both(editor: Editor) =
   editor.put_selection_stamp(editor.stamp, 0, 0)
   editor.dirty = true
 
-proc do_copy(editor: Editor) =
+proc do_copy(editor: var Editor) =
   if editor.cursor_mask == true and editor.cursor_data == true:
     editor.copy_both()
   else:
     editor.copy_clipboard()
 
-proc do_cut(editor: Editor) =
+proc do_cut(editor: var Editor) =
   if editor.cursor_mask == true and editor.cursor_data == true:
     editor.cut_both()
   else:
     editor.cut_clipboard()
 
-proc do_paste(editor: Editor) =
+proc do_paste(editor: var Editor) =
   if editor.cursor_mask == true and editor.cursor_data == true:
     editor.paste_both()
   else:
     editor.paste_clipboard()
 
-proc back(editor: Editor) =
+proc go_back(editor: var Editor) =
   if editor.brush:
     editor.brush = false
   elif editor.has_selection():
@@ -437,15 +464,15 @@ proc back(editor: Editor) =
   else:
     editor.leave()
 
-proc toggle_cursor(editor: Editor) =
+proc toggle_cursor(editor: var Editor) =
   editor.cursor_mask = not editor.cursor_mask
   editor.cursor_data = not editor.cursor_mask
 
-proc cursor_both(editor: Editor) =
+proc cursor_both(editor: var Editor) =
   editor.cursor_mask = true
   editor.cursor_data = true
 
-proc rotate_stamp(editor: Editor) =
+proc rotate_stamp(editor: var Editor) =
   let s1 = editor.stamp
   let w = s1.width
   let dim = s1.height * w
@@ -462,7 +489,7 @@ proc rotate_stamp(editor: Editor) =
       s2.mask.add s1.mask[o1]
   editor.stamp = s2
 
-proc flip_stamp(editor: Editor) =
+proc flip_stamp(editor: var Editor) =
   let s1 = editor.stamp
   let w = s1.width
   let dim = s1.height * w
@@ -479,7 +506,7 @@ proc flip_stamp(editor: Editor) =
       s2.mask.add s1.mask[o]
   editor.stamp = s2
 
-proc reverse_stamp(editor: Editor) =
+proc reverse_stamp(editor: var Editor) =
   let s1 = editor.stamp
   let w = s1.width
   let dim = s1.height * w
@@ -496,90 +523,118 @@ proc reverse_stamp(editor: Editor) =
       s2.mask.add s1.mask[o]
   editor.stamp = s2
 
-proc handle_key*(editor: Editor, key: int32, mods: int32): bool =
+proc select_up(editor: var Editor)         = editor.select_more(-1, 0)
+proc select_down(editor: var Editor)       = editor.select_more(+1, 0)
+proc select_left(editor: var Editor)       = editor.select_more( 0,-1)
+proc select_right(editor: var Editor)      = editor.select_more( 0,+1)
+proc select_diag_up(editor: var Editor)    = editor.select_more(-1,-1)
+proc select_diag_down(editor: var Editor)  = editor.select_more(+1,+1)
+proc select_diag_left(editor: var Editor)  = editor.select_more(+1,-1)
+proc select_diag_right(editor: var Editor) = editor.select_more(-1,+1)
+
+proc cursor_up(editor: var Editor)         = editor.cursor(-1, 0)
+proc cursor_down(editor: var Editor)       = editor.cursor(+1, 0)
+proc cursor_left(editor: var Editor)       = editor.cursor( 0,-1)
+proc cursor_right(editor: var Editor)      = editor.cursor( 0,+1)
+proc cursor_diag_up(editor: var Editor)    = editor.cursor(-1,-1)
+proc cursor_diag_down(editor: var Editor)  = editor.cursor(+1,+1)
+proc cursor_diag_left(editor: var Editor)  = editor.cursor(+1,-1)
+proc cursor_diag_right(editor: var Editor) = editor.cursor(-1,+1)
+
+const keymap_command = {
+  GLFWKey.V          : do_paste          ,
+  GLFWKey.X          : do_cut            ,
+  GLFWKey.C          : do_copy           ,
+  GLFWKey.Y          : redo              ,
+  GLFWKey.Z          : undo              ,
+}.toTable
+
+const keymap_shift = {
+  GLFWKey.Up         : select_up         ,
+  GLFWKey.Down       : select_down       ,
+  GLFWKey.Left       : select_left       ,
+  GLFWKey.Right      : select_right      ,
+  GLFWKey.PageUp     : select_diag_up    ,
+  GLFWKey.PageDown   : select_diag_down  ,
+  GLFWKey.Home       : select_diag_left  ,
+  GLFWKey.End        : select_diag_right ,
+  GLFWKey.Tab        : cursor_both       ,
+  GLFWKey.Minus      : flip_stamp        ,
+  GLFWKey.Backslash  : reverse_stamp     ,
+}.toTable
+
+const keymap = {
+  GLFWKey.Up         : cursor_up         ,
+  GLFWKey.Down       : cursor_down       ,
+  GLFWKey.Left       : cursor_left       ,
+  GLFWKey.Right      : cursor_right      ,
+  GLFWKey.PageUp     : cursor_diag_up    ,
+  GLFWKey.PageDown   : cursor_diag_down  ,
+  GLFWKey.Home       : cursor_diag_left  ,
+  GLFWKey.End        : cursor_diag_right ,
+  GLFWKey.Minus      : do_dec            ,
+  GLFWKey.KpSubtract : do_dec            ,
+  GLFWKey.Equal      : do_inc            ,
+  GLFWKey.KpAdd      : do_inc            ,
+  GLFWKey.Period     : decimal           ,
+  GLFWKey.KpDecimal  : decimal           ,
+  GLFWKey.K0         : input_number      ,
+  GLFWKey.K1         : input_number      ,
+  GLFWKey.K2         : input_number      ,
+  GLFWKey.K3         : input_number      ,
+  GLFWKey.K4         : input_number      ,
+  GLFWKey.K5         : input_number      ,
+  GLFWKey.K6         : input_number      ,
+  GLFWKey.K7         : input_number      ,
+  GLFWKey.K8         : input_number      ,
+  GLFWKey.K9         : input_number      ,
+  GLFWKey.Backspace  : do_delete         ,
+  GLFWKey.Delete     : do_delete         ,
+  GLFWKey.E          : leave             ,
+  GLFWKey.B          : toggle_brush      ,
+  GLFWKey.Escape     : go_back           ,
+  GLFWKey.X          : input_mask        ,
+  GLFWKey.C          : input_mask        ,
+  GLFWKey.U          : input_mask        ,
+  GLFWKey.L          : input_mask        ,
+  GLFWKey.V          : input_mask        ,
+  GLFWKey.A          : input_mask        ,
+  GLFWKey.J          : input_mask        ,
+  GLFWKey.I          : input_mask        ,
+  GLFWKey.H          : input_mask        ,
+  GLFWKey.R          : input_mask        ,
+  GLFWKey.G          : input_mask        ,
+  GLFWKey.S          : input_mask        ,
+  GLFWKey.P          : input_mask        ,
+  GLFWKey.M          : input_mask        ,
+  GLFWKey.Y          : input_mask        ,
+  GLFWKey.T          : input_mask        ,
+  GLFWKey.N          : input_mask        ,
+  GLFWKey.O          : input_mask        ,
+  GLFWKey.Tab        : toggle_cursor     ,
+  GLFWKey.Slash      : rotate_stamp      ,
+  GLFWKey.W          : do_save           ,
+}.toTable
+
+proc handle_key*(editor: var Editor, key: int32, mods: int32): bool =
   #let io = igGetIO()
   #if not io.wantCaptureMouse:
   #  return
 
+  template handler(map) =
+    if map.hasKey(key):
+      map[key](editor)
+    else:
+      result = false
+
   result = true
   if (mods and GLFWModControl) != 0 or (mods and GLFWModSuper) != 0:
-    #if (mods and GLFWModShift) != 0:
-    #  case key
-    #  of GLFWKey.Z          : editor.redo()
-    #  of GLFWKey.X          : editor.cut_both()
-    #  of GLFWKey.C          : editor.copy_both()
-    #  of GLFWKey.V          : editor.paste_both()
-    #  else                  : result = false
-    #else:
-      case key
-      of GLFWKey.Y          : editor.redo()
-      of GLFWKey.Z          : editor.undo()
-      of GLFWKey.X          : editor.do_cut()
-      of GLFWKey.C          : editor.do_copy()
-      of GLFWKey.V          : editor.do_paste()
-      else                  : result = false
+    handler(keymap_command)
   elif (mods and GLFWModShift) != 0:
-    case key
-    of GLFWKey.Up         : editor.select_more(-1, 0)
-    of GLFWKey.Down       : editor.select_more(+1, 0)
-    of GLFWKey.Left       : editor.select_more( 0,-1)
-    of GLFWKey.Right      : editor.select_more( 0,+1)
-    of GLFWKey.PageUp     : editor.select_more(-1,-1)
-    of GLFWKey.PageDown   : editor.select_more(+1,+1)
-    of GLFWKey.Home       : editor.select_more(+1,-1)
-    of GLFWKey.End        : editor.select_more(-1,+1)
-    of GLFWKey.Tab        : editor.cursor_both()
-    of GLFWKey.Minus      : editor.flip_stamp()
-    of GLFWKey.Backslash  : editor.reverse_stamp()
-    else                  : editor.select_one()
+    handler(keymap_shift)
   else:
-    case key
-    of GLFWKey.E          : editor.leave()
-    of GLFWKey.B          : editor.toggle_brush()
-    of GLFWKey.Escape     : editor.back()
-    of GLFWKey.Up         : editor.cursor(-1, 0)
-    of GLFWKey.Down       : editor.cursor(+1, 0)
-    of GLFWKey.Left       : editor.cursor( 0,-1)
-    of GLFWKey.Right      : editor.cursor( 0,+1)
-    of GLFWKey.PageUp     : editor.cursor(-1,-1)
-    of GLFWKey.PageDown   : editor.cursor(+1,+1)
-    of GLFWKey.Home       : editor.cursor(+1,-1)
-    of GLFWKey.End        : editor.cursor(-1,+1)
-    of GLFWKey.Minus      ,
-       GLFWKey.KpSubtract : editor.dec
-    of GLFWKey.Equal      ,
-       GLFWKey.KpAdd      : editor.inc
-    of GLFWKey.Period,
-       KpDecimal          : editor.decimal()
-    of GLFWKey.K0,
-       K1, K2, K3,
-       K4, K5, K6,
-       K7, K8, K9         : editor.set_number(key.ord - GLFWKey.K0.ord)
-    of GLFWKey.Backspace,
-       GLFWKey.Delete     : editor.delete()
-    of GLFWKey.X          : editor.set_mask(XX)
-    of GLFWKey.C          : editor.set_mask(IC)
-    of GLFWKey.U          : editor.set_mask(CU)
-    of GLFWKey.L          : editor.set_mask(LL)
-    of GLFWKey.V          : editor.set_mask(VV)
-    of GLFWKey.A          : editor.set_mask(AA)
-    of GLFWKey.J          : editor.set_mask(JJ)
-    of GLFWKey.I          : editor.set_mask(II)
-    of GLFWKey.H          : editor.set_mask(HH)
-    of GLFWKey.R          : editor.set_mask(RH)
-    of GLFWKey.G          : editor.set_mask(GG)
-    of GLFWKey.S          : editor.set_mask(SW)
-    of GLFWKey.P          : editor.set_mask(P1)
-    of GLFWKey.M          : editor.set_mask(EM)
-    of GLFWKey.Y          : editor.set_mask(EY)
-    of GLFWKey.T          : editor.set_mask(TU)
-    of GLFWKey.N          : editor.set_mask(IN)
-    of GLFWKey.O          : editor.set_mask(OU)
-    of GLFWKey.Tab        : editor.toggle_cursor()
-    of GLFWKey.Slash      : editor.rotate_stamp()
-    of GLFWKey.W          : editor.save()
-    #of GLFWKey.LeftShift  : editor.select_one()
-    else                  : result = false
+    editor.recent_input = key
+    handler(keymap)
 
   if editor.dirty:
     for i in -1 .. 1:
