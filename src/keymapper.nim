@@ -53,8 +53,14 @@ action:
   proc do_nothing*(game: Game, press: bool) =
     stdout.write("pressed!")
 ]#
+
+proc `<=`(x: char, y: GLFWKey): bool = return x.ord <= y.ord
+proc `<=`(x: GLFWKey, y: char): bool = return x.ord <= y.ord
+proc `>=`(x: char, y: GLFWKey): bool = return x.ord >= y.ord
+proc `>=`(x: GLFWKey, y: char): bool = return x.ord >= y.ord
+
 proc name(k: GLFWKey): string =
-  if k.ord >= K0.ord and k.ord <= GraveAccent.ord:
+  if k >= '0' and k <= '`':
     return $k.ord.char
   return $k
 
@@ -62,14 +68,24 @@ proc draw_keymap*[T](kms: varargs[OrderedTable[GLFWKey, T]]) =
   var p_open = false
   if igBegin("keymap", p_open.addr):
     if igBeginTable("keymap", 2):
-      var prefix = ""
       for m,km in kms.pairs:
-        if m == 1:
-          prefix = "Shift+"
         for key, value in km.pairs:
           igTableNextRow()
           igTableSetColumnIndex(0)
-          let key_name = (prefix & key.name).cstring
+          var kn = key.name
+          if key >= '0' and key <= '`':
+            if (m and 1) != 0:
+              kn = kn.toUpperAscii
+            else:
+              kn = kn.toLowerAscii
+            if (m and 2) != 0:
+              kn = "^" & kn
+          else:
+            if (m and 1) != 0:
+              kn = "S-" & kn
+            if (m and 2) != 0:
+              kn = "C-" & kn
+          let key_name = kn.cstring
           igText(key_name)
           igTableSetColumnIndex(1)
           let action_name = value.name.replace("do_","").replace("_"," ").cstring

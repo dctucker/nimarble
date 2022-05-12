@@ -114,28 +114,49 @@ proc init_floor_plane*(game: var Game) =
   var mvp = game.proj * game.view.mat.translate(-game.pan.pos) * level.floor_plane.model.mat
   level.floor_plane.mvp = level.floor_plane.program.newMatrix(mvp, "MVP")
 
+proc newMesh(game: var Game, verts, colors, norms: var seq[cfloat], elems: var seq[Ind]): Mesh =
+  var modelmat = mat4f(1)
+  result = Mesh(
+    vao       : newVAO(),
+    vert_vbo  : newVBO(3, verts),
+    color_vbo : newVBO(4, colors),
+    norm_vbo  : newVBO(3, norms),
+    elem_vbo  : newElemVBO(elems),
+    program   : game.player.mesh.program,
+    model     : game.player.mesh.program.newMatrix(modelmat, "M"),
+  )
+
+proc newMesh(game: var Game, piece: Piece): Mesh =
+  case piece.kind
+  of EM: newMesh( game, sphere  , sphere_enemy_colors, sphere_normals, sphere_index )
+  of EY: newMesh( game, cylinder, sphere_enemy_colors, sphere_normals, sphere_index )
+  else : newMesh( game, sphere  , sphere_normals, sphere_normals, sphere_index )
+
+proc init_piece*(game: var Game, piece: var Piece) =
+  let level = game.get_level()
+  piece.mesh = game.newMesh(piece)
+  piece.mesh.reset()
+  let x = (piece.origin.x - level.origin.x).float
+  let y =  piece.origin.y.float
+  let z = (piece.origin.z - level.origin.z).float
+
+  piece.mesh.pos    = vec3f(x, y, z)
+  var mvp = game.proj * game.view.mat.translate(-game.pan.pos) * piece.mesh.model.mat
+  piece.mesh.mvp = game.player.mesh.program.newMatrix(mvp, "MVP")
+
+proc init_fixtures*(game: var Game) =
+  let level = game.get_level()
+  for fixture in level.fixtures.mitems:
+    if fixture.mesh != nil:
+      continue
+    game.init_piece(fixture)
+
 proc init_actors*(game: var Game) =
   let level = game.get_level()
   for actor in level.actors.mitems:
     if actor.mesh != nil:
       continue
-    var modelmat = mat4(1.0f)
-    actor.mesh = Mesh(
-      vao       : newVAO(),
-      vert_vbo  : newVBO(3, sphere),
-      color_vbo : newVBO(4, sphere_enemy_colors),
-      elem_vbo  : newElemVBO(sphere_index),
-      program   : game.player.mesh.program,
-      model     : game.player.mesh.program.newMatrix(modelmat, "M"),
-    )
-    actor.mesh.reset()
-    let x = (actor.origin.x - level.origin.x).float
-    let y = actor.origin.y.float
-    let z = (actor.origin.z - level.origin.z).float
-
-    actor.mesh.pos    = vec3f(x, y, z)
-    var mvp = game.proj * game.view.mat.translate(-game.pan.pos) * actor.mesh.model.mat
-    actor.mesh.mvp = game.player.mesh.program.newMatrix(mvp, "MVP")
+    game.init_piece(actor)
 
 proc set_level*(game: var Game) =
   let f = game.following

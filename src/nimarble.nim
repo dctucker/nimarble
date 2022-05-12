@@ -19,28 +19,28 @@ import keymapper
 var game: Game
 
 let game_keymap = {
-    GLFWKey.Up           : pan_up            ,
-    GLFWKey.Down         : pan_down          ,
-    GLFWKey.Left         : pan_left          ,
-    GLFWKey.Right        : pan_right         ,
-    GLFWKey.PageUp       : pan_in            ,
-    GLFWKey.PageDown     : pan_out           ,
-    GLFWKey.Home         : pan_ccw           ,
-    GLFWKey.End          : pan_cw            ,
-    GLFWKey.LeftBracket  : prev_level        ,
-    GLFWKey.RightBracket : next_level        ,
-    GLFWKey.F            : follow            ,
-    GLFWKey.R            : do_reset_player   ,
-    GLFWKey.X            : do_respawn        ,
-    GLFWKey.W            : toggle_wireframe  ,
-    GLFWKey.P            : pause             ,
-    GLFWKey.S            : step_frame        ,
-    GLFWKey.L            : toggle_mouse_lock ,
-    GLFWKey.G            : toggle_god        ,
-    GLFWKey.E            : focus_editor      ,
-    GLFWKey.Q            : do_quit           ,
-    #GLFWKey.O            : reload_level      ,
-  }.toOrderedTable
+  GLFWKey.Up           : pan_up            ,
+  GLFWKey.Down         : pan_down          ,
+  GLFWKey.Left         : pan_left          ,
+  GLFWKey.Right        : pan_right         ,
+  GLFWKey.PageUp       : pan_in            ,
+  GLFWKey.PageDown     : pan_out           ,
+  GLFWKey.Home         : pan_ccw           ,
+  GLFWKey.End          : pan_cw            ,
+  GLFWKey.LeftBracket  : prev_level        ,
+  GLFWKey.RightBracket : next_level        ,
+  GLFWKey.F            : follow            ,
+  GLFWKey.R            : do_reset_player   ,
+  GLFWKey.X            : do_respawn        ,
+  GLFWKey.W            : toggle_wireframe  ,
+  GLFWKey.P            : pause             ,
+  GLFWKey.S            : step_frame        ,
+  GLFWKey.L            : toggle_mouse_lock ,
+  GLFWKey.G            : toggle_god        ,
+  GLFWKey.E            : focus_editor      ,
+  GLFWKey.Q            : do_quit           ,
+  #GLFWKey.O            : reload_level      ,
+}.toOrderedTable
 
 proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mods: int32): void {.cdecl.} =
   let press = (action != GLFWRelease)
@@ -209,7 +209,7 @@ proc imgui_frame =
 
   draw_clock(game.get_level().clock)
   if editor.focused:
-    draw_keymap(editor_keymap, editor_keymap_shift)
+    draw_keymap(editor_keymap, editor_keymap_shift, editor_keymap_command)
   else:
     draw_keymap(game_keymap)
 
