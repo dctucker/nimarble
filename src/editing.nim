@@ -826,17 +826,24 @@ proc draw*(editor: Editor) =
     color.value = ImVec4(x: 0, y: 0, z: 0, w: 1.0)
     igTextColored(color.value, " | ")
 
-  igSetNextWindowSizeConstraints ImVec2(x:300, y:300), ImVec2(x: 1000, y: 1000)
+  #igSetNextWindowSizeConstraints ImVec2(x:300, y:300), ImVec2(x: 1000, y: 1000)
   igBegin("editor")
   var level = editor.level
   if level == nil: return
 
-  var wh = igGetWindowWidth()
-  wh -= style.windowPadding.x * 2 - style.framePadding.x * 2
-  wh -= highlight_width * 2
-  wh /= 2
-  wh /= highlight_width + style.itemSpacing.x
-  editor.width = wh.floor.int
+  var ww = igGetWindowWidth()
+  ww -= style.windowPadding.x * 2 - style.framePadding.x * 2
+  ww -= highlight_width * 2
+  ww /= 2
+  ww /= highlight_width + style.itemSpacing.x
+
+  var hh = igGetWindowHeight()
+  hh -= style.windowPadding.y * 2 - style.framePadding.y * 2
+  hh -= line_height * 2
+  hh /= line_height + style.itemSpacing.y
+
+  editor.width = ww.floor.int
+  editor.height = hh.floor.int
 
   igSameLine()
 
@@ -848,9 +855,10 @@ proc draw*(editor: Editor) =
   igText(status.cstring)
   igNewLine()
 
-  let ew2 = editor.width div 2
-  let last_row = editor.row + ew2
-  for i in editor.row - ew2 .. last_row:
+  let ew2 = editor.width  div 2
+  let eh2 = editor.height div 2
+  let last_row = editor.row + eh2
+  for i in editor.row - eh2 .. last_row:
 
     for j in editor.col - ew2 .. editor.col + ew2:
       igSameLine()
