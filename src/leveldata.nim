@@ -72,9 +72,19 @@ proc find_actors(data: seq[float], mask: seq[CliffMask], w,h: int): seq[Actor] =
   for i in 0..<h:
     for j in 0..<w:
       let o = i * w + j
-      #if o >= mask.len: return
       let mask = mask[o]
       if mask in {EY, EM, EA, EV, EP, EH}:
+        result.add Actor(
+          origin: vec3i( j.int32, data[o].int32, i.int32 ),
+          kind: mask,
+        )
+
+proc find_fixtures(data: seq[float], mask: seq[CliffMask], w,h: int): seq[Fixture] =
+  for i in 0..<h:
+    for j in 0..<w:
+      let o = i * w + j
+      let mask = mask[o]
+      if mask in {GR}:
         result.add Actor(
           origin: vec3i( j.int32, data[o].int32, i.int32 ),
           kind: mask,
@@ -191,11 +201,11 @@ proc save*(level: Level) =
 
 let levels = @[
   Level(),
-  init_level("0", level_0_src, level_0_mask_src, vec3f(1f, 0.0f, 1f)),
-  init_level("1", level_1_src, level_1_mask_src, vec3f(1f, 0.8f, 0f)),
-  init_level("2", level_2_src, level_2_mask_src, vec3f(0f, 0.4f, 0.8f)),
-  init_level("3", level_3_src, level_3_mask_src, vec3f(0.4f, 0.4f, 0.4f)),
-  init_level("4", level_4_src, level_4_mask_src, vec3f(1f, 0.4f, 0.1f)),
+  init_level("0", level_0_src, level_0_mask_src, vec3f( 1f  , 0.0f, 1f   )),
+  init_level("1", level_1_src, level_1_mask_src, vec3f( 1f  , 0.8f, 0f   )),
+  init_level("2", level_2_src, level_2_mask_src, vec3f( 0f  , 0.4f, 0.8f )),
+  init_level("3", level_3_src, level_3_mask_src, vec3f( 0.4f, 0.4f, 0.4f )),
+  init_level("4", level_4_src, level_4_mask_src, vec3f( 1f  , 0.4f, 0.1f )),
 ]
 let n_levels* = levels.len()
 

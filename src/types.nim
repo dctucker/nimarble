@@ -1,40 +1,83 @@
+import macros
 import nimgl/[glfw,opengl]
 import glm
 import std/tables
 import wrapper
 from scene import Mesh, Light, newLight, Camera, Pan
 
-type
-  CliffMask* = enum
-    XX = 0,     # regulard slope
-    LL = 1,     # L is left
-    JJ = 2,     # J is right
-    HH,         # H is left and right
-    AA = 4,     # A is up
-    LA, AJ, AH,
-    VV = 8,     # V is down
-    LV, VJ, VH,
-    II, IL, IJ, # I is top and bottom
-    IH,         # oops! all cliffs
-    RI, RH,     # ramps up/down, left/right
-    GG,         # goal
-    TU, IN, OU, # tubes
-    IC,         # icy
-    CU,         # copper
-    SW,         # sine wave
-    P1,         # player 1 start position
-    P2,         # player 2 start position
-    EM,         # entity: marble
-    EY,         # entity: yum
-    EA,         # entity: acid
-    EV,         # entity: vacuum
-    EP,         # entity: piston
-    EH,         # entity: hammer
+macro cliff_masks(body: untyped): untyped =
+  body.expectKind nnkStmtList
+  var fields: seq[NimNode] = @[]
+  var names: seq[string] = @[]
+  for n,b in body.pairs:
+    case b.kind
+    of nnkAsgn:
+      fields.add newTree(nnkEnumFieldDef, b[0], b[1][0])
+      names.add b[1][1].strVal
+    of nnkCommand:
+      fields.add b[0]
+      names.add b[1].strVal
+    else:
+      b.expectKind nnkCommand
+  result = newStmtList(
+    newEnum(newIdentNode("CliffMask"), fields.openArray, true, false),
+    newLetStmt(newIdentNode("cliff_mask_names"), newLit(names))
+  )
+  echo $result.repr
 
-  Actor* = ref object
+cliff_masks:
+  XX = 0  "regular slope"
+  LL = 1  "left"
+  JJ = 2  "right"
+  HH      "horizontal"
+  AA = 4  "up"
+  LA      "left+up"
+  AJ      "up+right"
+  AH      "up+horizontal"
+  VV = 8  "down"
+  LV      "left+down"
+  VJ      "down+right"
+  VH      "down+horizontal"
+  II      "vertical"
+  IL      "vertical+left"
+  IJ      "vertical+right"
+  IH      "oops! all cliffs"
+  RI      "ramps up/down"
+  RH      "left/right"
+  GR      "guard rail"
+  FL      "flag"
+  GG      "goal"
+  TU      "tube"
+  IN      "portal in"
+  OU      "portal out"
+  IC      "icy"
+  CU      "copper"
+  OI      "oil"
+  SD      "sand"
+  BH      "bumpy horizontal"
+  BI      "bumpy vertical"
+  SW      "sine wave"
+  PH      "phased blocks"
+  P1      "player 1 start position"
+  P2      "player 2 start position"
+  EM      "entity: marble"
+  EY      "entity: yum"
+  EA      "entity: acid"
+  EV      "entity: vacuum"
+  EP      "entity: piston"
+  EH      "entity: hammer"
+  EB      "entity: bird"
+
+proc name*(mask: CliffMask): string =
+  return cliff_mask_names[mask.ord]
+
+type
+  Piece* = ref object
     kind*: CliffMask
     origin*: Vec3i
     mesh*: Mesh
+  Actor* = Piece
+  Fixture* = Piece
 
   CubePoint* = object
     pos*: Vec3f
@@ -55,6 +98,7 @@ type
     floor_normals*: seq[cfloat]
     floor_plane*: Mesh
     actors*: seq[Actor]
+    fixtures*: seq[Fixture]
     name*: string
 
 

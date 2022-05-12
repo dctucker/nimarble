@@ -145,13 +145,21 @@ proc set_mask(editor: var Editor, mask: CliffMask) =
   if   cur == RH or cur == RI:
     if   mask == HH: m = RH
     elif mask == II: m = RI
+    elif mask == GG: m = GR
+  elif cur == BH or cur == BI:
+    if   mask == HH: m = BH
+    elif mask == II: m = BI
   elif cur == EY or cur == EM:
     if   mask == AA: m = EA
     if   mask == P1: m = EP
     if   mask == HH: m = EH
     if   mask == VV: m = EV
+  elif cur == OU:
+    if   mask == II: m = OI
   elif cur == P1:
     if   mask == P1: m = P2
+  elif cur == GG:
+    if   mask == RH: m = GR
   elif mask.cliff():
     if cur.cliff():
       m = CliffMask(cur.ord xor mask.ord)
@@ -164,24 +172,27 @@ proc set_mask(editor: var Editor, mask: CliffMask) =
 action:
   proc input_mask(editor: var Editor) =
     let mask = case editor.recent_input
-    of GLFWKey.X : XX
-    of GLFWKey.C : IC
-    of GLFWKey.U : CU
-    of GLFWKey.L : LL
-    of GLFWKey.V : VV
     of GLFWKey.A : AA
-    of GLFWKey.J : JJ
-    of GLFWKey.I : II
-    of GLFWKey.H : HH
-    of GLFWKey.R : RH
+    of GLFWKey.B : BH
+    of GLFWKey.C : IC
+    of GLFWKey.F : FL
     of GLFWKey.G : GG
-    of GLFWKey.S : SW
-    of GLFWKey.P : P1
+    of GLFWKey.H : HH
+    of GLFWKey.I : II
+    of GLFWKey.J : JJ
+    of GLFWKey.L : LL
     of GLFWKey.M : EM
-    of GLFWKey.Y : EY
-    of GLFWKey.T : TU
     of GLFWKey.N : IN
     of GLFWKey.O : OU
+    of GLFWKey.P : P1
+    of GLFWKey.R : RH
+    of GLFWKey.S : SD
+    of GLFWKey.T : TU
+    of GLFWKey.U : CU
+    of GLFWKey.V : VV
+    of GLFWKey.W : SW
+    of GLFWKey.X : XX
+    of GLFWKey.Y : EY
     else: return
     editor.set_mask mask
 
@@ -263,8 +274,10 @@ proc cursor(editor: var Editor, drow, dcol: int) =
       let cur_o = editor.offset()
       let next_o = editor.offset( editor.row+drow, editor.col+dcol )
       if 0 < next_o and next_o < editor.data.len:
-        editor.data[ next_o ] = editor.data[ cur_o ]
-        editor.mask[ next_o ] = editor.mask[ cur_o ]
+        if editor.cursor_data:
+          editor.data[ next_o ] = editor.data[ cur_o ]
+        if editor.cursor_mask:
+          editor.mask[ next_o ] = editor.mask[ cur_o ]
         editor.dirty = true
 
   editor.row += drow
@@ -603,27 +616,30 @@ let editor_keymap* = {
   GLFWKey.K9         : input_number      ,
   GLFWKey.Period     : input_decimal     ,
   GLFWKey.KpDecimal  : input_decimal     ,
-  GLFWKey.X          : input_mask        ,
-  GLFWKey.C          : input_mask        ,
-  GLFWKey.U          : input_mask        ,
-  GLFWKey.L          : input_mask        ,
-  GLFWKey.V          : input_mask        ,
   GLFWKey.A          : input_mask        ,
-  GLFWKey.J          : input_mask        ,
-  GLFWKey.I          : input_mask        ,
-  GLFWKey.H          : input_mask        ,
-  GLFWKey.R          : input_mask        ,
+  GLFWKey.B          : input_mask        ,
+  GLFWKey.C          : input_mask        ,
+  GLFWKey.F          : input_mask        ,
   GLFWKey.G          : input_mask        ,
-  GLFWKey.S          : input_mask        ,
-  GLFWKey.P          : input_mask        ,
+  GLFWKey.H          : input_mask        ,
+  GLFWKey.I          : input_mask        ,
+  GLFWKey.J          : input_mask        ,
+  GLFWKey.L          : input_mask        ,
   GLFWKey.M          : input_mask        ,
-  GLFWKey.Y          : input_mask        ,
-  GLFWKey.T          : input_mask        ,
   GLFWKey.N          : input_mask        ,
+  GLFWKey.P          : input_mask        ,
+  GLFWKey.S          : input_mask        ,
+  GLFWKey.T          : input_mask        ,
+  GLFWKey.R          : input_mask        ,
   GLFWKey.O          : input_mask        ,
+  GLFWKey.U          : input_mask        ,
+  GLFWKey.V          : input_mask        ,
+  GLFWKey.W          : input_mask        ,
+  GLFWKey.X          : input_mask        ,
+  GLFWKey.Y          : input_mask        ,
   GLFWKey.Backspace  : do_delete         ,
   GLFWKey.Delete     : do_delete         ,
-  GLFWKey.B          : toggle_brush      ,
+  GLFWKey.Space      : toggle_brush      ,
   GLFWKey.Tab        : toggle_cursor     ,
   GLFWKey.Slash      : rotate_stamp      ,
   GLFWKey.W          : do_save           ,

@@ -76,3 +76,4 @@ proc draw_keymap*[T](kms: varargs[OrderedTable[GLFWKey, T]]) =
           igText(actionname)
     igEndTable()
   igEnd()
+

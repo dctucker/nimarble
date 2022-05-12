@@ -177,6 +177,7 @@ proc sync_editor =
   else:
     game.player.mesh.pos.x = editor.col.float - editor.level.origin.x.float
     game.player.mesh.pos.z = editor.row.float - editor.level.origin.z.float
+    XX.info_window()
   editor.draw()
 
 proc draw_imgui =
