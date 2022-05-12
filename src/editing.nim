@@ -830,16 +830,14 @@ proc draw*(editor: Editor) =
   igBegin("editor")
   var level = editor.level
   if level == nil: return
+  var region: ImVec2
+  igGetContentRegionAvailNonUDT(region.addr)
 
-  var ww = igGetWindowWidth()
-  ww -= style.windowPadding.x * 2 - style.framePadding.x * 2
-  ww -= highlight_width * 2
-  ww /= 2
+  var ww = region.x
   ww /= highlight_width + style.itemSpacing.x
+  ww /= 2
 
-  var hh = igGetWindowHeight()
-  hh -= style.windowPadding.y * 2 - style.framePadding.y * 2
-  hh -= line_height * 2
+  var hh = region.y
   hh /= line_height + style.itemSpacing.y
 
   editor.width = ww.floor.int

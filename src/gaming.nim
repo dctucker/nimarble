@@ -262,6 +262,8 @@ action:
 
   proc focus_editor*(game: var Game, press: bool) =
     if not press: return
+    if editor.visible == false:
+      toggle_mouse_lock.callback(game, true)
     editor.visible = true
 
     editor.focused = not editor.focused
