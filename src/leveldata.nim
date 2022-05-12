@@ -395,7 +395,8 @@ proc calculate_vbos*(level: Level, i,j: int) =
   let normal_span = 3 * 33
   let vert_span   = 3 * 33
 
-  if i < 0 or j < 0 or j < i - 4 or j > i + 44: return
+  if not level.has_coord(i,j): return
+  if not level.has_coord(i+1, j+1): return
 
   let o = (i-1) * 48 + (j-7)
   for w in 22 .. 26:
@@ -455,8 +456,8 @@ proc setup_floor(level: Level) =
       colors.add_color c
       #normals.add_normal normal
 
-  for i in  1..<level.height-1:
-    for j in 1..<level.width-1:
+  for i in  1..<level.height - 1:
+    for j in 1..<level.width - 1:
       if j < i - 4 or j > i + 44: continue
 
       for w in 0 .. cube_index.high:
