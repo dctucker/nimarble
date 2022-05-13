@@ -6,7 +6,7 @@ import nimgl/imgui
 import nimgl/imgui/[impl_opengl, impl_glfw]
 #import zippy
 from scene import Camera, Light, pos, vel, acc
-from types import Actor, CliffMask, name
+from types import Actor, Fixture, CliffMask, name
 from leveldata import sky
 
 const terminus_ttf_asset = staticRead("../assets/fonts/TerminusTTF.ttf")
@@ -113,6 +113,18 @@ proc info_window*(actors: seq[Actor]) =
       var actor = actors[a]
       let name = cstring("actor " & $a & " pos")
       igDragFloat3 name, actors[a].mesh.pos.arr, 0.125, -sky, sky
+  igEnd()
+
+proc info_window*(fixtures: seq[Fixture]) =
+  #igSetNextWindowPos(ImVec2(x:500, y:5))
+  igBegin("fixtures")
+  if fixtures.len > 0:
+    for f in fixtures.low .. fixtures.high:
+      var fixture = fixtures[f]
+      let name = cstring("fixture " & $f & " pos")
+      igDragFloat3 name   , fixtures[f].mesh.pos.arr, 0.125, -sky, sky
+      let rotname = cstring("fixture " & $f & " rot")
+      igDragFloat4 rotname, fixtures[f].mesh.rot.arr, 1f.radians, -180f.radians, 180f.radians
   igEnd()
 
 proc info_window*(mask: CliffMask) =

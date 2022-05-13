@@ -184,7 +184,9 @@ proc draw_imgui =
   igPushFont( small_font )
 
   info_vectors()
-  game.get_level().actors.info_window()
+  let level = game.get_level()
+  level.actors.info_window()
+  level.fixtures.info_window()
 
   if game.camera.info_window():
     game.view.mat = lookAt( game.camera.pos, game.camera.target, game.camera.up )
@@ -226,6 +228,30 @@ var time = 0.0f
 var event_time = 0.0f
 
 proc god: bool = return game.god or editor.focused
+
+proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
+  mesh.mvp.update game.proj * game.view.mat.translate(-game.pan.pos) * mesh.model.mat
+  mesh.model.update
+  mesh.program.use()
+  mesh.vert_vbo.apply 0
+  mesh.color_vbo.apply 1
+  mesh.norm_vbo.apply 2
+  if mesh.elem_vbo.n_verts > 0:
+    mesh.elem_vbo.draw_elem kind
+  else:
+    mesh.vert_vbo.draw kind
+  glDisableVertexAttribArray 0
+  glDisableVertexAttribArray 1
+
+method render[T](piece: var T) =
+  var mesh = piece.mesh
+
+  mesh.model.mat = mat4(1.0f)
+    .translate(vec3f(0, player_radius, 0))
+    .translate(mesh.pos * vec3f(1,level_squash,1)) * mesh.rot.mat4f
+
+  glPolygonMode      GL_FRONT_AND_BACK, GL_FILL
+  mesh.render        GL_TRIANGLE_STRIP
 
 proc main =
   editor = Editor(cursor_data: true, cursor_mask: true, stamp: Stamp(width:0, height: 0))
@@ -349,30 +375,6 @@ proc main =
     else:
       game.goal = game.goal or cur_mask == GG
 
-  proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
-    mesh.mvp.update game.proj * game.view.mat.translate(-game.pan.pos) * mesh.model.mat
-    mesh.model.update
-    mesh.program.use()
-    mesh.vert_vbo.apply 0
-    mesh.color_vbo.apply 1
-    mesh.norm_vbo.apply 2
-    if mesh.elem_vbo.n_verts > 0:
-      mesh.elem_vbo.draw_elem kind
-    else:
-      mesh.vert_vbo.draw kind
-    glDisableVertexAttribArray 0
-    glDisableVertexAttribArray 1
-
-  proc render(piece: var Piece) =
-    var mesh = piece.mesh
-
-    mesh.model.mat = mat4(1.0f)
-      .translate(vec3f(0, player_radius, 0))
-      .translate(mesh.pos * vec3f(1,level_squash,1)) * mesh.rot.mat4f
-
-    glPolygonMode      GL_FRONT_AND_BACK, GL_FILL
-    mesh.render        GL_TRIANGLE_STRIP
-
   # main loop
   while not w.windowShouldClose():
     var level = game.get_level()
@@ -397,7 +399,7 @@ proc main =
       game.camera.pan.maxvel = 10f
       game.camera.maxvel = 1f
     else:
-      game.camera.pan.maxvel = 0.125f
+      game.camera.pan.maxvel = 0.25f
       game.camera.maxvel = 1f/20f
     game.camera.physics(dt)
 
@@ -416,11 +418,11 @@ proc main =
     glPolygonMode        GL_FRONT_AND_BACK, GL_FILL
     game.player.mesh.render
 
-    for a in actors.low..actors.high:
-      actors[a].render()
+    for actor in actors.mitems:
+      actor.render()
 
-    for f in fixtures.low..fixtures.high:
-      fixtures[f].render()
+    for fixture in fixtures.mitems:
+      fixture.render()
 
     imgui_frame()
 

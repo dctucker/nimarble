@@ -125,18 +125,33 @@ proc newMesh(game: var Game, verts, colors, norms: var seq[cfloat], elems: var s
     program   : game.player.mesh.program,
     model     : game.player.mesh.program.newMatrix(modelmat, "M"),
   )
+  result.reset()
 
 proc newMesh(game: var Game, piece: Piece): Mesh =
   case piece.kind
-  of EM: newMesh( game, sphere      , yum_colors         , sphere_normals      , sphere_index )
-  of EY: newMesh( game, yum         , yum_colors         , sphere_normals      , sphere_index )
-  of GR: newMesh( game, single_rail , single_rail_colors , single_rail_normals , single_rail_index )
-  else : newMesh( game, sphere      , sphere_normals     , sphere_normals      , sphere_index )
+  of EM: result = newMesh( game, sphere      , yum_colors         , sphere_normals      , sphere_index )
+  of EY: result = newMesh( game, yum         , yum_colors         , sphere_normals      , sphere_index )
+  of GR:
+    var verts   = single_rail
+    var colors  = single_rail_colors
+    var normals = single_rail_normals
+    var index   = single_rail_index
+    var modelmat = mat4f(1)
+    result = Mesh(
+      vao       : newVAO(),
+      vert_vbo  : newVBO(3, verts),
+      color_vbo : newVBO(4, colors),
+      norm_vbo  : newVBO(3, normals),
+      elem_vbo  : newElemVBO(index),
+      program   : game.player.mesh.program,
+      model     : game.player.mesh.program.newMatrix(modelmat, "M"),
+      rot       : quatf(vec3f(1, 0, 0).normalize, 90f.radians),
+    )
+  else : result = newMesh( game, sphere      , sphere_normals     , sphere_normals      , sphere_index )
 
-proc init_piece*(game: var Game, piece: var Piece) =
+proc init_piece*[T](game: var Game, piece: var T) =
   let level = game.get_level()
   piece.mesh = game.newMesh(piece)
-  piece.mesh.reset()
   let x = (piece.origin.x - level.origin.x).float
   let y =  piece.origin.y.float
   let z = (piece.origin.z - level.origin.z).float

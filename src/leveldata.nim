@@ -85,7 +85,7 @@ proc find_fixtures(data: seq[float], mask: seq[CliffMask], w,h: int): seq[Fixtur
       let o = i * w + j
       let mask = mask[o]
       if mask in {GR}:
-        result.add Actor(
+        result.add Fixture(
           origin: vec3i( j.int32, data[o].int32, i.int32 ),
           kind: mask,
         )

@@ -72,12 +72,12 @@ proc name*(mask: CliffMask): string =
   return cliff_mask_names[mask.ord]
 
 type
-  Piece* = ref object
+  Piece* = ref object of RootObj
     kind*: CliffMask
     origin*: Vec3i
     mesh*: Mesh
-  Actor* = Piece
-  Fixture* = Piece
+  Actor*   = ref object of Piece
+  Fixture* = ref object of Piece
 
   CubePoint* = object
     pos*: Vec3f

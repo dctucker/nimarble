@@ -188,29 +188,122 @@ var sphere_normals* = uvSphereNormals(nseg,nrings)
 var sphere_colors* = uvSphereColors(nseg,nrings)
 var yum_colors* = uvSphereColors(nseg,nrings, vec4f(0.1, 0.8, 0.1, 1.0))
 
-proc uvCylVerts*(segments, rings: int, radius: float): seq[cfloat] =
-  result = newSeqOfCap[cfloat](3 * (segments+1) * rings)
+proc toCfloats(vecs: seq[Vec4f], dim: int = 3): seq[cfloat] =
+  result = newSeqOfCap[cfloat](dim * vecs.len)
+  for vec in vecs:
+    if dim >= 1: result.add vec.x
+    if dim >= 2: result.add vec.y
+    if dim >= 3: result.add vec.z
+    if dim >= 4: result.add vec.w
+
+proc cylinderVertices*(segments: int, radius: float32 = 1, length: float32 = 1): seq[Vec4f] =
+  result.newSeq((segments+1) * 4 + 2)
+  let l2 = length / 2f
+
+  result[2 * (segments+1)]     = vec4f(0,0,-l2,1)
+  result[3 * (segments+1) + 1] = vec4f(0,0, l2,1)
 
   for j in 0 .. segments:
     let
-      beta = (j / segments) * 2 * 3.14159265
+      beta = (j / segments) * 2 * PI
+      x = cos(beta).float32
+      y = sin(beta).float32
+      top =    vec4f(vec2f(x,y) * radius,  l2, 1)
+      bottom = vec4f(vec2f(x,y) * radius, -l2, 1)
+
+    result[2*j+0] = bottom
+    result[2*j+1] = top
+    result[2*(segments+1) + 1 + j] = bottom
+    result[3*(segments+1) + 2 + j] = top
+
+proc cylinderNormals*(segments: int, topRadius: float32 = 1): seq[Vec4f] =
+  result.newSeq((segments+1) * 4 + 2)
+
+  result[2 * (segments+1)] = vec4f(0,0,-1, 0)
+  result[3 * (segments+1) + 1] = vec4f(0,0, 1, 0)
+
+  let n = vec2f(2,1-topRadius).normalize
+
+  for j in 0 .. segments:
+    let
+      beta = (j / segments) * 2 * PI
       x = cos(beta).float32
       y = sin(beta).float32
 
-    for i in 0 ..< rings:
-      let
-        alpha = (i / (rings-1)) * 3.14159265
-        h = cos(alpha).float32
-        r = sin(alpha).float32
+    result[2*j+0] = vec4f( vec2(x, y) * n.x, n.y, 0)
+    result[2*j+1] = vec4f( vec2(x, y) * n.x, n.y, 0)
+    result[2*(segments+1) + 1 + j] = vec4f(0,0,-1, 0)
+    result[3*(segments+1) + 2 + j] = vec4f(0,0, 1, 0)
 
-      result.add radius * x * r
-      result.add radius * h
-      result.add radius * y * r
+proc cylinderTexCoords*(segments: int): seq[Vec2f] =
+  result.newSeq((segments+1) * 4 + 2)
 
-var yum* = uvCylVerts(nseg, nrings, 0.5f)
+  result[2 * (segments+1)] = vec2f(0.5f)
+  result[3 * (segments+1) + 1] = vec2f(0.5f)
 
-var single_rail*              = uvCylVerts(6, 8, 0.25f)
-var single_rail_normals* = uvSphereNormals(6, 8)
-var single_rail_colors*   = uvSphereColors(6, 8, vec4f(1.0, 0.2, 0.0, 1.0))
-var single_rail_index*  = uvSphereElements(6, 8)
+  for j in 0 .. segments:
+    let
+      u = (j / segments).float32
+      beta = (j / segments) * 2 * PI
+      x = cos(beta).float32 * 0.5f + 0.5f
+      y = sin(beta).float32 * 0.5f + 0.5f
+
+    result[2*j+0] = vec2f(u, 0)
+    result[2*j+1] = vec2f(u, 1)
+    result[2*(segments+1) + 1 + j] = vec2f(x,y)
+    result[3*(segments+1) + 2 + j] = vec2f(x,y)
+
+proc cylinderColors*(segments: int): seq[Vec4f] =
+  result.newSeq((segments+1) * 4 + 2)
+
+  result[2 * (segments+1)] = vec4f(0.5f, 0.5f, 0, 1)
+  result[3 * (segments+1) + 1] = vec4f(0.5f, 0.5f, 0, 1)
+
+  for j in 0 .. segments:
+    let
+      u = (j / segments).float32
+      beta = (j / segments) * 2 * PI
+      x = cos(beta).float32 * 0.5f + 0.5f
+      y = sin(beta).float32 * 0.5f + 0.5f
+
+    result[2*j+0] = vec4f(u, 0, 0, 1)
+    result[2*j+1] = vec4f(u, 1, 0, 1)
+    result[2*(segments+1) + 1 + j] = vec4f(x,y, 0, 1)
+    result[3*(segments+1) + 2 + j] = vec4f(x,y, 0, 1)
+
+  for c in result.mitems:
+    c.x = 0.7
+    c.y = 0.1
+    c.z = 0.0
+
+proc cylinderIndices*(segments: int): seq[Ind] =
+  result.newSeq(0)
+
+  for i in 0 ..< segments:
+    let
+      i1 = Ind( i * 2 + 0 )
+      i2 = Ind( i * 2 + 1 )
+      i3 = Ind( i * 2 + 2 )
+      i4 = Ind( i * 2 + 3 )
+
+    result.add([i1,i3,i2,i2,i3,i4])
+
+  var base = Ind(2 * (segments+1))
+
+  for i in 0 ..< Ind(segments):
+    let ii = i.Ind
+    result.add( [ base , base + ii + 2, base + ii + 1 ] )
+
+  base = Ind(3 * (segments+1) + 1)
+
+  for i in 0 ..< segments:
+    let ii = i.Ind
+    result.add( [ base, base + ii + 1, base + ii + 2 ] )
+
+var yum* = toCfloats cylinderVertices(nseg, 0.5f)
+
+var single_rail*         = toCfloats(         cylinderVertices(6, 0.25f)      )
+var single_rail_normals* = toCfloats(          cylinderNormals(6)      )
+var single_rail_colors*  = toCfloats(           cylinderColors(6)         , 4 )
+var single_rail_index*   =          (          cylinderIndices(6)             )
 
