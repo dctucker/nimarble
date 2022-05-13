@@ -18,6 +18,22 @@ import keymapper
 
 var game: Game
 
+var t  = 0.0f
+var dt = 0.0f
+var time = 0.0f
+var event_time = 0.0f
+
+var fps_start = 0f
+var fps_frames = 0
+var frame_time = 0f
+
+proc fps_count =
+  inc fps_frames
+  frame_time = dt / fps_frames.float
+  fps_frames = 0
+  fps_start = t
+  log_frame_time frame_time
+
 let game_keymap = {
   GLFWKey.Up           : pan_up            ,
   GLFWKey.Down         : pan_down          ,
@@ -209,7 +225,8 @@ proc imgui_frame =
   if game.goal:
     draw_goal()
 
-  draw_clock(game.get_level().clock)
+  #draw_stats(t)
+  draw_stats(1000 * frame_time)
   if editor.focused:
     draw_keymap(editor_keymap, editor_keymap_shift, editor_keymap_command)
   else:
@@ -221,11 +238,6 @@ proc imgui_frame =
 proc cleanup(w: GLFWWindow) {.inline.} =
   w.destroyWindow
   glfwTerminate()
-
-var t  = 0.0f
-var dt = 0.0f
-var time = 0.0f
-var event_time = 0.0f
 
 proc god: bool = return game.god or editor.focused
 
@@ -385,6 +397,8 @@ proc main =
     dt = time - t
     t = time
 
+    fps_count()
+
     if game.paused and game.frame_step:
       game.physics(game.player.mesh)
       game.frame_step = false
@@ -427,6 +441,7 @@ proc main =
     imgui_frame()
 
     w.swapBuffers()
+    fps_count()
     glfwPollEvents()
 
   w.cleanup()
