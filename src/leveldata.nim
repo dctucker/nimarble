@@ -24,6 +24,9 @@ const level_3_mask_src = staticRead("../" & level_dir & "/3mask.tsv")
 const level_4_src      = staticRead("../" & level_dir & "/4.tsv")
 const level_4_mask_src = staticRead("../" & level_dir & "/4mask.tsv")
 
+const level_5_src      = staticRead("../" & level_dir & "/5.tsv")
+const level_5_mask_src = staticRead("../" & level_dir & "/5mask.tsv")
+
 const EE = 0
 const sky* = 200f
 
@@ -207,6 +210,7 @@ let levels = @[
   init_level("2", level_2_src, level_2_mask_src, vec3f( 0f  , 0.4f, 0.8f )),
   init_level("3", level_3_src, level_3_mask_src, vec3f( 0.4f, 0.4f, 0.4f )),
   init_level("4", level_4_src, level_4_mask_src, vec3f( 1f  , 0.4f, 0.1f )),
+  init_level("5", level_5_src, level_5_mask_src, vec3f( 1f  , 1.0f, 0.0f )),
 ]
 let n_levels* = levels.len()
 
