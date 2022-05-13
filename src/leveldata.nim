@@ -138,9 +138,10 @@ proc init_level(name, data_src, mask_src: string, color: Vec3f): Level =
     color: color,
   )
   discard result.validate()
-  result.origin = data.find_p1(mask, width, height)
-  result.actors = data.find_actors(mask, width, height)
-  result.span   = result.find_span()
+  result.origin   = data.find_p1(mask, width, height)
+  result.actors   = data.find_actors(mask, width, height)
+  result.fixtures = data.find_fixtures(mask, width, height)
+  result.span     = result.find_span()
 
 proc format(value: float): string =
   if value == value.floor:

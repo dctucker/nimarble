@@ -363,10 +363,22 @@ proc main =
     glDisableVertexAttribArray 0
     glDisableVertexAttribArray 1
 
+  proc render(piece: var Piece) =
+    var mesh = piece.mesh
+
+    mesh.model.mat = mat4(1.0f)
+      .translate(vec3f(0, player_radius, 0))
+      .translate(mesh.pos * vec3f(1,level_squash,1)) * mesh.rot.mat4f
+
+    glPolygonMode      GL_FRONT_AND_BACK, GL_FILL
+    mesh.render        GL_TRIANGLE_STRIP
+
   # main loop
   while not w.windowShouldClose():
-    var floor_plane = game.get_level().floor_plane
-    var actors = game.get_level().actors
+    var level = game.get_level()
+    var floor_plane = level.floor_plane
+    var actors = level.actors
+    var fixtures = level.fixtures
     time = glfwGetTime()
     dt = time - t
     t = time
@@ -405,14 +417,10 @@ proc main =
     game.player.mesh.render
 
     for a in actors.low..actors.high:
-      var mesh = actors[a].mesh
+      actors[a].render()
 
-      mesh.model.mat = mat4(1.0f)
-        .translate(vec3f(0, player_radius, 0))
-        .translate(mesh.pos * vec3f(1,level_squash,1)) * mesh.rot.mat4f
-
-      glPolygonMode      GL_FRONT_AND_BACK, GL_FILL
-      mesh.render        GL_TRIANGLE_STRIP
+    for f in fixtures.low..fixtures.high:
+      fixtures[f].render()
 
     imgui_frame()
 

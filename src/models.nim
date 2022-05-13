@@ -172,14 +172,13 @@ proc uvSphereColors*(segments, rings: int): seq[cfloat] =
           result.add 1.0
           result.add opacity
 
-proc uvSphereEnemy(nseg, nrings: int): seq[cfloat] =
-  const opacity = 0.8
+proc uvSphereColors(nseg, nrings: int, color: Vec4f): seq[cfloat] =
   for a in 0..nseg:
     for b in 0..nrings:
-      result.add 0.3
-      result.add 0.7
-      result.add 0.0
-      result.add opacity
+      result.add color.x
+      result.add color.y
+      result.add color.z
+      result.add color.w
 
 const nseg = 32
 const nrings = 16
@@ -187,9 +186,9 @@ var sphere* = uvSphereVerts(nseg,nrings)
 var sphere_index* = uvSphereElements(nseg,nrings)
 var sphere_normals* = uvSphereNormals(nseg,nrings)
 var sphere_colors* = uvSphereColors(nseg,nrings)
-var sphere_enemy_colors* = uvSphereEnemy(nseg,nrings)
+var yum_colors* = uvSphereColors(nseg,nrings, vec4f(0.1, 0.8, 0.1, 1.0))
 
-proc uvCylVerts*(segments, rings: int): seq[cfloat] =
+proc uvCylVerts*(segments, rings: int, radius: float): seq[cfloat] =
   result = newSeqOfCap[cfloat](3 * (segments+1) * rings)
 
   for j in 0 .. segments:
@@ -204,9 +203,14 @@ proc uvCylVerts*(segments, rings: int): seq[cfloat] =
         h = cos(alpha).float32
         r = sin(alpha).float32
 
-      result.add player_radius * x
-      result.add player_radius * h
-      result.add player_radius * y
+      result.add radius * x * r
+      result.add radius * h
+      result.add radius * y * r
 
-var cylinder* = uvCylVerts(nseg, nrings)
+var yum* = uvCylVerts(nseg, nrings, 0.5f)
+
+var single_rail*              = uvCylVerts(6, 8, 0.25f)
+var single_rail_normals* = uvSphereNormals(6, 8)
+var single_rail_colors*   = uvSphereColors(6, 8, vec4f(1.0, 0.2, 0.0, 1.0))
+var single_rail_index*  = uvSphereElements(6, 8)
 

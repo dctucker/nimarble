@@ -128,9 +128,10 @@ proc newMesh(game: var Game, verts, colors, norms: var seq[cfloat], elems: var s
 
 proc newMesh(game: var Game, piece: Piece): Mesh =
   case piece.kind
-  of EM: newMesh( game, sphere  , sphere_enemy_colors, sphere_normals, sphere_index )
-  of EY: newMesh( game, cylinder, sphere_enemy_colors, sphere_normals, sphere_index )
-  else : newMesh( game, sphere  , sphere_normals, sphere_normals, sphere_index )
+  of EM: newMesh( game, sphere      , yum_colors         , sphere_normals      , sphere_index )
+  of EY: newMesh( game, yum         , yum_colors         , sphere_normals      , sphere_index )
+  of GR: newMesh( game, single_rail , single_rail_colors , single_rail_normals , single_rail_index )
+  else : newMesh( game, sphere      , sphere_normals     , sphere_normals      , sphere_index )
 
 proc init_piece*(game: var Game, piece: var Piece) =
   let level = game.get_level()
@@ -166,6 +167,7 @@ proc set_level*(game: var Game) =
   game.reset_player()
   game.init_floor_plane()
   game.init_actors()
+  game.init_fixtures()
   game.reset_player()
   game.follow_player()
   game.pan.pos = game.pan.target
@@ -185,6 +187,7 @@ proc init*(game: var Game) =
   game.set_level()
   game.init_floor_plane()
   game.init_actors()
+  game.init_fixtures()
   game.light.update()
 
 proc respawn*(game: var Game) =
