@@ -207,7 +207,7 @@ proc init*(game: var Game) =
 
 proc respawn*(game: var Game) =
     game.reset_player()
-    game.player.mesh.pos = game.respawn_pos
+    game.player.mesh.pos = game.player.respawn_pos
     game.reset_view()
     inc game.respawns
 

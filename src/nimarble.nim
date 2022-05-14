@@ -29,7 +29,7 @@ var frame_time = 0f
 
 proc fps_count =
   inc fps_frames
-  frame_time = dt / fps_frames.float
+  frame_time = (dt / fps_frames.float) * 1000
   fps_frames = 0
   fps_start = t
   log_frame_time frame_time
@@ -149,7 +149,7 @@ proc info_vectors =
   igText("player")
   #var lateral = player.pos.xz.length()
   #igSliderFloat "lateral_d", lateral.addr     , -sky, sky
-  #igSliderFloat3 "respawn_pos" , game.respawn_pos.arr  , -sky, sky
+  #igSliderFloat3 "respawn_pos" , game.player.respawn_pos.arr  , -sky, sky
   igDragFloat3 "pos"     , game.player.mesh.pos.arr   , 0.125, -sky, sky
   igDragFloat3 "vel"     , game.player.mesh.vel.arr   , 0.125, -sky, sky
   igDragFloat3 "acc"     , game.player.mesh.acc.arr   , 0.125, -sky, sky
@@ -226,7 +226,7 @@ proc imgui_frame =
     draw_goal()
 
   #draw_stats(t)
-  draw_stats(1000 * frame_time)
+  frame_time.draw_stats()
   if editor.focused:
     draw_keymap(editor_keymap, editor_keymap_shift, editor_keymap_command)
   else:
@@ -278,6 +278,7 @@ proc main =
 
   proc physics(game: var Game, mesh: var Mesh) {.inline.} =
     const mass = player_radius
+    #let gravity = if game.level == 5: -98f else: 98f
     const gravity = -98f
     const max_vel = vec3f( 15f, -gravity * 0.5f, 15f )
     let level = game.get_level()
@@ -292,7 +293,7 @@ proc main =
     let cur_mask = level.mask_at(x,z)
     #stdout.write "\27[K"
 
-    game.dead = mesh.pos.y < 10f or (mesh.acc.xz.length == 0f and mesh.vel.y <= -max_vel.y)
+    game.player.dead = mesh.pos.y < 10f or (mesh.acc.xz.length == 0f and mesh.vel.y <= -max_vel.y)
 
     let ramp = level.slope(x,z) * level_squash * level_squash
     let thx = arctan(ramp.x)
@@ -302,6 +303,9 @@ proc main =
     let sinx = sin(thx)
     let sinz = sin(thz)
     var ramp_a = vec3f( -ramp.x, sinx + sinz, -ramp.z ) * gravity
+    if game.level == 6: # works for ramps but not walls
+      ramp_a = vec3f( ramp.x, sinx + sinz, ramp.z ) * gravity
+
     var icy = level.around(IC, x,z)
     var copper = level.around(CU, x,z)
     var traction: float
@@ -317,7 +321,7 @@ proc main =
     let flat = ramp.length == 0
     let nonzero = level.point_height(x.floor, z.floor) > 0f
     if flat and nonzero and cur_mask == XX and not icy and not copper:
-      game.respawn_pos = vec3f(mesh.pos.x.floor, mesh.pos.y, mesh.pos.z.floor)
+      game.player.respawn_pos = vec3f(mesh.pos.x.floor, mesh.pos.y, mesh.pos.z.floor)
 
     const max_acc = 50f
     var m = vec3f(0,0,0)
@@ -373,7 +377,7 @@ proc main =
 
     if god(): return # a god neither dies nor achieves goals
 
-    if game.dead:
+    if game.player.dead:
       game.respawn()
 
     if game.goal:

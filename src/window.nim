@@ -1,5 +1,6 @@
 {. warning[HoleEnumConv]:off .}
 
+import strutils
 import glm
 import nimgl/glfw
 import nimgl/imgui
@@ -64,25 +65,25 @@ proc draw_goal* =
     igPopFont()
   igEnd()
 
-var frame_times = newSeq[float](128)
-var frame_times_len = frame_times.len.int32
+const frame_times_len = 256
+var frame_times = newSeq[float](frame_times_len)
 var frame_times_phase: int32 = 0
 proc get_frame_time(data: pointer, index: int32): float32 {.cdecl, varargs.} =
   return frame_times[index]
 
 proc log_frame_time*(frame_time: float) =
-  frame_times[frame_times_phase] = frame_time * 1000
+  frame_times[frame_times_phase] = frame_time
   frame_times_phase.inc
-  if frame_times_phase >= 128:
+  if frame_times_phase >= frame_times_len:
     frame_times_phase = 0
 
 proc draw_stats*[T](value: T) =
   #igSetNextWindowPos(ImVec2(x: (width - 112).float32, y: 0))
   #igSetNextWindowSize(ImVec2(x:112, y:48))
 
-  if igBegin("stats"): #, nil, ImGuiWindowFlags(171)):
+  if igBegin("stats", nil, ImGuiWindowFlags(171)):
     #igPushFont( large_font )
-    let clk = $value.float
+    let clk = frame_times.max().formatFloat(ffDecimal, 3) & " ms"
     var cclk = clk.cstring
     #igTextColored ImVec4(x:0.5,y:0.1,z:0.1, w:1.0), cclk
 
@@ -93,10 +94,10 @@ proc draw_stats*[T](value: T) =
       frame_times.addr,
       frame_times_len,
       frame_times_phase,
-      "overlay text",
+      cclk,
       4f,
       64f,
-      ImVec2(x: 200, y: 48),
+      ImVec2(x: 256, y: 100),
     )
     #igPopFont()
   igEnd()

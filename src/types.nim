@@ -133,6 +133,10 @@ type
 
   Player* = ref object
     mesh*: Mesh
+    dead*: bool
+    timer*: int
+    teleport_dest*: Vec3f
+    respawn_pos*: Vec3f
 
   Game* = ref object
     state*: GameState
@@ -143,7 +147,6 @@ type
     player*: Player
     proj*: Mat4f
     view*: Matrix
-    respawn_pos*: Vec3f
     window*: GLFWWindow
     camera*: Camera
     light*: Light
@@ -152,7 +155,6 @@ type
     following*: bool
     frame_step*: bool
     goal*: bool
-    dead*: bool
     god*: bool
     wireframe*: bool
 
@@ -177,7 +179,6 @@ proc newGame*: Game =
     following : true,
     frame_step : false,
     goal : false,
-    dead : false,
     wireframe : false,
   )
 
