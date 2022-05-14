@@ -312,10 +312,10 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   let m2 = level.mask[level.offset(i+1,j+0)]
   let m3 = level.mask[level.offset(i+1,j+1)]
 
-  let y0 = level.data[level.offset(i+0,j+0)]
-  let y1 = level.data[level.offset(i+0,j+1)]
-  let y2 = level.data[level.offset(i+1,j+0)]
-  let y3 = level.data[level.offset(i+1,j+1)]
+  var y0 = level.data[level.offset(i+0,j+0)]
+  var y1 = level.data[level.offset(i+0,j+1)]
+  var y2 = level.data[level.offset(i+1,j+0)]
+  var y3 = level.data[level.offset(i+1,j+1)]
 
   const margin = 0.98
   let x = (j - level.origin.x).float + vert.x.float * margin
@@ -345,6 +345,35 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   const abyss = -1
 
   if vert.y == 1:
+
+    if m.has JJ:
+      y0 = y1
+      y2 = y3
+
+    if m.has VV:
+      y0 = y2
+      y1 = y3
+
+    if m1.has LL:
+      y1 = y0
+
+    if m3.has LL:
+      y1 = y0
+      y3 = y2
+
+    if m2.has AA:
+      y2 = y0
+      y3 = y1
+
+    if m3.has AA:
+      y3 = y1
+
+    if   vert.z == 0 and vert.x == 0: y = y0
+    elif vert.z == 0 and vert.x == 1: y = y1
+    elif vert.z == 1 and vert.x == 0: y = y2
+    elif vert.z == 1 and vert.x == 1: y = y3
+
+    #[
     if   vert.z == 0 and vert.x == 0:
       if m.has AA: y = y0
       if m.has LL: y = y0
@@ -373,6 +402,7 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
       if level.mask[level.offset(i+1,j+1)] == LV:
         y = level.data[level.offset(i+2,j+1)]
       #normal = surface_normals[3]
+    #]#
   else:
     y = abyss
     #c = vec4f(0,0,0,1.0)
