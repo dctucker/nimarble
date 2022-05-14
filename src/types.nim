@@ -44,6 +44,7 @@ cliff_masks:
   IH      "oops! all cliffs"
   RI      "ramps up/down"
   RH      "left/right"
+  NS      "no slope"
   GR      "guard rail"
   FL      "flag"
   GG      "goal"

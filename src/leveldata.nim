@@ -411,14 +411,17 @@ proc calculate_vbos*(level: Level, i,j: int) =
   let vert_span   = 3 * 33
 
   if not level.has_coord(i,j): return
-  if not level.has_coord(i+1, j+1): return
 
   let o = (i-1) * 48 + (j-7)
+  if o < 0: return
   for w in 22 .. 26:
     let p = level.cube_point(i, j, w)
     for n in cube_index.low .. cube_index.high:
+      let vert_offset = o *   vert_span + 3*n + 1
+      if vert_offset >= level.floor_verts.len:
+        break
       if cube_index[n] == cube_index[w]:
-        level.floor_verts[   o *   vert_span + 3*n + 1 ] = p.pos.y
+        level.floor_verts[   vert_offset               ] = p.pos.y
 
     level.floor_colors[  o *  color_span + 4*w + 0 ] = p.color.x
     level.floor_colors[  o *  color_span + 4*w + 1 ] = p.color.y
