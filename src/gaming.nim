@@ -14,6 +14,7 @@ from keymapper import action
 const level_squash* = 0.5f
 const start_level* = 1
 
+var app* = Application() # ugh, this needs to be moved out
 var editor*: Editor
 
 proc rotate_coord*(v: Vec3f): Vec3f =
@@ -215,6 +216,21 @@ proc pan_stop(game: var Game) =
   game.pan.acc = vec3f(0f,0f,0f)
 
 action:
+  proc toggle_all*(game: var Game, press: bool) =
+    if not press: return
+    app.show_player       = not app.show_player
+    app.show_light        = not app.show_light
+    app.show_camera       = not app.show_camera
+    app.show_actors       = not app.show_actors
+    app.show_fixtures     = not app.show_fixtures
+    app.show_cube_points  = not app.show_cube_points
+    #app.show_editor       = not app.show_editor
+    app.show_masks        = not app.show_masks
+    app.show_keymap       = not app.show_keymap
+
+  proc toggle_keymap*(game: var Game, press: bool) =
+    if press: app.show_keymap = not app.show_keymap
+
   proc do_reset_player*(game: var Game, press: bool) =
     if press:
       game.reset_player()
@@ -304,6 +320,7 @@ action:
     if editor.visible == false:
       toggle_mouse_lock.callback(game, true)
     editor.visible = true
+    app.show_editor = true
 
     editor.focused = not editor.focused
 

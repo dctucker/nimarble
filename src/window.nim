@@ -7,7 +7,7 @@ import nimgl/imgui
 import nimgl/imgui/[impl_opengl, impl_glfw]
 #import zippy
 from scene import Camera, Light, pos, vel, acc
-from types import Actor, Fixture, CliffMask, name
+from types import Application, Actor, Fixture, CliffMask, name
 from leveldata import sky
 
 const terminus_ttf_asset = staticRead("../assets/fonts/TerminusTTF.ttf")
@@ -29,6 +29,7 @@ height = 1200
 aspect = width / height
 
 var mouse*: Vec3f
+
 
 proc middle*(): Vec2f = vec2f(width.float * 0.5f, height.float * 0.5f)
 
@@ -182,4 +183,32 @@ proc info_window*(mask: CliffMask) =
 
     igEndTable()
   igEnd()
+
+proc main_menu*(app: Application) =
+  igSetNextWindowPos  ImVec2(x:0.float32, y:0.float32)
+  igSetNextWindowSize ImVec2(x:width.float32, y: 50.float32)
+  var b = false
+  #if igBegin("toolbox"): #, b.addr, NoDecoration or MenuBar or Popup):
+  assert igGetCurrentContext() != nil
+  if igBeginMainMenuBar():
+    if igBeginMenu("Level"):
+      igMenuItem("1")
+      igMenuItem("2")
+      igMenuItem("3")
+      igMenuItem("4")
+      igMenuItem("5")
+      igMenuItem("6")
+      igEndMenu()
+    if igBeginMenu("Windows"):
+      igMenuItem "Player"      , nil, app.show_player.addr
+      igMenuItem "Light"       , nil, app.show_light.addr
+      igMenuItem "Camera"      , nil, app.show_camera.addr
+      igMenuItem "Actors"      , nil, app.show_actors.addr
+      igMenuItem "Fixtures"    , nil, app.show_fixtures.addr
+      igMenuItem "Cube Points" , nil, app.show_cube_points.addr
+      igMenuItem "Editor"      , "E", app.show_editor.addr
+      igMenuItem "Keymap"      , "?", app.show_keymap.addr
+      igEndMenu()
+    discard
+  igEndMainMenuBar()
 

@@ -54,7 +54,9 @@ let game_keymap = {
   GLFWKey.L            : toggle_mouse_lock ,
   GLFWKey.G            : toggle_god        ,
   GLFWKey.E            : focus_editor      ,
+  GLFWKey.Escape       : toggle_all        ,
   GLFWKey.Q            : do_quit           ,
+  GLFWKey.Slash        : toggle_keymap     ,
   #GLFWKey.O            : reload_level      ,
 }.toOrderedTable
 
@@ -141,72 +143,71 @@ proc setup_opengl() =
   glBlendFunc GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
   glShadeModel GL_FLAT
 
-proc info_vectors =
-  igSetNextWindowSize(ImVec2(x:300f, y:400f))
-
+proc info_player =
   let level = game.get_level()
   let coord = game.player.mesh.pos.rotate_coord
+  if app.show_player:
+    igSetNextWindowSize(ImVec2(x:300f, y:400f))
+    if igBegin("player"):
+      #var lateral = player.pos.xz.length()
+      #igSliderFloat "lateral_d", lateral.addr     , -sky, sky
+      #igSliderFloat3 "respawn_pos" , game.player.respawn_pos.arr  , -sky, sky
+      igDragFloat3 "pos"     , game.player.mesh.pos.arr   , 0.125, -sky, sky
+      igDragFloat3 "vel"     , game.player.mesh.vel.arr   , 0.125, -sky, sky
+      igDragFloat3 "acc"     , game.player.mesh.acc.arr   , 0.125, -sky, sky
+      igDragFloat4 "rot"     , game.player.mesh.rot.arr   , 0.125, -sky, sky
+      #igSliderFloat3 "normal" , game.player.mesh.normal.arr, -1.0, 1.0
 
-  if igBegin("player"):
-    #var lateral = player.pos.xz.length()
-    #igSliderFloat "lateral_d", lateral.addr     , -sky, sky
-    #igSliderFloat3 "respawn_pos" , game.player.respawn_pos.arr  , -sky, sky
-    igDragFloat3 "pos"     , game.player.mesh.pos.arr   , 0.125, -sky, sky
-    igDragFloat3 "vel"     , game.player.mesh.vel.arr   , 0.125, -sky, sky
-    igDragFloat3 "acc"     , game.player.mesh.acc.arr   , 0.125, -sky, sky
-    igDragFloat4 "rot"     , game.player.mesh.rot.arr   , 0.125, -sky, sky
-    #igSliderFloat3 "normal" , game.player.mesh.normal.arr, -1.0, 1.0
+      igSpacing()
+      igSeparator()
+      igSpacing()
 
-    igSpacing()
-    igSeparator()
-    igSpacing()
+      var m0 = ($level.mask_at(coord.x, coord.z)).cstring
+      var m1 = ($level.mask_at(coord.x+1, coord.z)).cstring
+      var m2 = ($level.mask_at(coord.x, coord.z+1)).cstring
+      igText(m0, 2)
+      igSameLine()
+      igText(m1)
+      igSameLine()
+      igText(m2)
 
-    var m0 = ($level.mask_at(coord.x, coord.z)).cstring
-    var m1 = ($level.mask_at(coord.x+1, coord.z)).cstring
-    var m2 = ($level.mask_at(coord.x, coord.z+1)).cstring
-    igText(m0, 2)
-    igSameLine()
-    igText(m1)
-    igSameLine()
-    igText(m2)
+      var sl = level.slope(coord.x, coord.z)
+      igDragFloat3 "slope"     , sl.arr         , -sky, sky
 
-    var sl = level.slope(coord.x, coord.z)
-    igDragFloat3 "slope"     , sl.arr         , -sky, sky
+      var respawns = game.respawns.int32
+      igSliderInt    "respawns"     , respawns.addr, 0.int32, 10.int32
+      igCheckBox     "following"    , game.following.addr
+      igCheckBox     "wireframe"    , game.wireframe.addr
+      igCheckBox     "god"          , game.god.addr
+      igSliderInt    "level"        , game.level.addr, 1.int32, n_levels.int32 - 1
 
-    var respawns = game.respawns.int32
-    igSliderInt    "respawns"     , respawns.addr, 0.int32, 10.int32
-    igCheckBox     "following"    , game.following.addr
-    igCheckBox     "wireframe"    , game.wireframe.addr
-    igCheckBox     "god"          , game.god.addr
-    igSliderInt    "level"        , game.level.addr, 1.int32, n_levels.int32 - 1
+      #igText("average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
+    igEnd()
 
-    #igText("average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
-  igEnd()
+  if app.show_cube_points:
+    if igBegin("cube point"):
+      let (i,j) = level.xlat_coord(coord.x.floor, coord.z.floor)
 
-  if igBegin("cube point"):
-    let (i,j) = level.xlat_coord(coord.x.floor, coord.z.floor)
+      var p0 = level.cube_point(i, j, 23)
+      var p1 = level.cube_point(i, j, 24)
+      var p2 = level.cube_point(i, j, 25)
+      var p3 = level.cube_point(i, j, 26)
 
-    var p0 = level.cube_point(i, j, 23)
-    var p1 = level.cube_point(i, j, 24)
-    var p2 = level.cube_point(i, j, 25)
-    var p3 = level.cube_point(i, j, 26)
+      igDragFloat3 "pos0", p0.pos.arr
+      igDragFloat3 "pos1", p1.pos.arr
+      igDragFloat3 "pos2", p2.pos.arr
+      igDragFloat3 "pos3", p3.pos.arr
 
-    igDragFloat3 "pos0", p0.pos.arr
-    igDragFloat3 "pos1", p1.pos.arr
-    igDragFloat3 "pos2", p2.pos.arr
-    igDragFloat3 "pos3", p3.pos.arr
+      igColorEdit4 "color0", p0.color.arr
+      igColorEdit4 "color1", p1.color.arr
+      igColorEdit4 "color2", p2.color.arr
+      igColorEdit4 "color3", p3.color.arr
 
-    igColorEdit4 "color0", p0.color.arr
-    igColorEdit4 "color1", p1.color.arr
-    igColorEdit4 "color2", p2.color.arr
-    igColorEdit4 "color3", p3.color.arr
-
-    igDragFloat3 "normal0", p0.normal.arr
-    igDragFloat3 "normal1", p1.normal.arr
-    igDragFloat3 "normal2", p2.normal.arr
-    igDragFloat3 "normal3", p3.normal.arr
-
-  igEnd()
+      igDragFloat3 "normal0", p0.normal.arr
+      igDragFloat3 "normal1", p1.normal.arr
+      igDragFloat3 "normal2", p2.normal.arr
+      igDragFloat3 "normal3", p3.normal.arr
+    igEnd()
 
 proc sync_editor =
   let coord = game.player.mesh.pos.rotate_coord
@@ -216,26 +217,32 @@ proc sync_editor =
   else:
     game.player.mesh.pos.x = editor.col.float - editor.level.origin.x.float
     game.player.mesh.pos.z = editor.row.float - editor.level.origin.z.float
-    XX.info_window()
-  editor.draw()
+  if app.show_editor: editor.draw()
+
+proc `or`*(f1, f2: ImGuiWindowFlags): ImGuiWindowFlags =
+  return ImGuiWindowFlags( f1.ord or f2.ord )
 
 proc draw_imgui =
+  let level = game.get_level()
   igPushFont( small_font )
 
-  info_vectors()
-  let level = game.get_level()
-  level.actors.info_window()
-  level.fixtures.info_window()
+  app.main_menu()
+  info_player()
+  if app.show_actors: level.actors.info_window()
+  if app.show_fixtures: level.fixtures.info_window()
 
-  if game.camera.info_window():
-    game.view.mat = lookAt( game.camera.pos, game.camera.target, game.camera.up )
-    game.update_camera()
+  if app.show_camera:
+    if game.camera.info_window():
+      game.view.mat = lookAt( game.camera.pos, game.camera.target, game.camera.up )
+      game.update_camera()
 
-  if game.light.info_window():
-    game.light.update()
+  if app.show_light:
+    if game.light.info_window():
+      game.light.update()
 
+  if app.show_masks:
+    XX.info_window()
   sync_editor()
-
   igPopFont()
 
 proc imgui_frame =
@@ -250,10 +257,12 @@ proc imgui_frame =
 
   #draw_stats(t)
   frame_time.draw_stats()
-  if editor.focused:
-    draw_keymap(editor_keymap, editor_keymap_shift, editor_keymap_command)
-  else:
-    draw_keymap(game_keymap)
+
+  if app.show_keymap:
+    if editor.focused:
+      draw_keymap(editor_keymap, editor_keymap_shift, editor_keymap_command)
+    else:
+      draw_keymap(game_keymap)
 
   igRender()
   igOpenGL3RenderDrawData(igGetDrawData())

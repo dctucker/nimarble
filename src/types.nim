@@ -213,6 +213,16 @@ type
     stamp*: Stamp
     recent_input*: GLFWKey
 
+  Application* = ref object
+    show_player*       : bool
+    show_light*        : bool
+    show_camera*       : bool
+    show_actors*       : bool
+    show_fixtures*     : bool
+    show_cube_points*  : bool
+    show_editor*       : bool
+    show_masks*        : bool
+    show_keymap*       : bool
 
 proc data*(editor: Editor): var seq[float]     = editor.level.data
 proc mask*(editor: Editor): var seq[CliffMask] = editor.level.mask
