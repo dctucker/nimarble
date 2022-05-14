@@ -214,7 +214,7 @@ let levels = @[
 ]
 let n_levels* = levels.len()
 
-proc xlat_coord(level: Level, x,z: float): (int,int) =
+proc xlat_coord*(level: Level, x,z: float): (int,int) =
   return ((z.floor+level.origin.z.float).int, (x.floor+level.origin.x.float).int)
 
 proc has_coord*[T](level: Level, i,j: T): bool =
@@ -304,7 +304,7 @@ proc add_color(colors: var seq[cfloat], c: Vec4f) =
   colors.add c.z
   colors.add c.w
 
-proc cube_point(level: Level, i,j, w: int): CubePoint =
+proc cube_point*(level: Level, i,j, w: int): CubePoint =
   let vert = cube_verts[ cube_index[w] ]
 
   let m0 = level.mask[level.offset(i+0,j+0)]
@@ -357,6 +357,7 @@ proc cube_point(level: Level, i,j, w: int): CubePoint =
       if m.has LL: y = y0
       if m.has VV: y = y3
       if m.has JJ: y = y1
+      if m.has(VV) and m1.has(VJ): y = y3
       #normal = surface_normals[1]
     elif vert.z == 1 and vert.x == 0:
       if m.has AA: y = y0
@@ -369,6 +370,8 @@ proc cube_point(level: Level, i,j, w: int): CubePoint =
       if m.has LL: y = y2
       if m.has JJ: y = y3
       if m.has VV: y = y3
+      if level.mask[level.offset(i+1,j+1)] == LV:
+        y = level.data[level.offset(i+2,j+1)]
       #normal = surface_normals[3]
   else:
     y = abyss
@@ -416,6 +419,7 @@ proc calculate_vbos*(level: Level, i,j: int) =
   if o < 0: return
   for w in 22 .. 26:
     let p = level.cube_point(i, j, w)
+    if p.empty: continue
     for n in cube_index.low .. cube_index.high:
       let vert_offset = o *   vert_span + 3*n + 1
       if vert_offset >= level.floor_verts.len:
@@ -423,13 +427,18 @@ proc calculate_vbos*(level: Level, i,j: int) =
       if cube_index[n] == cube_index[w]:
         level.floor_verts[   vert_offset               ] = p.pos.y
 
-    level.floor_colors[  o *  color_span + 4*w + 0 ] = p.color.x
-    level.floor_colors[  o *  color_span + 4*w + 1 ] = p.color.y
-    level.floor_colors[  o *  color_span + 4*w + 2 ] = p.color.z
-    level.floor_colors[  o *  color_span + 4*w + 3 ] = p.color.w
-    level.floor_normals[ o * normal_span + 3*w + 0 ] = p.normal.x
-    level.floor_normals[ o * normal_span + 3*w + 1 ] = p.normal.y
-    level.floor_normals[ o * normal_span + 3*w + 2 ] = p.normal.z
+    let color_offset = o *  color_span + 4*w
+    if 0 < color_offset and color_offset < level.floor_colors.len:
+      level.floor_colors[  color_offset + 0 ] = p.color.x
+      level.floor_colors[  color_offset + 1 ] = p.color.y
+      level.floor_colors[  color_offset + 2 ] = p.color.z
+      level.floor_colors[  color_offset + 3 ] = p.color.w
+
+    let normal_offset = o * normal_span + 3*w
+    if 0 < normal_offset and normal_offset < level.floor_normals.len:
+      level.floor_normals[ normal_offset + 0 ] = p.normal.x
+      level.floor_normals[ normal_offset + 1 ] = p.normal.y
+      level.floor_normals[ normal_offset + 2 ] = p.normal.z
 
 proc setup_floor(level: Level) =
   let dim = level.height * level.width

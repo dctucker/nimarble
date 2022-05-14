@@ -154,6 +154,7 @@ proc set_mask(editor: var Editor, mask: CliffMask) =
     if   mask == P1: m = EP
     if   mask == HH: m = EH
     if   mask == VV: m = EV
+    if   mask == II: m = MI
   elif cur == OU:
     if   mask == II: m = OI
   elif cur == P1:

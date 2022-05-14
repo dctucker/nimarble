@@ -51,6 +51,7 @@ cliff_masks:
   TU      "tube"
   IN      "portal in"
   OU      "portal out"
+  MI      "mini"
   IC      "icy"
   CU      "copper"
   OI      "oil"
@@ -102,6 +103,9 @@ type
     fixtures*: seq[Fixture]
     name*: string
 
+
+proc empty*(p: CubePoint): bool =
+  return p.pos.length == 0 and p.color.length == 0 and p.normal.length == 0
 
 proc cliff*(a: CliffMask): bool =
   return XX.ord < a.ord and a.ord <= IH.ord
