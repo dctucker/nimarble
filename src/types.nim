@@ -227,6 +227,17 @@ type
 proc data*(editor: Editor): var seq[float]     = editor.level.data
 proc mask*(editor: Editor): var seq[CliffMask] = editor.level.mask
 
+proc toggle*(app: var Application): bool =
+  app.show_player       = not app.show_player
+  app.show_light        = not app.show_light
+  app.show_camera       = not app.show_camera
+  app.show_actors       = not app.show_actors
+  app.show_fixtures     = not app.show_fixtures
+  app.show_cube_points  = not app.show_cube_points
+  #app.show_editor       = not app.show_editor
+  app.show_masks        = not app.show_masks
+  app.show_keymap       = not app.show_keymap
+  return app.show_player or app.show_light or app.show_camera or app.show_actors or app.show_fixtures or app.show_cube_points
 
 type
   Action*[T] = ref object
