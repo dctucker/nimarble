@@ -91,9 +91,10 @@ proc physics*(camera: var Camera, dt: float) {.inline.} =
   let pan_delta = camera.pan.target - camera.pan.pos
   if pan_delta.length > 0f:
     if pan_delta.length < camera.maxvel:
-      #camera.pan.pos = camera.pan.target
-      camera.pan.vel *= 0.9
+      camera.pan.vel *= 0.9 # brake
     else:
       camera.pan.vel = pan_delta * dt
-      camera.pan.vel = clamp(camera.pan.vel, -camera.maxvel, +camera.maxvel)
+      camera.pan.vel.x = clamp(camera.pan.vel.x, -camera.maxvel, +camera.maxvel)
+      camera.pan.vel.y = clamp(camera.pan.vel.y, -camera.maxvel, +camera.maxvel)
+      camera.pan.vel.z = clamp(camera.pan.vel.z, -camera.maxvel, +camera.maxvel)
 

@@ -179,7 +179,7 @@ type
   Player* = ref object
     mesh*: Mesh
     dead*: bool
-    timer*: int
+    teleport_time*: float
     teleport_dest*: Vec3f
     respawn_pos*: Vec3f
 

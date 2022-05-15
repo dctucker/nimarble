@@ -225,6 +225,11 @@ proc has_coord*[T](level: Level, i,j: T): bool =
            j >= i            and
            j - i <= level.span
 
+proc data_at(level: Level, x,z: float): float =
+  let (i,j) = level.xlat_coord(x,z)
+  if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return EE.float
+  return level.data[i * level.width + j].float
+
 proc mask_at*(level: Level, x,z: float): CliffMask =
   let (i,j) = level.xlat_coord(x,z)
   if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return XX
@@ -238,6 +243,30 @@ proc around*(level: Level, m: CliffMask, x,z: float): bool =
       if level.mask_at(x+i.float,z+j.float) == m:
         return true
   return false
+
+proc find_closest*(level: Level, mask: CliffMask, x, z: float): Vec3f =
+  var i, j, di, dj, radius: int
+  i = -radius ; j = -radius
+
+  while radius < 50:
+    if i <= -radius and j == -radius:
+      radius.inc ; i = -radius ; j = -radius ; di =  0 ; dj =  1
+    elif i == -radius and j >= radius        : di =  1 ; dj =  0
+    elif i >= radius and j == radius         : di =  0 ; dj = -1
+    elif i == radius and j <= -radius        : di = -1 ; dj =  0
+
+    #echo "i,j = ", $i, ",", $j
+
+    let xi = x + i.float
+    let zj = z + j.float
+    if level.mask_at(zj, xi) == mask:
+      let y = level.data_at(zj, xi)
+      result = vec3f( zj, y, xi )
+      #echo "FOUND at ", result
+      return
+
+    i += di
+    j += dj
 
 proc cliff_color(level: Level, mask: CliffMask): Vec4f =
   case mask:
@@ -553,11 +582,6 @@ proc setup_floor_colors[T](level: Level): seq[cfloat] =
       result[index+1] = c.y
       result[index+2] = c.z
       result[index+3] = c.w
-
-proc data_at(level: Level, x,z: float): float =
-  let (i,j) = level.xlat_coord(x,z)
-  if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return EE.float
-  return level.data[i * level.width + j].float
 
 proc wave_height*(level: Level, x,z: float): float =
   let phase = 15f * -x + level.clock.float

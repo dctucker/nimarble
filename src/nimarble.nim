@@ -106,9 +106,17 @@ proc scrollProc(window: GLFWWindow, xoffset, yoffset: cdouble): void {.cdecl.} =
   #game.update_fov()
 
 proc poll_joystick*(game: var Game) =
+  if joystick.id == -1: return
+
   const xbox = 2 # TODO
   var n_axes: int32
   var ax = glfwGetJoystickAxes(xbox, n_axes.addr)
+  echo n_axes
+  if n_axes == 6:
+    joystick.id = xbox
+  else:
+    joystick.id = -1
+    return
   var axes = cast[ptr UncheckedArray[float32]](ax)
   joystick.left_thumb.x  = axes[0]
   joystick.left_thumb.y  = axes[1]
@@ -370,6 +378,13 @@ proc main =
     let cur_mask = level.mask_at(x,z)
     #stdout.write "\27[K"
 
+    if game.player.teleport_time > 0:
+      if t < game.player.teleport_time:
+        echo game.player.teleport_time - t
+        return
+      else:
+        game.player.teleport_time = 0f
+
     game.player.dead = mesh.pos.y < 10f or (mesh.acc.xz.length == 0f and mesh.vel.y <= -max_vel.y)
 
     let ramp = level.slope(x,z) * level_squash * level_squash
@@ -456,6 +471,13 @@ proc main =
 
     if god(): return # a god neither dies nor achieves goals
 
+    if level.around(IN,x,z):
+      let dest = level.find_closest(OU, x, z)
+      if dest.length != 0:
+        game.player.teleport_dest = dest
+        game.player.teleport_time = t + 1.2f
+        game.player.mesh.pos = game.player.teleport_dest
+
     if game.player.dead:
       game.respawn()
 
@@ -497,7 +519,7 @@ proc main =
       game.camera.maxvel = 1f
     else:
       game.camera.pan.maxvel = 0.25f
-      game.camera.maxvel = 1f/20f
+      game.camera.maxvel = 1f/5f
     game.camera.physics(dt)
 
     glClear            GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
@@ -513,7 +535,9 @@ proc main =
     floor_plane.render   GL_TRIANGLE_STRIP
 
     glPolygonMode        GL_FRONT_AND_BACK, GL_FILL
-    game.player.mesh.render
+
+    if game.player.teleport_time == 0:
+      game.player.mesh.render
 
     for actor in actors.mitems:
       actor.render()
