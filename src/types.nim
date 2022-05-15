@@ -183,6 +183,9 @@ type
     teleport_dest*: Vec3f
     respawn_pos*: Vec3f
 
+proc visible*(p: Player): bool = return p.teleport_time == 0
+
+type
   Game* = ref object
     state*: GameState
     score*: int

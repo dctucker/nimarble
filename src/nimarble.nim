@@ -237,6 +237,7 @@ proc info_player =
   if app.show_cube_points:
     if igBegin("cube point"):
       let (i,j) = level.xlat_coord(coord.x.floor, coord.z.floor)
+      if not level.has_coord( i,j ): return
 
       var p0 = level.cube_point(i, j, 23)
       var p1 = level.cube_point(i, j, 24)
@@ -536,7 +537,7 @@ proc main =
 
     glPolygonMode        GL_FRONT_AND_BACK, GL_FILL
 
-    if game.player.teleport_time == 0:
+    if game.player.visible:
       game.player.mesh.render
 
     for actor in actors.mitems:

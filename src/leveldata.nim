@@ -311,9 +311,9 @@ proc point_cliff_color(level: Level, i,j: int): Vec4f =
 
 proc point_color(level: Level, i,j: int): Vec4f =
   let k = level.width * i + j
+  if k >= level.data.len: return
   let y = level.data[k]
-  if y == EE:
-    return vec4f(0,0,0,0)
+  if y == EE: return
   elif level.around(IC, j.float - level.origin.x.float, i.float - level.origin.z.float):
     return vec4f( 0.0, 1.0, 1.0, 1.0)
   elif level.around(CU, j.float - level.origin.x.float, i.float - level.origin.z.float):
