@@ -73,6 +73,29 @@ cliff_masks:
 proc name*(mask: CliffMask): string =
   return cliff_mask_names[mask.ord]
 
+proc cliff*(a: CliffMask): bool =
+  return XX.ord < a.ord and a.ord <= IH.ord
+
+proc has*(a,b: CliffMask): bool =
+  result = a == b
+  if a.cliff and b.cliff:
+    return (a.ord and b.ord) != 0
+
+proc `or`*(m1, m2: CliffMask): CliffMask =
+  return CliffMask( m1.ord or m2.ord )
+
+proc `+=`*(m: var CliffMask, m2: CliffMask) =
+  m = m or m2
+
+proc rotate*(mask: CliffMask): CliffMask =
+  if mask.cliff:
+    if mask.has LL: result += AA
+    if mask.has AA: result += JJ
+    if mask.has JJ: result += VV
+    if mask.has VV: result += LL
+  else:
+    result = mask
+
 type
   Piece* = ref object of RootObj
     kind*: CliffMask
@@ -106,14 +129,6 @@ type
 
 proc empty*(p: CubePoint): bool =
   return p.pos.length == 0 and p.color.length == 0 and p.normal.length == 0
-
-proc cliff*(a: CliffMask): bool =
-  return XX.ord < a.ord and a.ord <= IH.ord
-
-proc has*(a,b: CliffMask): bool =
-  result = a == b
-  if a.cliff and b.cliff:
-    return (a.ord and b.ord) != 0
 
 proc offset*[T:Ordinal](level: Level, i,j: T): T =
   if j >= level.width  or j < 0: return 0

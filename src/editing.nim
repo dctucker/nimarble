@@ -517,7 +517,7 @@ action:
       for i in countdown(s1.height - 1,  0):
         let o1 = w * i + j
         s2.data.add s1.data[o1]
-        s2.mask.add s1.mask[o1]
+        s2.mask.add s1.mask[o1].rotate()
     editor.stamp = s2
 
   proc flip_stamp(editor: var Editor) =
