@@ -90,6 +90,11 @@ proc mouseProc(window: GLFWWindow, xpos, ypos: cdouble): void {.cdecl.} =
 proc scrollProc(window: GLFWWindow, xoffset, yoffset: cdouble): void {.cdecl.} =
   const wheel_ratio = 1.0 / 41.0
   mouse.z = yoffset * wheel_ratio
+  if game.mouse_mode == MouseOff:
+    if yoffset < 0:
+      pan_cw.callback(game, true)
+    elif yoffset > 0:
+      pan_ccw.callback(game, true)
 
   #var dir = vec3f(0,0,1)
   #var axis = game.player.mesh.normal.cross(dir).normalize()
@@ -99,6 +104,43 @@ proc scrollProc(window: GLFWWindow, xoffset, yoffset: cdouble): void {.cdecl.} =
   #game.camera.fov -= mouse.z
   #game.update_camera()
   #game.update_fov()
+
+proc poll_joystick*(game: var Game) =
+  const xbox = 2 # TODO
+  var n_axes: int32
+  var ax = glfwGetJoystickAxes(xbox, n_axes.addr)
+  var axes = cast[ptr UncheckedArray[float32]](ax)
+  joystick.left_thumb.x  = axes[0]
+  joystick.left_thumb.y  = axes[1]
+  joystick.right_thumb.x = axes[2]
+  joystick.right_thumb.y = axes[3]
+  joystick.triggers.x    = axes[4]
+  joystick.triggers.y    = axes[5]
+
+  var n_buttons: int32
+  var b = glfwGetJoystickButtons(xbox, n_buttons.addr)
+  var buttons = cast[ptr UncheckedArray[cuchar]](b)
+  joystick.buttons.x      = buttons[ 3] == GLFW_PRESS.cuchar
+  joystick.buttons.y      = buttons[ 4] == GLFW_PRESS.cuchar
+  joystick.buttons.a      = buttons[ 0] == GLFW_PRESS.cuchar
+  joystick.buttons.b      = buttons[ 1] == GLFW_PRESS.cuchar
+  joystick.buttons.back   = buttons[ 0] == GLFW_PRESS.cuchar
+  joystick.buttons.lb     = buttons[ 6] == GLFW_PRESS.cuchar
+  joystick.buttons.rb     = buttons[ 7] == GLFW_PRESS.cuchar
+  joystick.buttons.lthumb = buttons[13] == GLFW_PRESS.cuchar
+  joystick.buttons.rthumb = buttons[14] == GLFW_PRESS.cuchar
+  joystick.buttons.start  = buttons[11] == GLFW_PRESS.cuchar
+  joystick.buttons.xbox   = buttons[12] == GLFW_PRESS.cuchar
+  joystick.buttons.up     = buttons[15] == GLFW_PRESS.cuchar
+  joystick.buttons.right  = buttons[16] == GLFW_PRESS.cuchar
+  joystick.buttons.down   = buttons[17] == GLFW_PRESS.cuchar
+  joystick.buttons.left   = buttons[18] == GLFW_PRESS.cuchar
+  #[
+  for n in 0 ..< n_buttons:
+    if buttons[n] == GLFW_PRESS.cuchar: stdout.write n
+    else: stdout.write "  "
+  echo ""
+  ]#
 
 proc setup_glfw(): GLFWWindow =
   doAssert glfwInit()
@@ -264,6 +306,9 @@ proc imgui_frame =
     else:
       draw_keymap(game_keymap)
 
+  if app.show_joystick:
+    joystick.info_window()
+
   igRender()
   igOpenGL3RenderDrawData(igGetDrawData())
 
@@ -361,6 +406,8 @@ proc main =
       m = rotate_mouse(mouse)
       if m.length > max_acc:
         m = m.normalize() * max_acc
+      if joystick.left_thumb.length > 0.05:
+        m += vec3f(joystick.left_thumb.x, -joystick.left_thumb.y, 0).rotate_mouse * 40
 
     mesh.acc *= 0
     mesh.acc += mass * vec3f(m.x, 0, -m.y) * traction  # mouse motion
@@ -478,6 +525,7 @@ proc main =
 
     w.swapBuffers()
     fps_count()
+    game.poll_joystick()
     glfwPollEvents()
 
   w.cleanup()

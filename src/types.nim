@@ -151,6 +151,31 @@ type
     MousePan,
     MouseCam,
 
+  JoyButtons* = object
+    a*: bool
+    b*: bool
+    y*: bool
+    back*: bool
+    x*: bool
+    up*: bool
+    down*: bool
+    left*: bool
+    right*: bool
+    lb*: bool
+    lthumb*: bool
+    rb*: bool
+    rthumb*: bool
+    start*: bool
+    xbox*: bool
+
+
+  Joystick* = ref object
+    id*: int
+    left_thumb*: Vec2f
+    right_thumb*: Vec2f
+    triggers*: Vec2f
+    buttons*: JoyButtons
+
   Player* = ref object
     mesh*: Mesh
     dead*: bool
@@ -238,6 +263,7 @@ type
     show_editor*       : bool
     show_masks*        : bool
     show_keymap*       : bool
+    show_joystick*     : bool
 
 proc data*(editor: Editor): var seq[float]     = editor.level.data
 proc mask*(editor: Editor): var seq[CliffMask] = editor.level.mask
@@ -252,6 +278,7 @@ proc toggle*(app: var Application): bool =
   #app.show_editor       = not app.show_editor
   app.show_masks        = not app.show_masks
   app.show_keymap       = not app.show_keymap
+  app.show_joystick     = not app.show_joystick
   return app.show_player or app.show_light or app.show_camera or app.show_actors or app.show_fixtures or app.show_cube_points
 
 type

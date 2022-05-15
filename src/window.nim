@@ -7,7 +7,7 @@ import nimgl/imgui
 import nimgl/imgui/[impl_opengl, impl_glfw]
 #import zippy
 from scene import Camera, Light, pos, vel, acc
-from types import Application, Actor, Fixture, CliffMask, name
+from types import Application, Joystick, JoyButtons, Actor, Fixture, CliffMask, name
 from leveldata import sky
 
 const terminus_ttf_asset = staticRead("../assets/fonts/TerminusTTF.ttf")
@@ -29,6 +29,7 @@ height = 1200
 aspect = width / height
 
 var mouse*: Vec3f
+var joystick* = Joystick()
 
 
 proc middle*(): Vec2f = vec2f(width.float * 0.5f, height.float * 0.5f)
@@ -184,6 +185,30 @@ proc info_window*(mask: CliffMask) =
     igEndTable()
   igEnd()
 
+proc info_window*(joystick: var Joystick) =
+  if igBegin("joystick"):
+    let size = ImVec2(x: 16, y: 64)
+    igSliderFloat  "left thumb x"  ,        joystick.left_thumb.x.addr  , -1,  1
+    igVSliderFloat "left thumb y"  , size , joystick.left_thumb.y.addr  ,  1, -1
+    igSliderFloat  "right thumb x" ,        joystick.right_thumb.x.addr , -1,  1
+    igVSliderFloat "right thumb y" , size , joystick.right_thumb.y.addr ,  1, -1
+    igSliderFloat2 "triggers"      ,        joystick.triggers.arr       , -1,  1
+    igCheckbox     "x"             ,        joystick.buttons.x.addr
+    igCheckbox     "y"             ,        joystick.buttons.y.addr
+    igCheckbox     "a"             ,        joystick.buttons.a.addr
+    igCheckbox     "b"             ,        joystick.buttons.b.addr
+    igCheckbox     "up"            ,        joystick.buttons.up.addr
+    igCheckbox     "down"          ,        joystick.buttons.down.addr
+    igCheckbox     "left"          ,        joystick.buttons.left.addr
+    igCheckbox     "right"         ,        joystick.buttons.right.addr
+    igCheckbox     "xbox"          ,        joystick.buttons.xbox.addr
+    igCheckbox     "start"         ,        joystick.buttons.start.addr
+    igCheckbox     "lthumb"        ,        joystick.buttons.lthumb.addr
+    igCheckbox     "rthumb"        ,        joystick.buttons.rthumb.addr
+    igCheckbox     "lb"            ,        joystick.buttons.lb.addr
+    igCheckbox     "rb"            ,        joystick.buttons.rb.addr
+  igEnd()
+
 proc main_menu*(app: Application) =
   igSetNextWindowPos  ImVec2(x:0.float32, y:0.float32)
   igSetNextWindowSize ImVec2(x:width.float32, y: 50.float32)
@@ -208,6 +233,7 @@ proc main_menu*(app: Application) =
       igMenuItem "Cube Points" , nil, app.show_cube_points.addr
       igMenuItem "Editor"      , "E", app.show_editor.addr
       igMenuItem "Keymap"      , "?", app.show_keymap.addr
+      igMenuItem "Joystick"    , "J", app.show_joystick.addr
       igEndMenu()
     discard
   igEndMainMenuBar()
