@@ -371,6 +371,8 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
     if m1.has(VV) and m2.has JJ:
       y0 = y3
 
+    if y0 == 0 or y1 == 0 or y2 == 0 or y3 == 0:
+      y0 = 0 ; y1 = 0 ; y2 = 0 ; y3 = 0
     if   vert.z == 0 and vert.x == 0: y = y0
     elif vert.z == 0 and vert.x == 1: y = y1
     elif vert.z == 1 and vert.x == 0: y = y2
