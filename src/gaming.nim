@@ -132,6 +132,7 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
   case piece.kind
   of EM: result = newMesh( game, sphere      , yum_colors         , sphere_normals      , sphere_index )
   of EY: result = newMesh( game, yum         , yum_colors         , sphere_normals      , sphere_index )
+  of EA: result = newMesh( game, acid_verts  , acid_colors        , acid_normals        , acid_index   )
   of GR:
     var verts   = single_rail
     var colors  = single_rail_colors

@@ -307,3 +307,71 @@ var single_rail_normals* = toCfloats(          cylinderNormals(6)      )
 var single_rail_colors*  = toCfloats(           cylinderColors(6)         , 4 )
 var single_rail_index*   =          (          cylinderIndices(6)             )
 
+#[
+
+   2 ___ 3
+    /   \
+ 1 /     \ 4
+  |   0   |
+  |       |
+ 8 \     / 5
+    \___/
+   7     6
+
+]#
+var acid_verts*: seq[cfloat] = @[
+   0.0f , 0.0f ,  0.0f ,
+  -1.2f , 0.1f , -0.9f ,
+  -0.9f , 0.1f , -1.2f ,
+  +0.9f , 0.1f , -1.2f ,
+  +1.2f , 0.1f , -0.9f ,
+  +1.2f , 0.1f , +0.9f ,
+  +0.9f , 0.1f , +1.2f ,
+  -0.9f , 0.1f , +1.2f ,
+  -1.2f , 0.1f , +0.9f ,
+]
+var acid_index*: seq[Ind] = @[
+  1.Ind,
+  2.Ind,
+  0.Ind,
+  3.Ind,
+  4.Ind,
+  0.Ind,
+  5.Ind,
+  6.Ind,
+  0.Ind,
+  7.Ind,
+  8.Ind,
+  0.Ind,
+  1.Ind,
+]
+var acid_colors*: seq[cfloat] = @[
+  0.1f, 0.8f, 0.1f, 0.6f,
+  0.1f, 0.8f, 0.1f, 0.6f,
+  0.1f, 0.8f, 0.1f, 0.6f,
+  0.1f, 0.8f, 0.1f, 0.6f,
+  0.1f, 0.8f, 0.1f, 0.6f,
+  0.1f, 0.8f, 0.1f, 0.6f,
+  0.1f, 0.8f, 0.1f, 0.6f,
+  0.1f, 0.8f, 0.1f, 0.6f,
+  0.1f, 0.8f, 0.1f, 0.6f,
+  0.1f, 0.8f, 0.1f, 0.6f,
+  0.1f, 0.8f, 0.1f, 0.6f,
+  0.1f, 0.8f, 0.1f, 0.6f,
+  0.1f, 0.8f, 0.1f, 0.6f,
+]
+var acid_normals*: seq[cfloat] = @[
+  0f, -1f, 0f,
+  0f, +1f, 0f,
+  0f, +1f, 0f,
+  0f, +1f, 0f,
+  0f, +1f, 0f,
+  0f, +1f, 0f,
+  0f, +1f, 0f,
+  0f, +1f, 0f,
+  0f, +1f, 0f,
+  0f, +1f, 0f,
+  0f, +1f, 0f,
+  0f, +1f, 0f,
+  0f, +1f, 0f,
+]

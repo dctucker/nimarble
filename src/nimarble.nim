@@ -345,7 +345,6 @@ method render[T](piece: var T) =
   var mesh = piece.mesh
 
   mesh.model.mat = mat4(1.0f)
-    .translate(vec3f(0, player_radius, 0))
     .translate(mesh.pos * vec3f(1,level_squash,1)) * mesh.rot.mat4f
 
   glPolygonMode      GL_FRONT_AND_BACK, GL_FILL
@@ -390,6 +389,7 @@ proc main =
     for actor in level.actors.mitems:
       if actor.kind == EA:
         if (actor.mesh.pos - game.player.mesh.pos).length < 1f:
+          actor.mesh.pos = game.player.mesh.pos
           game.player.dissolve(t)
           return
 
