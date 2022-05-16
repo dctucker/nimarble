@@ -1,3 +1,6 @@
+import std/random
+randomize()
+
 from nimgl/glfw import setInputMode, setCursorPos, GLFW_CURSOR_SPECIAL, GLFW_CURSOR_NORMAL, GLFWCursorDisabled, setWindowShouldClose
 import glm
 
@@ -7,7 +10,7 @@ import window
 import models
 import scene
 import shaders
-from leveldata import get_level, sky, load_level
+from leveldata import get_level, sky, load_level, slope
 from editing import focus, leave
 from keymapper import action
 
@@ -371,4 +374,28 @@ proc animate*(player: var Player, t: float): bool =
     discard
 
   return true
+
+const directions = @[
+  vec3f( -1,  0,  0 ),
+  vec3f( +1,  0,  0 ),
+  vec3f(  0,  0, -1 ),
+  vec3f(  0,  0, +1 ),
+]
+proc random_direction: Vec3f = return directions[rand(directions.low..directions.high)]
+
+proc physics*(game: Game, actor: var Actor, dt: float) =
+  case actor.kind
+  of EA:
+    if actor.facing.length == 0:
+      actor.facing = random_direction()
+    if (actor.pivot_pos - actor.mesh.pos).length >= 1f:
+      actor.pivot_pos = actor.mesh.pos
+      actor.facing = random_direction()
+    let next_pos = actor.mesh.pos + actor.facing * dt
+    if game.get_level().slope(next_pos.x, next_pos.z).length == 0:
+      actor.mesh.pos = next_pos
+    else:
+      actor.facing = random_direction()
+  else:
+    discard
 

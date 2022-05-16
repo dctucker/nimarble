@@ -378,6 +378,9 @@ proc main =
     let cur_mask = level.mask_at(x,z)
     #stdout.write "\27[K"
 
+    for actor in level.actors.mitems:
+      game.physics(actor, dt)
+
     mesh.model.mat = mat4(1.0f)
       .translate(vec3f(0, player_radius,0))
       .translate(mesh.pos * vec3f(1,level_squash,1)) * mesh.rot.mat4f

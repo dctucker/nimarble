@@ -102,6 +102,8 @@ type
     origin*: Vec3i
     mesh*: Mesh
   Actor*   = ref object of Piece
+    pivot_pos*: Vec3f
+    facing*: Vec3f
   Fixture* = ref object of Piece
 
   CubePoint* = object

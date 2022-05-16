@@ -285,14 +285,13 @@ proc mask_color(level: Level, mask: CliffMask): Vec4f =
     return vec4f( 1, 1, 1, 1 )
   of TU, IN, OU:
     return vec4f( level.color.x * 0.5, level.color.y * 0.5, level.color.z * 0.5, 1.0 )
-  of P1:
-    return vec4f( 0.0, 0.0, 0.5, 0.8 )
-  of EM:
-    return vec4f( 0.1, 0.1, 0.1, 1.0 )
-  of EY, EA:
-    return vec4f( 0.4, 9.0, 0.0, 1.0 )
+  #of P1: return vec4f( 0.0, 0.0, 0.5, 0.8 )
+  #of EM: return vec4f( 0.1, 0.1, 0.1, 1.0 )
+  #of EY, EA: return vec4f( 0.4, 9.0, 0.0, 1.0 )
   of SW:
     return vec4f( 0.1, 0.6, 0.6, 1.0 )
+  of RI, RH:
+    return vec4f( 0.2, 0.7, 0.7, 0.9 )
   else:
     return vec4f( 0.6, 0.6, 0.6, 1.0 )
     #return vec4f(((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), 0.9)
