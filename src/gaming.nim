@@ -337,18 +337,13 @@ proc hazard(actor: Actor): bool =
 
 proc safe*(game: Game): bool =
   let level = game.get_level()
-  const distance = 3f
+  const distance = 5f
   let player_pos = game.player.mesh.pos
   for actor in level.actors:
     if not actor.hazard: continue
     if (actor.mesh.pos - player_pos).length < distance:
       return false
   return true
-
-proc dissolve*(player: var Player, t: float) =
-  player.animation_time = t + 1f
-  player.animation = Dissolve
-  player.dead = true
 
 proc animate*(player: var Player, ani: Animation, t: float) =
   player.animation_time = t
@@ -365,7 +360,8 @@ proc animate*(player: var Player, t: float): bool =
 
   case player.animation
   of Dissolve:
-    player.mesh.pos.y -= 0.1f
+    player.dead = true
+    player.mesh.pos.y -= 0.03125f
   of Respawn:
     player.mesh.vel *= 0
     player.mesh.acc *= 0
@@ -386,6 +382,8 @@ proc random_direction: Vec3f = return directions[rand(directions.low..directions
 proc physics*(game: Game, actor: var Actor, dt: float) =
   case actor.kind
   of EA:
+    if game.player.animation == Dissolve: return
+
     if actor.facing.length == 0:
       actor.facing = random_direction()
     if (actor.pivot_pos - actor.mesh.pos).length >= 1f:

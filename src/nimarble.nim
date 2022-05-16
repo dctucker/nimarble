@@ -127,22 +127,22 @@ proc poll_joystick*(game: var Game) =
 
   var n_buttons: int32
   var b = glfwGetJoystickButtons(xbox, n_buttons.addr)
-  var buttons = cast[ptr UncheckedArray[cuchar]](b)
-  joystick.buttons.x      = buttons[ 3] == GLFW_PRESS.cuchar
-  joystick.buttons.y      = buttons[ 4] == GLFW_PRESS.cuchar
-  joystick.buttons.a      = buttons[ 0] == GLFW_PRESS.cuchar
-  joystick.buttons.b      = buttons[ 1] == GLFW_PRESS.cuchar
-  joystick.buttons.back   = buttons[ 0] == GLFW_PRESS.cuchar
-  joystick.buttons.lb     = buttons[ 6] == GLFW_PRESS.cuchar
-  joystick.buttons.rb     = buttons[ 7] == GLFW_PRESS.cuchar
-  joystick.buttons.lthumb = buttons[13] == GLFW_PRESS.cuchar
-  joystick.buttons.rthumb = buttons[14] == GLFW_PRESS.cuchar
-  joystick.buttons.start  = buttons[11] == GLFW_PRESS.cuchar
-  joystick.buttons.xbox   = buttons[12] == GLFW_PRESS.cuchar
-  joystick.buttons.up     = buttons[15] == GLFW_PRESS.cuchar
-  joystick.buttons.right  = buttons[16] == GLFW_PRESS.cuchar
-  joystick.buttons.down   = buttons[17] == GLFW_PRESS.cuchar
-  joystick.buttons.left   = buttons[18] == GLFW_PRESS.cuchar
+  var buttons = cast[ptr UncheckedArray[uint8]](b)
+  joystick.buttons.x      = buttons[ 3] == GLFW_PRESS.uint8
+  joystick.buttons.y      = buttons[ 4] == GLFW_PRESS.uint8
+  joystick.buttons.a      = buttons[ 0] == GLFW_PRESS.uint8
+  joystick.buttons.b      = buttons[ 1] == GLFW_PRESS.uint8
+  joystick.buttons.back   = buttons[ 0] == GLFW_PRESS.uint8
+  joystick.buttons.lb     = buttons[ 6] == GLFW_PRESS.uint8
+  joystick.buttons.rb     = buttons[ 7] == GLFW_PRESS.uint8
+  joystick.buttons.lthumb = buttons[13] == GLFW_PRESS.uint8
+  joystick.buttons.rthumb = buttons[14] == GLFW_PRESS.uint8
+  joystick.buttons.start  = buttons[11] == GLFW_PRESS.uint8
+  joystick.buttons.xbox   = buttons[12] == GLFW_PRESS.uint8
+  joystick.buttons.up     = buttons[15] == GLFW_PRESS.uint8
+  joystick.buttons.right  = buttons[16] == GLFW_PRESS.uint8
+  joystick.buttons.down   = buttons[17] == GLFW_PRESS.uint8
+  joystick.buttons.left   = buttons[18] == GLFW_PRESS.uint8
   #[
   for n in 0 ..< n_buttons:
     if buttons[n] == GLFW_PRESS.cuchar: stdout.write n
@@ -393,7 +393,7 @@ proc main =
       if actor.kind == EA:
         if (actor.mesh.pos - game.player.mesh.pos).length < 1f:
           actor.mesh.pos = game.player.mesh.pos
-          game.player.dissolve(t)
+          game.player.animate Dissolve, t + 1f
           return
 
     let ramp = level.slope(x,z) * level_squash * level_squash
