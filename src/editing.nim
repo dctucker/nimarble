@@ -695,11 +695,14 @@ proc letter(j: int): string =
   else:
     return "MAX"
 
-proc cell_name(editor: Editor): string =
-  result = editor.col.letter
-  if editor.row < 0:
+proc cell_name*(i,j: int): string =
+  result = j.letter
+  if i < 0:
     return
-  result &= $(editor.row + 1)
+  result &= $(i + 1)
+
+proc cell_name(editor: Editor): string =
+  return cell_name(editor.row, editor.col)
 
 proc cell_value(editor: Editor): string =
   result = ""

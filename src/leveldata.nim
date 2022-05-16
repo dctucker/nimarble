@@ -93,6 +93,28 @@ proc find_fixtures(data: seq[float], mask: seq[CliffMask], w,h: int): seq[Fixtur
           kind: mask,
         )
 
+proc letter(j: int): string =
+  result = ""
+  var v = j
+  var c = 0
+
+  if j < 0:
+    return ""
+  if j < 26:
+    return $char(j + 65)
+  if j < 676:
+    c = v mod 26
+    v = j div 26
+    return $char(v + 64) & $char(c + 65)
+  else:
+    return "MAX"
+
+proc cell_name*(i,j: int): string =
+  result = j.letter
+  if i < 0:
+    return
+  result &= $(i + 1)
+
 proc validate(level: Level): bool =
   let size = level.width * level.height
   if (size > level.data.len) or (size > level.mask.len):
@@ -102,19 +124,19 @@ proc validate(level: Level): bool =
   for i in 0..<level.height:
     for j in 0..<w:
       proc unsloped(mask: CliffMask) =
-        echo $mask & " without slope at ", i, ",", j
+        echo $mask & " without slope at ", cell_name(i, j)
       let data = level.data[i*w+j]
       let mask = level.mask[i*w+j]
-      if mask.has LL:
+      if mask == LL:
         if level.data[i*w+j-1] == data:
           mask.unsloped()
-      if mask.has AA:
+      if mask == AA:
         if level.data[(i-1)*w+j] == data:
           mask.unsloped()
-      if mask.has VV:
+      if mask == VV:
         if level.data[(i+1)*w+j] == data:
           mask.unsloped()
-      if mask.has JJ:
+      if mask == JJ:
         if level.data[i*w+j+1] == data:
           mask.unsloped()
 
@@ -140,6 +162,7 @@ proc init_level(name, data_src, mask_src: string, color: Vec3f): Level =
     mask: mask,
     color: color,
   )
+  echo "Level"
   discard result.validate()
   result.origin   = data.find_p1(mask, width, height)
   result.actors   = data.find_actors(mask, width, height)
@@ -401,41 +424,21 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
 
     if y0 == 0 or y1 == 0 or y2 == 0 or y3 == 0:
       y0 = 0 ; y1 = 0 ; y2 = 0 ; y3 = 0
+
+    const too_high = 5
+    if   (y0 - y1) >= too_high: y0 = y1
+    elif (y1 - y0) >= too_high: y1 = y0
+    if   (y0 - y2) >= too_high: y0 = y2
+    elif (y2 - y0) >= too_high: y2 = y0
+    if   (y2 - y3) >= too_high: y2 = y3
+    elif (y3 - y2) >= too_high: y3 = y2
+    if   (y1 - y3) >= too_high: y1 = y3
+    if   (y3 - y1) >= too_high: y3 = y1
     if   vert.z == 0 and vert.x == 0: y = y0
     elif vert.z == 0 and vert.x == 1: y = y1
     elif vert.z == 1 and vert.x == 0: y = y2
     elif vert.z == 1 and vert.x == 1: y = y3
 
-    #[
-    if   vert.z == 0 and vert.x == 0:
-      if m.has AA: y = y0
-      if m.has LL: y = y0
-      if m.has VV: y = y2
-      if m.has JJ: y = y1
-      if m1.has(VV) and m2.has(JJ): y = y3 # why does this work?
-      #normal = surface_normals[0]
-    elif vert.z == 0 and vert.x == 1:
-      if m.has AA: y = y1
-      if m.has LL: y = y0
-      if m.has VV: y = y3
-      if m.has JJ: y = y1
-      if m.has(VV) and m1.has(VJ): y = y3
-      #normal = surface_normals[1]
-    elif vert.z == 1 and vert.x == 0:
-      if m.has AA: y = y0
-      if m.has VV: y = y2
-      if m.has JJ: y = y3
-      if m.has LL: y = y2
-      #normal = surface_normals[2]
-    elif vert.z == 1 and vert.x == 1:
-      if m.has AA: y = y1
-      if m.has LL: y = y2
-      if m.has JJ: y = y3
-      if m.has VV: y = y3
-      if level.mask[level.offset(i+1,j+1)] == LV:
-        y = level.data[level.offset(i+2,j+1)]
-      #normal = surface_normals[3]
-    #]#
   else:
     y = abyss
     #c = vec4f(0,0,0,1.0)
