@@ -341,9 +341,8 @@ proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
   glDisableVertexAttribArray 0
   glDisableVertexAttribArray 1
 
-method render[T](piece: var T) =
+proc render[T: Piece](piece: var T) =
   var mesh = piece.mesh
-
   mesh.model.mat = mat4(1.0f)
     .translate(mesh.pos * vec3f(1,level_squash,1)) * mesh.rot.mat4f
 

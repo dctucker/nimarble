@@ -23,7 +23,7 @@ macro cliff_masks(body: untyped): untyped =
     newEnum(newIdentNode("CliffMask"), fields.openArray, true, false),
     newLetStmt(newIdentNode("cliff_mask_names"), newLit(names))
   )
-  echo $result.repr
+  #echo $result.repr
 
 cliff_masks:
   XX = 0  "regular slope"
