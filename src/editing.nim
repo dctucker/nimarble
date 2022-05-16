@@ -679,28 +679,6 @@ proc handle_key*(editor: var Editor, key: int32, mods: int32): bool =
     editor.level.update_vbos()
     editor.dirty = false
 
-proc letter(j: int): string =
-  result = ""
-  var v = j
-  var c = 0
-
-  if j < 0:
-    return ""
-  if j < 26:
-    return $char(j + 65)
-  if j < 676:
-    c = v mod 26
-    v = j div 26
-    return $char(v + 64) & $char(c + 65)
-  else:
-    return "MAX"
-
-proc cell_name*(i,j: int): string =
-  result = j.letter
-  if i < 0:
-    return
-  result &= $(i + 1)
-
 proc cell_name(editor: Editor): string =
   return cell_name(editor.row, editor.col)
 
