@@ -201,12 +201,12 @@ proc info_player =
     if igBegin("player"):
       #var lateral = player.pos.xz.length()
       #igSliderFloat "lateral_d", lateral.addr     , -sky, sky
-      #igSliderFloat3 "respawn_pos" , game.player.respawn_pos.arr  , -sky, sky
       igDragFloat3 "pos"     , game.player.mesh.pos.arr   , 0.125, -sky, sky
       igDragFloat3 "vel"     , game.player.mesh.vel.arr   , 0.125, -sky, sky
       igDragFloat3 "acc"     , game.player.mesh.acc.arr   , 0.125, -sky, sky
       igDragFloat4 "rot"     , game.player.mesh.rot.arr   , 0.125, -sky, sky
       #igSliderFloat3 "normal" , game.player.mesh.normal.arr, -1.0, 1.0
+      igSliderFloat3 "respawn_pos" , game.player.respawn_pos.arr  , -sky, sky
 
       igSpacing()
       igSeparator()
@@ -237,7 +237,7 @@ proc info_player =
   if app.show_cube_points:
     if igBegin("cube point"):
       let (i,j) = level.xlat_coord(coord.x.floor, coord.z.floor)
-      if not level.has_coord( i,j ): return
+      if not level.has_coord( i,j ): igEnd() ; return
 
       var p0 = level.cube_point(i, j, 23)
       var p1 = level.cube_point(i, j, 24)
@@ -379,14 +379,19 @@ proc main =
     let cur_mask = level.mask_at(x,z)
     #stdout.write "\27[K"
 
-    if game.player.teleport_time > 0:
-      if t < game.player.teleport_time:
-        echo game.player.teleport_time - t
-        return
-      else:
-        game.player.teleport_time = 0f
+    mesh.model.mat = mat4(1.0f)
+      .translate(vec3f(0, player_radius,0))
+      .translate(mesh.pos * vec3f(1,level_squash,1)) * mesh.rot.mat4f
 
+    if game.player.animate(t): return
+
+    # figure out if we're in mortal danger
     game.player.dead = mesh.pos.y < 10f or (mesh.acc.xz.length == 0f and mesh.vel.y <= -max_vel.y)
+    for actor in level.actors.mitems:
+      if actor.kind == EA:
+        if (actor.mesh.pos - game.player.mesh.pos).length < 1f:
+          game.player.dissolve(t)
+          return
 
     let ramp = level.slope(x,z) * level_squash * level_squash
     let thx = arctan(ramp.x)
@@ -411,9 +416,14 @@ proc main =
       ramp_a *= 0
       traction = 1f
 
+    var safe: bool
     let flat = ramp.length == 0
     let nonzero = level.point_height(x.floor, z.floor) > 0f
-    if flat and nonzero and cur_mask == XX and not icy and not copper:
+
+    safe = flat and nonzero and cur_mask == XX
+    safe = safe and not icy and not copper
+    safe = safe and game.safe
+    if safe:
       game.player.respawn_pos = vec3f(mesh.pos.x.floor, mesh.pos.y, mesh.pos.z.floor)
 
     const max_acc = 50f
@@ -463,10 +473,6 @@ proc main =
 
     mouse *= 0
 
-    mesh.model.mat = mat4(1.0f)
-      .translate(vec3f(0, player_radius,0))
-      .translate(mesh.pos * vec3f(1,level_squash,1)) * mesh.rot.mat4f
-
     if level.around(TU,x,z):
       mesh.vel.y = clamp(mesh.vel.y, -max_vel.y, max_vel.y)
 
@@ -476,11 +482,14 @@ proc main =
       let dest = level.find_closest(OU, x, z)
       if dest.length != 0:
         game.player.teleport_dest = dest
-        game.player.teleport_time = t + 1.2f
+        game.player.animation_time = t + 1.2f
+        game.player.animation = Teleport
         game.player.mesh.pos = game.player.teleport_dest
+        #game.player.respawn_pos = game.player.mesh.pos
 
     if game.player.dead:
-      game.respawn()
+      game.player.animate(Respawn, t + 1f)
+      game.respawns += 1
 
     if game.goal:
       mesh.vel *= 0.97f

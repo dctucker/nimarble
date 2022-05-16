@@ -207,8 +207,8 @@ proc init*(game: var Game) =
   game.light.update()
 
 proc respawn*(game: var Game) =
+    game.player.dead = false
     game.reset_player()
-    game.player.mesh.pos = game.player.respawn_pos
     game.reset_view()
     inc game.respawns
 
@@ -324,4 +324,50 @@ action:
       editor.focus()
     else:
       editor.leave()
+
+proc hazard(kind: CliffMask): bool =
+  return EA <= kind and kind <= EY
+
+proc hazard(actor: Actor): bool =
+  return actor.kind.hazard
+
+proc safe*(game: Game): bool =
+  let level = game.get_level()
+  const distance = 3f
+  let player_pos = game.player.mesh.pos
+  for actor in level.actors:
+    if not actor.hazard: continue
+    if (actor.mesh.pos - player_pos).length < distance:
+      return false
+  return true
+
+proc dissolve*(player: var Player, t: float) =
+  player.animation_time = t + 1f
+  player.animation = Dissolve
+  player.dead = true
+
+proc animate*(player: var Player, ani: Animation, t: float) =
+  player.animation_time = t
+  player.animation = ani
+
+proc animate*(player: var Player, t: float): bool =
+  if player.animation == Animation.None:
+    return false
+  if player.animation_time <= 0:
+    return false
+  if t >= player.animation_time:
+    player.animation_time = 0f
+    player.animation = player.animation.next
+
+  case player.animation
+  of Dissolve:
+    player.mesh.pos.y -= 0.1f
+  of Respawn:
+    player.mesh.vel *= 0
+    player.mesh.acc *= 0
+    player.mesh.pos = player.respawn_pos
+  else:
+    discard
+
+  return true
 

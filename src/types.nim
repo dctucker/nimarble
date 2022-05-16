@@ -62,13 +62,13 @@ cliff_masks:
   PH      "phased blocks"
   P1      "player 1 start position"
   P2      "player 2 start position"
-  EM      "entity: marble"
-  EY      "entity: yum"
   EA      "entity: acid"
+  EM      "entity: marble"
   EV      "entity: vacuum"
   EP      "entity: piston"
   EH      "entity: hammer"
   EB      "entity: bird"
+  EY      "entity: yum"
 
 proc name*(mask: CliffMask): string =
   return cliff_mask_names[mask.ord]
@@ -168,7 +168,6 @@ type
     start*: bool
     xbox*: bool
 
-
   Joystick* = ref object
     id*: int
     left_thumb*: Vec2f
@@ -176,14 +175,29 @@ type
     triggers*: Vec2f
     buttons*: JoyButtons
 
+  Animation* = enum
+    None
+    Teleport
+    Dissolve
+    Eaten
+    Respawn
+
   Player* = ref object
     mesh*: Mesh
     dead*: bool
-    teleport_time*: float
+    animation*: Animation
+    animation_time*: float
     teleport_dest*: Vec3f
     respawn_pos*: Vec3f
 
-proc visible*(p: Player): bool = return p.teleport_time == 0
+proc next*(ani: Animation): Animation =
+  result = case ani
+    of Dissolve, Eaten: Respawn
+    else: Animation.None
+
+proc visible*(p: Player): bool =
+  return p.animation != Teleport
+
 
 type
   Game* = ref object
