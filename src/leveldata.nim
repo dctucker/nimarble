@@ -27,6 +27,9 @@ const level_4_mask_src = staticRead("../" & level_dir & "/4mask.tsv")
 const level_5_src      = staticRead("../" & level_dir & "/5.tsv")
 const level_5_mask_src = staticRead("../" & level_dir & "/5mask.tsv")
 
+const level_6_src      = staticRead("../" & level_dir & "/6.tsv")
+const level_6_mask_src = staticRead("../" & level_dir & "/6mask.tsv")
+
 const EE = 0
 const sky* = 200f
 
@@ -162,12 +165,12 @@ proc init_level(name, data_src, mask_src: string, color: Vec3f): Level =
     mask: mask,
     color: color,
   )
-  echo "Level"
   discard result.validate()
   result.origin   = data.find_p1(mask, width, height)
   result.actors   = data.find_actors(mask, width, height)
   result.fixtures = data.find_fixtures(mask, width, height)
   result.span     = result.find_span()
+  echo "Level ", result.width, "x", result.height, " span ", result.span
 
 proc format(value: float): string =
   if value == value.floor:
@@ -226,6 +229,22 @@ proc save*(level: Level) =
   data_out.close()
   mask_out.close()
 
+proc write_new_level* =
+  const height = 120
+  const width = 38 + height
+  var level = Level(
+    name: "new",
+    height: height,
+    width: width,
+    span: 33,
+    data: newSeq[float](width * height),
+    mask: newSeq[CliffMask](width * height),
+  )
+  for i in 2..20:
+    for j in i..i+level.span:
+      level.data[i * width + j] = 20
+  level.save()
+
 let levels = @[
   Level(),
   init_level("0", level_0_src, level_0_mask_src, vec3f( 1f  , 0.0f, 1f   )),
@@ -234,6 +253,7 @@ let levels = @[
   init_level("3", level_3_src, level_3_mask_src, vec3f( 0.4f, 0.4f, 0.4f )),
   init_level("4", level_4_src, level_4_mask_src, vec3f( 1f  , 0.4f, 0.1f )),
   init_level("5", level_5_src, level_5_mask_src, vec3f( 1f  , 1.0f, 0.0f )),
+  init_level("6", level_6_src, level_6_mask_src, vec3f( 1.0f, 0.0f, 0.0f )),
 ]
 let n_levels* = levels.len()
 
@@ -311,6 +331,8 @@ proc mask_color(level: Level, mask: CliffMask): Vec4f =
   #of P1: return vec4f( 0.0, 0.0, 0.5, 0.8 )
   #of EM: return vec4f( 0.1, 0.1, 0.1, 1.0 )
   #of EY, EA: return vec4f( 0.4, 9.0, 0.0, 1.0 )
+  of PH:
+    return vec4f( 0.2, 0.2, 0.2, 0.5 )
   of SW:
     return vec4f( 0.1, 0.6, 0.6, 1.0 )
   of RI, RH:
@@ -340,6 +362,13 @@ proc point_color(level: Level, i,j: int): Vec4f =
     return vec4f( 0.0, 1.0, 1.0, 1.0)
   elif level.around(CU, j.float - level.origin.x.float, i.float - level.origin.z.float):
     return vec4f( 0.8, 0.6, 0.3, 0.9)
+  elif level.around(OI, j.float - level.origin.x.float, i.float - level.origin.z.float):
+    return vec4f( 0.9, 0.7, 0.5, 1.0 )
+  elif level.around(SD, j.float - level.origin.x.float, i.float - level.origin.z.float):
+    return vec4f( 0.5, 0.3, 0.0, 1.0 )
+  elif level.around(BI, j.float - level.origin.x.float, i.float - level.origin.z.float) or
+       level.around(BH, j.float - level.origin.x.float, i.float - level.origin.z.float):
+    return vec4f( 0.4, 0.4, 0.4, 1.0 )
   else:
     return level.mask_color(level.mask[k])
 
@@ -393,7 +422,9 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
     (nc - nb).cross(nd - nc)
   )
 
-  const abyss = -1
+  var base: float = -1
+
+  if FL in {m0, m1, m2, m3}: base = y0 - 1.5
 
   if vert.y == 1:
 
@@ -423,7 +454,7 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
       y0 = y3
 
     if y0 == 0 or y1 == 0 or y2 == 0 or y3 == 0:
-      y0 = 0 ; y1 = 0 ; y2 = 0 ; y3 = 0
+      y0 = base ; y1 = base ; y2 = base ; y3 = base
 
     const too_high = 5
     if   (y0 - y1) >= too_high: y0 = y1
@@ -438,13 +469,11 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
     elif vert.z == 0 and vert.x == 1: y = y1
     elif vert.z == 1 and vert.x == 0: y = y2
     elif vert.z == 1 and vert.x == 1: y = y3
-
   else:
-    y = abyss
-    #c = vec4f(0,0,0,1.0)
+    y = base
 
   if y == 0:
-    y = abyss
+    y = base
 
   let color_w = cube_colors[w]
   c = case color_w
@@ -474,33 +503,32 @@ proc update_vbos*(level: Level) =
   level.floor_plane.color_vbo.update level.floor_colors
   level.floor_plane.norm_vbo.update  level.floor_normals
 
+const floor_span = 48
 proc calculate_vbos*(level: Level, i,j: int) =
-  let color_span  = 4 * 33
-  let normal_span = 3 * 33
-  let vert_span   = 3 * 33
+  let color_span  = 4 * cube_index.len
+  let normal_span = 3 * cube_index.len
+  let vert_span   = 3 * cube_index.len
 
   if not level.has_coord(i,j): return
 
-  let o = (i-1) * 48 + (j-7)
+  let o = (i-1) * floor_span + (j-7)
   if o < 0: return
-  for w in 22 .. 26:
-    let p = level.cube_point(i, j, w)
+  for n in cube_index.low .. cube_index.high:
+    let p = level.cube_point(i, j, n)
     if p.empty: continue
-    for n in cube_index.low .. cube_index.high:
-      let vert_offset = o *   vert_span + 3*n + 1
-      if vert_offset >= level.floor_verts.len:
-        break
-      if cube_index[n] == cube_index[w]:
-        level.floor_verts[   vert_offset               ] = p.pos.y
+    let vert_offset = o *   vert_span + 3*n + 1
+    if vert_offset >= level.floor_verts.len:
+      break
+    level.floor_verts[   vert_offset               ] = p.pos.y
 
-    let color_offset = o *  color_span + 4*w
+    let color_offset = o *  color_span + 4*n
     if 0 < color_offset and color_offset < level.floor_colors.len:
       level.floor_colors[  color_offset + 0 ] = p.color.x
       level.floor_colors[  color_offset + 1 ] = p.color.y
       level.floor_colors[  color_offset + 2 ] = p.color.z
       level.floor_colors[  color_offset + 3 ] = p.color.w
 
-    let normal_offset = o * normal_span + 3*w
+    let normal_offset = o * normal_span + 3*n
     if 0 < normal_offset and normal_offset < level.floor_normals.len:
       level.floor_normals[ normal_offset + 0 ] = p.normal.x
       level.floor_normals[ normal_offset + 1 ] = p.normal.y
@@ -551,7 +579,7 @@ proc setup_floor(level: Level) =
 
   for i in  1..<level.height - 1:
     for j in 1..<level.width - 1:
-      if j < i - 4 or j > i + 44: continue
+      if j + 4 < i or j + 4 > i + floor_span: continue
 
       for w in 0 .. cube_index.high:
         let point = level.cube_point(i, j, w)
