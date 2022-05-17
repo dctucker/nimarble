@@ -10,17 +10,7 @@ from scene import Camera, Light, pos, vel, acc
 from types import Application, Joystick, JoyButtons, Actor, Fixture, CliffMask, name
 from leveldata import sky
 
-const terminus_fn = "assets/fonts/TerminusTTF.ttf"
-const terminus_ttf_asset = staticRead("../" & terminus_fn)
-const terminus_ttf_len = terminus_ttf_asset.len
-var terminus_ttf = terminus_ttf_asset.cstring
-
-#[
-const terminus_ttf_gz_asset = staticRead("../assets/fonts/TerminusTTF.ttf.gz")
-var terminus_ttf_gz = terminus_ttf_gz_asset.uncompress
-var terminus_ttf_gz_len = terminus_ttf_gz.len
-var terminus_ttf = terminus_ttf_gz_asset.cstring
-]#
+#import assetfile
 
 var width*, height*: int32
 var aspect*: float32
@@ -39,24 +29,40 @@ var ig_context*: ptr ImGuiContext
 var small_font*: ptr ImFont
 var large_font*: ptr ImFont
 
-proc setup_imgui*(w: GLFWWindow) =
-  ig_context = igCreateContext()
-  #var io = igGetIO()
-  #io.configFlags = NoMouseCursorChange
-  doAssert igGlfwInitForOpenGL(w, true)
-  doAssert igOpenGL3Init()
-  igStyleColorsDark()
-  var atlas = ig_context.io.fonts
-  var ranges = @[ 0x1.ImWchar, 0x3000.ImWchar, 0.ImWchar ]
+proc setup_fonts =
+  const terminus_fn = "assets/fonts/TerminusTTF.ttf"
+  const terminus_ttf_asset = staticRead("../" & terminus_fn)
+  #var terminus_ttf_asset = assetfile.getAsset(terminus_fn)
+  let terminus_ttf_len = terminus_ttf_asset.len.int32
+  echo "Font loaded (", terminus_ttf_len, " bytes)"
+  var terminus_ttf = terminus_ttf_asset.cstring # [0].addr
 
-  small_font = atlas.addFontFromMemoryTTF(terminus_ttf, terminus_ttf_len.int32, 14, nil, ranges[0].addr)
+  var atlas = igGetIO().fonts
+  #atlas.addFontDefault()
+  var ranges = @[ 0x1.ImWchar, 0x7f.ImWchar,
+    0x2500.ImWchar, 0x2600.ImWchar,
+    0.ImWchar
+  ]
+
+  small_font = atlas.addFontFromMemoryTTF(terminus_ttf, terminus_ttf_len, 14, nil, ranges[0].addr)
+  #small_font.
   #small_font = atlas.addFontFromFileTTF(terminus_fn, 14, nil, ranges[0].addr)
   #assert small_font != nil
   #assert small_font.isLoaded()
-  large_font = atlas.addFontFromMemoryTTF(terminus_ttf, terminus_ttf_len.int32, 36)
+  large_font = atlas.addFontFromMemoryTTF(terminus_ttf, terminus_ttf_len, 36)
   #large_font = atlas.addFontFromFileTTF(terminus_fn, 36)
   #assert large_font != nil
   #assert large_font.isLoaded()
+  atlas.build()
+
+  #atlas.getTexDataAsRGBA32()
+
+proc setup_imgui*(w: GLFWWindow) =
+  ig_context = igCreateContext()
+  doAssert igGlfwInitForOpenGL(w, true)
+  doAssert igOpenGL3Init()
+  igStyleColorsDark()
+  setup_fonts()
   igSetNextWindowPos(ImVec2(x:5, y:5))
 
 proc display_size*(): (int32, int32) =
