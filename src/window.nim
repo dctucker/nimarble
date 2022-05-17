@@ -10,9 +10,10 @@ from scene import Camera, Light, pos, vel, acc
 from types import Application, Joystick, JoyButtons, Actor, Fixture, CliffMask, name
 from leveldata import sky
 
-const terminus_ttf_asset = staticRead("../assets/fonts/TerminusTTF.ttf")
-const terminus_ttf_len = terminus_ttf_asset.len
-var terminus_ttf = terminus_ttf_asset.cstring
+const terminus_fn = "assets/fonts/TerminusTTF.ttf"
+#const terminus_ttf_asset = staticRead(terminus_fn)
+#const terminus_ttf_len = terminus_ttf_asset.len
+#var terminus_ttf = terminus_ttf_asset.cstring
 
 #[
 const terminus_ttf_gz_asset = staticRead("../assets/fonts/TerminusTTF.ttf.gz")
@@ -48,8 +49,14 @@ proc setup_imgui*(w: GLFWWindow) =
   var atlas = ig_context.io.fonts
   var ranges = @[ 0x1.ImWchar, 0x3000.ImWchar, 0.ImWchar ]
 
-  small_font = atlas.addFontFromMemoryTTF(terminus_ttf, terminus_ttf_len.int32, 14, nil, ranges[0].addr)
-  large_font = atlas.addFontFromMemoryTTF(terminus_ttf, terminus_ttf_len.int32, 36)
+  #large_font = atlas.addFontFromMemoryTTF(terminus_ttf, terminus_ttf_len.int32, 36)
+  large_font = atlas.addFontFromFileTTF(terminus_fn, 36)
+  assert large_font != nil
+  assert large_font.isLoaded()
+  #small_font = atlas.addFontFromMemoryTTF(terminus_ttf, terminus_ttf_len.int32, 14, nil, ranges[0].addr)
+  small_font = atlas.addFontFromFileTTF(terminus_fn, 14, nil, ranges[0].addr)
+  assert small_font != nil
+  assert small_font.isLoaded()
   igSetNextWindowPos(ImVec2(x:5, y:5))
 
 proc display_size*(): (int32, int32) =

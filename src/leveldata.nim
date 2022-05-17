@@ -228,6 +228,7 @@ proc save*(level: Level) =
 
   data_out.close()
   mask_out.close()
+  echo "Saved ", data_fn, " and ", mask_fn
 
 proc write_new_level* =
   const height = 120
@@ -236,7 +237,7 @@ proc write_new_level* =
     name: "new",
     height: height,
     width: width,
-    span: 33,
+    span: 40,
     data: newSeq[float](width * height),
     mask: newSeq[CliffMask](width * height),
   )

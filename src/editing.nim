@@ -155,14 +155,18 @@ proc set_mask(editor: var Editor, mask: CliffMask) =
     if   mask == HH: m = EH
     if   mask == VV: m = EV
     if   mask == II: m = MI
+    if   mask == BH: m = EB
   elif cur == OU:
     if   mask == II: m = OI
   elif cur == P1:
     if   mask == P1: m = P2
+    if   mask == HH: m = PH
   elif cur == GG:
     if   mask == RH: m = GR
   elif cur == II:
     if   mask == NS: m = IN
+  elif cur == SD:
+    if   mask == SD: m = SW
   elif mask.cliff():
     if cur.cliff():
       m = CliffMask(cur.ord xor mask.ord)
@@ -193,7 +197,6 @@ action:
     of GLFWKey.T : TU
     of GLFWKey.U : CU
     of GLFWKey.V : VV
-    of GLFWKey.W : SW
     of GLFWKey.X : XX
     of GLFWKey.Y : EY
     else: return
