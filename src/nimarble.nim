@@ -293,6 +293,9 @@ proc draw_imgui =
 
   if app.show_masks:
     XX.info_window()
+  if app.show_metrics:
+    igShowMetricsWindow()
+
   sync_editor()
   igPopFont()
 

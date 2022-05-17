@@ -10,6 +10,8 @@ from scene import Camera, Light, pos, vel, acc
 from types import Application, Joystick, JoyButtons, Actor, Fixture, CliffMask, name
 from leveldata import sky
 
+import pixie
+
 #import assetfile
 
 var width*, height*: int32
@@ -28,6 +30,8 @@ proc middle*(): Vec2f = vec2f(width.float * 0.5f, height.float * 0.5f)
 var ig_context*: ptr ImGuiContext
 var small_font*: ptr ImFont
 var large_font*: ptr ImFont
+
+#var texture = newSeq[uint8](512*512)
 
 proc setup_fonts =
   const terminus_fn = "assets/fonts/TerminusTTF.ttf"
@@ -49,13 +53,28 @@ proc setup_fonts =
   #small_font = atlas.addFontFromFileTTF(terminus_fn, 14, nil, ranges[0].addr)
   #assert small_font != nil
   #assert small_font.isLoaded()
-  large_font = atlas.addFontFromMemoryTTF(terminus_ttf, terminus_ttf_len, 36)
+  large_font = atlas.addFontFromMemoryTTF(terminus_ttf, terminus_ttf_len, 36, nil, ranges[0].addr)
   #large_font = atlas.addFontFromFileTTF(terminus_fn, 36)
   #assert large_font != nil
   #assert large_font.isLoaded()
   atlas.build()
 
-  #atlas.getTexDataAsRGBA32()
+  var tex_pixels: ptr[char]
+  var tex_width, tex_height: int32
+  atlas.getTexDataAsRGBA32(tex_pixels.addr, tex_width.addr, tex_height.addr)
+  echo "Atlas texture: ", tex_width, "x", tex_height
+  let pixels = cast[ptr UncheckedArray[char]](tex_pixels)
+
+  var image = newImage(tex_width, tex_height)
+  for i in 0..tex_height:
+    for j in 0..tex_width:
+      image[j,i] = color(
+        pixels[4*i*tex_width + 4*j + 0].float / 255f,
+        pixels[4*i*tex_width + 4*j + 1].float / 255f,
+        pixels[4*i*tex_width + 4*j + 2].float / 255f,
+        pixels[4*i*tex_width + 4*j + 3].float / 255f,
+      )
+  image.writeFile("assets/texture.png")
 
 proc setup_imgui*(w: GLFWWindow) =
   ig_context = igCreateContext()
@@ -247,6 +266,8 @@ proc main_menu*(app: Application) =
       igMenuItem "Editor"      , "E", app.show_editor.addr
       igMenuItem "Keymap"      , "?", app.show_keymap.addr
       igMenuItem "Joystick"    , "J", app.show_joystick.addr
+      igMenuItem "Metrics"     , nil, app.show_metrics.addr
+      igMenuItem "Masks"       , nil, app.show_masks.addr
       igEndMenu()
     discard
   igEndMainMenuBar()
