@@ -803,7 +803,8 @@ proc draw*(editor: Editor) =
 
     #const period = 10
     #let hmod = 0.6 + 0.1 * sin( 2 * 3.14159265 * (h mod period).float / period.float )
-    color.value = ImVec4(x: 0.8, y: 0.8, z: 0.8, w: 1.0)
+    #color.value = ImVec4(x: 0.8, y: 0.8, z: 0.8, w: 1.0)
+    color.value = ImVec4(x: 1.0, y: 1.0, z: 1.0, w: 1.0)
     if m == XX: color.value = dark_color
     if not enabled:
       color.value = ImVec4(x: 0.0, y: 0.0, z: 0.0, w: 0.0)

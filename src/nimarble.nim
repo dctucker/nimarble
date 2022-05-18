@@ -92,6 +92,8 @@ proc scrollProc(window: GLFWWindow, xoffset, yoffset: cdouble): void {.cdecl.} =
   const wheel_ratio = 1.0 / 41.0
   mouse.z = yoffset * wheel_ratio
   if game.mouse_mode == MouseOff:
+    if igGetIO().wantCaptureMouse:
+      return
     if yoffset < 0:
       pan_cw.callback(game, true)
     elif yoffset > 0:
