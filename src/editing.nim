@@ -786,13 +786,13 @@ proc draw*(editor: Editor) =
     AJ: "▀▜",
     LV: "▙▄",
     VJ: "▄▟",
-    HH: "┃┃",
+    HH: "▌▐",
     AH: "▛▜",
     VH: "▙▟",
-    II: "══",
-    IL: "╞═",
-    IJ: "═╡",
-    IH: "╪╪",
+    II: "■■",
+    IL: "█■",
+    IJ: "■█",
+    IH: "██",
   }.toTable
   proc draw_mask_cell(m: CliffMask, enabled: bool = true) =
     var txt = if m.cliff():
