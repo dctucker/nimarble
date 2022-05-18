@@ -91,3 +91,6 @@ proc rotate*(mask: CliffMask): CliffMask =
   else:
     result = mask
 
+proc hazard*(kind: CliffMask): bool =
+  return EA <= kind and kind <= EY
+

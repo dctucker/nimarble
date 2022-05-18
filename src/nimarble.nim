@@ -426,12 +426,19 @@ proc main =
       ramp_a = vec3f( ramp.x, sinx + sinz, ramp.z ) * gravity
 
     var icy = level.around(IC, x,z)
+    var sandy = level.around(SD, x,z)
+    var oily = level.around(OI, x,z)
     var copper = level.around(CU, x,z)
     var traction: float
     if bh - fh > 0.25:
       traction = 0f
     else:
-      traction = 1f
+      if sandy:
+        traction = 0.5
+      elif oily:
+        traction = 0.75f
+      else:
+        traction = 1f
 
     if god():
       ramp_a *= 0
@@ -470,11 +477,13 @@ proc main =
     mesh.vel.x = clamp(mesh.vel.x + dt * mesh.acc.x, -max_vel.x, max_vel.x)
     mesh.vel.y = clamp(mesh.vel.y + dt * mesh.acc.y, -max_vel.y * 1.5f, max_vel.y)
     mesh.vel.z = clamp(mesh.vel.z + dt * mesh.acc.z, -max_vel.z, max_vel.z)
+
     if icy:
       if mesh.vel.length * lateral_vel > 0f:
         let dir = normalize(mesh.vel.xz.normalize() + lateral_dir)
         mesh.vel = vec3f(dir.x, 0, dir.y) * lateral_vel
         mesh.vel.y = max_vel.y * -0.5
+
 
     mesh.pos += mesh.vel * dt
     mesh.pos.y = clamp(mesh.pos.y, fh, sky)
@@ -489,7 +498,7 @@ proc main =
         mesh.rot = normalize(quat * mesh.rot)
 
     const brake = 0.986
-    if not icy and not copper:
+    if not icy and not copper and not oily:
       mesh.vel  *= brake
 
     mouse *= 0
@@ -571,6 +580,8 @@ proc main =
       game.player.mesh.render
 
     for actor in actors.mitems:
+      #if actor.mesh == nil: # still SIGSEGV
+      #  game.init_piece(actor)
       actor.render()
 
     for fixture in fixtures.mitems:

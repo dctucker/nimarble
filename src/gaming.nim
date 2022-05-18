@@ -330,9 +330,6 @@ action:
     else:
       editor.leave()
 
-proc hazard(kind: CliffMask): bool =
-  return EA <= kind and kind <= EY
-
 proc hazard(actor: Actor): bool =
   return actor.kind.hazard
 

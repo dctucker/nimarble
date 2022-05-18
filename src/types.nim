@@ -89,6 +89,7 @@ type
   Animation* = enum
     None
     Teleport
+    Broken
     Dissolve
     Eaten
     Respawn

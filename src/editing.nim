@@ -176,6 +176,8 @@ proc set_mask(editor: var Editor, mask: CliffMask) =
 
   editor.mask[o] = m
   editor.dirty = true
+  if m.hazard:
+    editor.level.find_actors()
 
 action:
   proc input_mask(editor: var Editor) =

@@ -65,6 +65,20 @@ proc find_actors(data: seq[float], mask: seq[CliffMask], w,h: int): seq[Actor] =
           kind: mask,
         )
 
+proc `~=`(a1, a2: Actor): bool =
+  return a1.kind == a2.kind and a1.origin == a2.origin
+
+proc find_actors*(level: var Level) =
+  proc has_actor(level: Level, actor: Actor): bool =
+    result = false
+    for ac in level.actors:
+      if ac ~= actor:
+        return true
+
+  for actor in find_actors(level.data, level.mask, level.width, level.height):
+    if not level.has_actor(actor):
+      level.actors.add actor
+
 proc find_fixtures(data: seq[float], mask: seq[CliffMask], w,h: int): seq[Fixture] =
   for i in 0..<h:
     for j in 0..<w:
@@ -146,9 +160,9 @@ proc init_level(name, data_src, mask_src: string, color: Vec3f): Level =
     color: color,
   )
   discard result.validate()
-  result.origin   = data.find_p1(mask, width, height)
-  result.actors   = data.find_actors(mask, width, height)
-  result.fixtures = data.find_fixtures(mask, width, height)
+  result.origin   = find_p1(data, mask, width, height)
+  result.actors   = find_actors(data, mask, width, height)
+  result.fixtures = find_fixtures(data, mask, width, height)
   result.span     = result.find_span()
   echo "Level ", result.width, "x", result.height, " span ", result.span
 
