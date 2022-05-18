@@ -7,8 +7,9 @@ import nimgl/imgui
 import nimgl/imgui/[impl_opengl, impl_glfw]
 #import zippy
 from scene import Camera, Light, pos, vel, acc
-from types import Application, Joystick, JoyButtons, Actor, Fixture, CliffMask, name
+from types import Application, Joystick, JoyButtons, Actor, Fixture
 from leveldata import sky
+import masks
 
 import pixie
 

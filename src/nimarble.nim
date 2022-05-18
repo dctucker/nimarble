@@ -8,6 +8,7 @@ import glm
 import wrapper
 
 import types
+import masks
 import models
 import leveldata
 import editing

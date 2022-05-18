@@ -4,6 +4,7 @@ randomize()
 from nimgl/glfw import setInputMode, setCursorPos, GLFW_CURSOR_SPECIAL, GLFW_CURSOR_NORMAL, GLFWCursorDisabled, setWindowShouldClose
 import glm
 
+import masks
 import types
 import wrapper
 import window

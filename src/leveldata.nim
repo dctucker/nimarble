@@ -5,6 +5,7 @@ import std/tables
 
 import wrapper
 import types
+import masks
 
 from models import cube_vert, cube_verts, cube_colors, cube_index
 

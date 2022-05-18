@@ -8,6 +8,7 @@ import strutils
 
 import leveldata
 import types
+import masks
 from keymapper import action
 
 const highlight_width = 16
@@ -163,12 +164,12 @@ proc set_mask(editor: var Editor, mask: CliffMask) =
     if   mask == HH: m = PH
   elif cur == GG:
     if   mask == RH: m = GR
-  elif cur == II:
-    if   mask == NS: m = IN
   elif cur == SD:
     if   mask == SD: m = SW
   elif mask.cliff():
-    if cur.cliff():
+    if cur == II and mask == NS:
+        m = IN
+    elif cur.cliff():
       m = CliffMask(cur.ord xor mask.ord)
     else:
       m = mask
@@ -785,13 +786,13 @@ proc draw*(editor: Editor) =
     AJ: "▀▜",
     LV: "▙▄",
     VJ: "▄▟",
-    HH: "▌▐",
+    HH: "┃┃",
     AH: "▛▜",
     VH: "▙▟",
-    II: "◘◘",
-    IL: "▐◘",
-    IJ: "◘▌",
-    IH: "██",
+    II: "══",
+    IL: "╞═",
+    IJ: "═╡",
+    IH: "╪╪",
   }.toTable
   proc draw_mask_cell(m: CliffMask, enabled: bool = true) =
     var txt = if m.cliff():
