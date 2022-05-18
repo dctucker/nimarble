@@ -582,6 +582,7 @@ let editor_keymap_command* = {
   GLFWKey.C          : do_copy           ,
   GLFWKey.V          : do_paste          ,
   GLFWKey.Y          : redo              ,
+  GLFWKey.S          : do_save           ,
 }.toOrderedTable
 
 let editor_keymap_shift* = {
@@ -649,7 +650,6 @@ let editor_keymap* = {
   GLFWKey.Space      : toggle_brush      ,
   GLFWKey.Tab        : toggle_cursor     ,
   GLFWKey.Slash      : rotate_stamp      ,
-  GLFWKey.W          : do_save           ,
   GLFWKey.E          : do_leave          ,
   GLFWKey.Escape     : go_back           ,
 }.toOrderedTable

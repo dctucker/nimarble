@@ -51,14 +51,20 @@ let game_keymap = {
   GLFWKey.X            : do_respawn        ,
   GLFWKey.W            : toggle_wireframe  ,
   GLFWKey.P            : pause             ,
-  GLFWKey.S            : step_frame        ,
+  GLFWKey.Period       : step_frame        ,
   GLFWKey.L            : toggle_mouse_lock ,
   GLFWKey.G            : toggle_god        ,
   GLFWKey.E            : focus_editor      ,
   GLFWKey.Escape       : toggle_all        ,
-  GLFWKey.Q            : do_quit           ,
+}.toOrderedTable
+
+let game_keymap_shift = {
   GLFWKey.Slash        : toggle_keymap     ,
-  #GLFWKey.O            : reload_level      ,
+}.toOrderedTable
+
+let game_keymap_command = {
+  #GLFWKey.R            : reload_level      ,
+  GLFWKey.Q            : do_quit           ,
 }.toOrderedTable
 
 proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mods: int32): void {.cdecl.} =
@@ -68,9 +74,16 @@ proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mod
     if editor.handle_key(key, mods):
       return
 
-  if game_keymap.hasKey key:
-    game.window = window
-    game_keymap[key].callback(game, press)
+  game.window = window
+  if (mods and GLFWModShift) != 0:
+    if game_keymap_shift.hasKey key:
+      game_keymap_shift[key].callback(game, press)
+  elif (mods and GLFWModControl) != 0 or (mods and GLFWModSuper) != 0:
+    if game_keymap_command.hasKey key:
+      game_keymap_command[key].callback(game, press)
+  else:
+    if game_keymap.hasKey key:
+      game_keymap[key].callback(game, press)
 
 proc rotate_mouse(mouse: Vec3f): Vec3f =
   const th = radians(45f)
@@ -317,9 +330,9 @@ proc imgui_frame =
 
   if app.show_keymap:
     if editor.focused:
-      draw_keymap(editor_keymap, editor_keymap_shift, editor_keymap_command)
+      draw_keymap editor_keymap, editor_keymap_shift, editor_keymap_command
     else:
-      draw_keymap(game_keymap)
+      draw_keymap game_keymap  , game_keymap_shift  , game_keymap_command
 
   if app.show_joystick:
     joystick.info_window()
