@@ -8,22 +8,7 @@ import types
 import masks
 
 from models import cube_vert, cube_verts, cube_colors, cube_index
-
-const level_dir = "assets/levels"
-const level_0_src      = staticRead("../" & level_dir & "/0.tsv")
-const level_0_mask_src = staticRead("../" & level_dir & "/0mask.tsv")
-const level_1_src      = staticRead("../" & level_dir & "/1.tsv")
-const level_1_mask_src = staticRead("../" & level_dir & "/1mask.tsv")
-const level_2_src      = staticRead("../" & level_dir & "/2.tsv")
-const level_2_mask_src = staticRead("../" & level_dir & "/2mask.tsv")
-const level_3_src      = staticRead("../" & level_dir & "/3.tsv")
-const level_3_mask_src = staticRead("../" & level_dir & "/3mask.tsv")
-const level_4_src      = staticRead("../" & level_dir & "/4.tsv")
-const level_4_mask_src = staticRead("../" & level_dir & "/4mask.tsv")
-const level_5_src      = staticRead("../" & level_dir & "/5.tsv")
-const level_5_mask_src = staticRead("../" & level_dir & "/5mask.tsv")
-const level_6_src      = staticRead("../" & level_dir & "/6.tsv")
-const level_6_mask_src = staticRead("../" & level_dir & "/6mask.tsv")
+import assets
 
 const EE = 0
 const sky* = 200f
@@ -243,13 +228,13 @@ proc write_new_level* =
 
 let levels = @[
   Level(),
-  init_level("0", level_0_src, level_0_mask_src, vec3f( 1f  , 0.0f, 1f   )),
-  init_level("1", level_1_src, level_1_mask_src, vec3f( 1f  , 0.8f, 0f   )),
-  init_level("2", level_2_src, level_2_mask_src, vec3f( 0f  , 0.4f, 0.8f )),
-  init_level("3", level_3_src, level_3_mask_src, vec3f( 0.4f, 0.4f, 0.4f )),
-  init_level("4", level_4_src, level_4_mask_src, vec3f( 1f  , 0.4f, 0.1f )),
-  init_level("5", level_5_src, level_5_mask_src, vec3f( 1f  , 1.0f, 0.0f )),
-  init_level("6", level_6_src, level_6_mask_src, vec3f( 1.0f, 0.0f, 0.0f )),
+  init_level("0", level_data_src(0), level_mask_src(0), vec3f( 1f  , 0.0f, 1f   )),
+  init_level("1", level_data_src(1), level_mask_src(1), vec3f( 1f  , 0.8f, 0f   )),
+  init_level("2", level_data_src(2), level_mask_src(2), vec3f( 0f  , 0.4f, 0.8f )),
+  init_level("3", level_data_src(3), level_mask_src(3), vec3f( 0.4f, 0.4f, 0.4f )),
+  init_level("4", level_data_src(4), level_mask_src(4), vec3f( 1f  , 0.4f, 0.1f )),
+  init_level("5", level_data_src(5), level_mask_src(5), vec3f( 1f  , 1.0f, 0.0f )),
+  init_level("6", level_data_src(6), level_mask_src(6), vec3f( 1.0f, 0.0f, 0.0f )),
 ]
 let n_levels* = levels.len()
 

@@ -10,10 +10,9 @@ from scene import Camera, Light, pos, vel, acc
 from types import Application, Joystick, JoyButtons, Actor, Fixture
 from leveldata import sky
 import masks
+import assets
 
-import pixie
-
-#import assetfile
+#import pixie
 
 var width*, height*: int32
 var aspect*: float32
@@ -77,13 +76,6 @@ proc add_custom_glyph(atlas: ptr ImFontAtlas, rect_id: int32) =
   ]#
 
 proc setup_fonts =
-  const terminus_fn = "assets/fonts/TerminusTTF.ttf"
-  const terminus_ttf_asset = staticRead("../" & terminus_fn)
-  #var terminus_ttf_asset = assetfile.getAsset(terminus_fn)
-  let terminus_ttf_len = terminus_ttf_asset.len.int32
-  echo "Font loaded (", terminus_ttf_len, " bytes)"
-  var terminus_ttf = terminus_ttf_asset.cstring # [0].addr
-
   var atlas = igGetIO().fonts
   #atlas.addFontDefault()
   var ranges = @[ 0x1.ImWchar, 0x7f.ImWchar,
