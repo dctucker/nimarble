@@ -93,7 +93,7 @@ proc find_fixtures(data: seq[float], mask: seq[CliffMask], w,h: int): seq[Fixtur
           kind: mask,
         )
 
-proc letter(j: int): string =
+proc column_letter(j: int): string =
   result = ""
   var v = j
   var c = 0
@@ -110,7 +110,7 @@ proc letter(j: int): string =
     return "MAX"
 
 proc cell_name*(i,j: int): string =
-  result = j.letter
+  result = j.column_letter
   if i < 0:
     return
   result &= $(i + 1)
@@ -182,6 +182,20 @@ proc find_zones(level: Level): seq[Zone] =
   for b in blocks:
     result.add b
 
+proc init_map(level: var Level) =
+  for i in 0 ..< level.height:
+    for j in 0 ..< level.width:
+      let o = i*level.width + j
+      let mask = level.mask[o]
+      if mask != XX:
+        level.map[i,j].add mask
+      level.map[i,j].height = level.data[o]
+  for zone in level.zones:
+    # ugh
+    for i in zone.rect.y .. zone.rect.w:
+      for j in zone.rect.x .. zone.rect.z:
+        level.map[i + level.origin.z, j + level.origin.x].masks.incl zone.kind
+
 proc init_level(name, data_src, mask_src: string, color: Vec3f): Level =
   let source_lines = data_src.splitLines().filter(proc(line:string): bool = return line.len > 0)
   let data = source_lines.map(tsv_floats).flatten()
@@ -195,6 +209,7 @@ proc init_level(name, data_src, mask_src: string, color: Vec3f): Level =
     data: data,
     mask: mask,
     color: color,
+    map: newLevelMap(width, height),
   )
   discard result.validate()
   result.origin   = find_s1(data, mask, width, height)
@@ -202,7 +217,22 @@ proc init_level(name, data_src, mask_src: string, color: Vec3f): Level =
   result.fixtures = find_fixtures(data, mask, width, height)
   result.span     = result.find_span()
   result.zones    = result.find_zones()
+  result.init_map()
   echo "Level ", result.width, "x", result.height, " span ", result.span
+
+proc `[]=`*(level: Level, i,j: int, mask: CliffMask) =
+  let o = level.offset(i,j)
+  if o == 0: return
+  let cur = level.mask[o]
+  level.mask[level.offset(i,j)] = mask
+  level.map[i,j].masks.excl cur
+  level.map[i,j].masks.excl mask
+
+proc `[]=`*(level: Level, i,j: int, value: float) =
+  let o = level.offset(i,j)
+  if o == 0: return
+  level.map[i,j].height = value
+  level.data[o] = value
 
 proc format(value: float): string =
   if value == value.floor:
@@ -311,12 +341,17 @@ proc mask_at*(level: Level, x,z: float): CliffMask =
   if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return XX
   return level.mask[i * level.width + j]
 
+proc masks_at*(level: Level, x,z: float): set[CliffMask] =
+  let (i,j) = level.xlat_coord(x,z)
+  if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return {}
+  return level.map[i,j].masks
+
 proc around*(level: Level, m: CliffMask, x,z: float): bool =
-  if level.mask_at(x,z) == m:
+  if level.masks_at(x,z).has m:
     return true
   for i in -1..1:
     for j in -1..1:
-      if level.mask_at(x+i.float,z+j.float) == m:
+      if level.masks_at(x+i.float,z+j.float).has m:
         return true
   return false
 
@@ -335,7 +370,7 @@ proc find_closest*(level: Level, mask: CliffMask, x, z: float): Vec3f =
 
     let xi = x + i.float
     let zj = z + j.float
-    if level.mask_at(zj, xi) == mask:
+    if level.masks_at(zj, xi).has mask:
       let y = level.data_at(zj, xi)
       result = vec3f( zj, y, xi )
       #echo "FOUND at ", result
@@ -366,6 +401,7 @@ proc find_phase_blocks*(level: Level): seq[Zone] =
   proc search_forward(sx,sz: int): Vec2i =
     for point in by_area(5,5):
       result = vec2i( int32 sx + 1 + point.x, int32 sz + 1 + point.y )
+      # singular mask detection to identify points within source data
       let mask = level.mask_at( result.x.float, result.y.float )
       if mask == criteria:
         return
@@ -452,7 +488,7 @@ proc point_color(level: Level, i,j: int): Vec4f =
 
   let zone = level.which_zone(i - level.origin.z, j - level.origin.x)
   if zone.kind != XX:
-    echo "zone ", $zone.kind, $zone.rect
+    #echo "zone ", $zone.kind, $zone.rect
     return level.mask_color(zone.kind)
 
 
@@ -485,15 +521,15 @@ proc add_color(colors: var seq[cfloat], c: Vec4f) =
 proc cube_point*(level: Level, i,j, w: int): CubePoint =
   let vert = cube_verts[ cube_index[w] ]
 
-  let m0 = level.mask[level.offset(i+0,j+0)]
-  let m1 = level.mask[level.offset(i+0,j+1)]
-  let m2 = level.mask[level.offset(i+1,j+0)]
-  let m3 = level.mask[level.offset(i+1,j+1)]
+  let m0 = level.map[i+0, j+0].cliffs
+  let m1 = level.map[i+0, j+1].cliffs
+  let m2 = level.map[i+1, j+0].cliffs
+  let m3 = level.map[i+1, j+1].cliffs
 
-  var y0 = level.data[level.offset(i+0,j+0)]
-  var y1 = level.data[level.offset(i+0,j+1)]
-  var y2 = level.data[level.offset(i+1,j+0)]
-  var y3 = level.data[level.offset(i+1,j+1)]
+  var y0 = level.map[i+0, j+0].height
+  var y1 = level.map[i+0, j+1].height
+  var y2 = level.map[i+1, j+0].height
+  var y3 = level.map[i+1, j+1].height
 
   const margin = 0.98
   let x = (j - level.origin.x).float + vert.x.float * margin
@@ -719,7 +755,7 @@ proc wave_height*(level: Level, x,z: float): float =
 
 proc floor_height*(level: Level, x,z: float): float =
   result = level.data_at(x,z)
-  if level.mask_at(x,z).has(SW):
+  if level.masks_at(x,z).has SW:
     result += level.wave_height(x,z)
     #let (i,j) = level.xlat_coord(x,z)
     #if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return
@@ -737,6 +773,7 @@ proc toString(x: float): string =
   x.formatFloat(ffDecimal,3)
 
 proc slope*(level: Level, x,z: float): Vec3f =
+  # this should be refactored to use masks_at
   let m0 = level.mask_at(x+0,z+0)
   let m1 = level.mask_at(x+1,z+0)
   let m2 = level.mask_at(x+0,z+1)

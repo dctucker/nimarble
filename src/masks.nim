@@ -96,6 +96,8 @@ const mask_chars = {
   IL: "←↕"
   IJ: "↕→"
 ]#
+
+const CLIFFS* = { AA, VV, LL, JJ, LA, AJ, LV, VJ, HH, AH, VH, II, IL, IJ, IH }
 const mask_chars* = {
   AA: "▀▀",
   VV: "▄▄",

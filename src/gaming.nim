@@ -219,6 +219,11 @@ proc pan_stop(game: var Game) =
   game.pan.acc = vec3f(0f,0f,0f)
 
 action:
+  proc choose_level*(game: var Game, press: bool) =
+    let choice = game.recent_input.ord - '0'.ord
+    game.level_number = choice.int32
+    game.set_level()
+
   proc toggle_all*(game: var Game, press: bool) =
     if not press: return
     if app.toggle():

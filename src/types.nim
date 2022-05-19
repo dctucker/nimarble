@@ -22,13 +22,16 @@ type
 
   Zone* = ref object
     kind*: CliffMask
-    rect*: Vec4i
+    rect*: Vec4i # e.g. vec4i( first.x, first.y, last.x, last.y )
 
-  LevelPoint* = ref object
+  LevelPoint* = object
     height*: float
-    masks*: seq[CliffMask]
+    masks*: set[CliffMask]
 
-  LevelMap* = Table[(int,int), LevelPoint]
+  LevelMap* = ref object
+    points*: seq[LevelPoint]
+    width*: int
+    height*: int
 
   Level* = ref object
     width*, height*, span*: int
@@ -49,6 +52,28 @@ type
     zones*: seq[Zone]
     name*: string
 
+proc newLevelMap*(w,h: int): LevelMap =
+  return LevelMap(
+    points: newSeq[LevelPoint](w*h),
+    width: w,
+    height: h,
+  )
+
+proc `add`*(point: var LevelPoint, mask: CliffMask) =
+  point.masks.incl mask
+
+proc cliffs*(point: LevelPoint): CliffMask =
+  for cliff in point.masks * CLIFFS:
+    result += cliff
+
+proc `[]`*(map: var LevelMap, i,j: int): var LevelPoint =
+  let o = i * map.width + j
+  if o < 0 or o >= map.points.len:
+    return map.points[0]
+  return map.points[o]
+
+proc has*(masks: set[CliffMask], mask: CliffMask): bool =
+  return mask in masks
 
 proc empty*(p: CubePoint): bool =
   return p.pos.length == 0 and p.color.length == 0 and p.normal.length == 0
@@ -144,6 +169,7 @@ type
     goal*: bool
     god*: bool
     wireframe*: bool
+    recent_input*      : GLFWKey
 
 proc newGame*: Game =
   Game(

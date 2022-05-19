@@ -77,7 +77,7 @@ proc get_data(editor: Editor): float =
 
 proc set_data(editor: var Editor, value: float) =
   let o = editor.offset()
-  editor.data[o] = value
+  editor.level[editor.row, editor.col] = value
   editor.dirty = true
 
 proc update_selection_vbos(editor: var Editor) =
@@ -96,6 +96,7 @@ proc inc_dec(editor: var Editor, d: float) =
       if d == 1:
         value = value.int.float
       editor.data[o] = value
+      editor.level.map[editor.row, editor.col].height = value
     editor.update_selection_vbos()
   else:
     let h = editor.get_data()
@@ -177,7 +178,7 @@ proc set_mask(editor: var Editor, mask: CliffMask) =
     else:
       m = mask
 
-  editor.mask[o] = m
+  editor.level[editor.row, editor.col] = m
   editor.dirty = true
   #if m.hazard:
   #  editor.level.find_actors()

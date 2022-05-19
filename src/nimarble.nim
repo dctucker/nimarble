@@ -63,6 +63,15 @@ let game_keymap_shift = {
 }.toOrderedTable
 
 let game_keymap_command = {
+  GLFWKey.K1           : choose_level      ,
+  GLFWKey.K2           : choose_level      ,
+  GLFWKey.K3           : choose_level      ,
+  GLFWKey.K4           : choose_level      ,
+  GLFWKey.K5           : choose_level      ,
+  GLFWKey.K6           : choose_level      ,
+  GLFWKey.K7           : choose_level      ,
+  GLFWKey.K8           : choose_level      ,
+  GLFWKey.K9           : choose_level      ,
   #GLFWKey.R            : reload_level      ,
   GLFWKey.Q            : do_quit           ,
 }.toOrderedTable
@@ -74,6 +83,7 @@ proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mod
     if editor.handle_key(key, mods):
       return
 
+  game.recent_input = key
   game.window = window
   if (mods and GLFWModShift) != 0:
     if game_keymap_shift.hasKey key:
@@ -227,9 +237,9 @@ proc info_player =
       igSeparator()
       igSpacing()
 
-      var m0 = ($game.level.mask_at(coord.x, coord.z)).cstring
-      var m1 = ($game.level.mask_at(coord.x+1, coord.z)).cstring
-      var m2 = ($game.level.mask_at(coord.x, coord.z+1)).cstring
+      var m0 = ($game.level.masks_at(coord.x, coord.z)).cstring
+      var m1 = ($game.level.masks_at(coord.x+1, coord.z)).cstring
+      var m2 = ($game.level.masks_at(coord.x, coord.z+1)).cstring
       igText(m0, 2)
       igSameLine()
       igText(m1)
@@ -396,7 +406,7 @@ proc main =
     let z = coord.z
     let bh = mesh.pos.y
     let fh = level.point_height(x, z)
-    let cur_mask = level.mask_at(x,z)
+    let cur_masks = level.masks_at(x,z)
     #stdout.write "\27[K"
 
     for actor in level.actors.mitems:
@@ -453,7 +463,7 @@ proc main =
     let flat = ramp.length == 0
     let nonzero = level.point_height(x.floor, z.floor) > 0f
 
-    safe = flat and nonzero and cur_mask == XX
+    safe = flat and nonzero and cur_masks.has XX
     safe = safe and not icy and not copper
     safe = safe and game.safe
     if safe:
@@ -535,7 +545,7 @@ proc main =
         event_time = 0
         next_level.callback(game, true)
     else:
-      game.goal = game.goal or cur_mask == GG
+      game.goal = game.goal or cur_masks.has GG
 
   # main loop
   while not w.windowShouldClose():
