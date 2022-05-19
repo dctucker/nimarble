@@ -1,0 +1,8 @@
+# General algorithm for start/stop mask attributes
+	...
+	2. Grid search smallest area; expect two coordinates to form a rectangle.
+		- compute area for all possible points
+		- sort points by area
+		- traverse sorted points in linear order
+			- if point contains expected mask, return point
+

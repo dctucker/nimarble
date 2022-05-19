@@ -15,6 +15,10 @@ type
     facing*: Vec3f
   Fixture* = ref object of Piece
 
+  Zone* = ref object
+    kind*: CliffMask
+    rect*: Vec4i
+
   CubePoint* = object
     pos*: Vec3f
     color*: Vec4f
@@ -35,6 +39,7 @@ type
     floor_plane*: Mesh
     actors*: seq[Actor]
     fixtures*: seq[Fixture]
+    zones*: seq[Zone]
     name*: string
 
 

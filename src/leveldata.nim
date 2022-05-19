@@ -14,7 +14,7 @@ import assets
 const EE = 0
 const sky* = 200f
 
-proc find_phase_blocks*(level: Level): seq[Vec4i]
+proc find_phase_blocks*(level: Level): seq[Zone]
 
 proc flatten[T](input: seq[seq[T]]): seq[T] =
   for row in input:
@@ -177,6 +177,10 @@ proc find_last*(level: Level): (int,int) =
   echo "last = ", ii, ",", jj
   return (ii,jj)
 
+proc find_zones(level: Level): seq[Zone] =
+  let blocks = level.find_phase_blocks()
+  for b in blocks:
+    result.add b
 
 proc init_level(name, data_src, mask_src: string, color: Vec3f): Level =
   let source_lines = data_src.splitLines().filter(proc(line:string): bool = return line.len > 0)
@@ -197,7 +201,7 @@ proc init_level(name, data_src, mask_src: string, color: Vec3f): Level =
   result.actors   = find_actors(data, mask, width, height)
   result.fixtures = find_fixtures(data, mask, width, height)
   result.span     = result.find_span()
-  discard result.find_phase_blocks()
+  result.zones    = result.find_zones()
   echo "Level ", result.width, "x", result.height, " span ", result.span
 
 proc format(value: float): string =
@@ -351,7 +355,7 @@ iterator by_area(w,h: int): Vec2i =
   for point in points:
     yield vec2i(point.x, point.z)
 
-proc find_phase_blocks*(level: Level): seq[Vec4i] =
+proc find_phase_blocks*(level: Level): seq[Zone] =
   var consumed: seq[Vec2i] = @[]
   var criteria: CliffMask
   var first: Vec2i
@@ -379,12 +383,16 @@ proc find_phase_blocks*(level: Level): seq[Vec4i] =
       if last.x == 0 and last.y == 0: continue
 
       # found end phase block
-      result.add vec4i( first.x, first.y, last.x, last.y )
+      result.add Zone(
+        rect: vec4i( first.x, first.y, last.x, last.y ),
+        kind: criteria,
+      )
       consumed.add first
       consumed.add last
 
-  for b in result:
-    echo cell_name(b.y + level.origin.z, b.x + level.origin.x), "..", cell_name(b.w + level.origin.z, b.z + level.origin.x)
+  for z in result:
+    let b = z.rect
+    echo $z.kind, " ", cell_name(b.y + level.origin.z, b.x + level.origin.x), "..", cell_name(b.w + level.origin.z, b.z + level.origin.x)
 
 proc cliff_color(level: Level, mask: CliffMask): Vec4f =
   case mask:
@@ -406,8 +414,10 @@ proc mask_color(level: Level, mask: CliffMask): Vec4f =
   #of S1: return vec4f( 0.0, 0.0, 0.5, 0.8 )
   #of EM: return vec4f( 0.1, 0.1, 0.1, 1.0 )
   #of EY, EA: return vec4f( 0.4, 9.0, 0.0, 1.0 )
-  of P1, P2, P3, P4:
-    return vec4f( 0.2, 0.2, 0.2, 0.5 )
+  of P1: return vec4f( 0.1, 0.2, 0.3, 0.7 )
+  of P2: return vec4f( 0.3, 0.1, 0.2, 0.7 )
+  of P3: return vec4f( 0.2, 0.3, 0.1, 0.7 )
+  of P4: return vec4f( 0.3, 0.2, 0.1, 0.7 )
   of SW:
     return vec4f( 0.1, 0.6, 0.6, 1.0 )
   of RI, RH:
@@ -428,12 +438,25 @@ proc point_cliff_color(level: Level, i,j: int): Vec4f =
   else:
     return level.cliff_color(level.mask[k])
 
+proc which_zone(level: Level, i, j: int): Zone =
+  result = Zone()
+  for zone in level.zones:
+    if zone.rect.x <= j and j <= zone.rect.z and zone.rect.y <= i and i <= zone.rect.w:
+      return zone
+
 proc point_color(level: Level, i,j: int): Vec4f =
   let k = level.width * i + j
   if k >= level.data.len: return
   let y = level.data[k]
   if y == EE: return
-  elif level.around(IC, j.float - level.origin.x.float, i.float - level.origin.z.float):
+
+  let zone = level.which_zone(i - level.origin.z, j - level.origin.x)
+  if zone.kind != XX:
+    echo "zone ", $zone.kind, $zone.rect
+    return level.mask_color(zone.kind)
+
+
+  if   level.around(IC, j.float - level.origin.x.float, i.float - level.origin.z.float):
     return vec4f( 0.0, 1.0, 1.0, 1.0)
   elif level.around(CU, j.float - level.origin.x.float, i.float - level.origin.z.float):
     return vec4f( 0.8, 0.6, 0.3, 0.9)
