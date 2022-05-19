@@ -26,14 +26,12 @@ proc rotate_coord*(v: Vec3f): Vec3f =
   result = vec3f(v4.x, v4.y, v4.z)
 
 proc update_camera*(game: Game) =
-  let level = game.get_level()
-
   let distance = game.camera.distance
-  game.camera.target = vec3f( 0, level.origin.y.float * level_squash, 0 )
+  game.camera.target = vec3f( 0, game.level.origin.y.float * level_squash, 0 )
   game.camera.pos = vec3f( distance, game.camera.target.y + distance, distance )
   game.camera.up = vec3f( 0f,  1.0f,  0f )
   #let target = vec3f( 10, 0, 10 )
-  #let pos = vec3f( level.origin.z.float * 2, 0, level.origin.z.float * 2)
+  #let pos = vec3f( game.level.origin.z.float * 2, 0, game.level.origin.z.float * 2)
   game.view.update lookAt( game.camera.pos, game.camera.target, game.camera.up )
   game.light.update()
 
@@ -49,17 +47,16 @@ proc reset_view*(game: var Game) =
   game.pan.vel = vec3f(0,0,0)
 
 proc reset_player*(game: var Game) =
-  let player_top = game.get_level().origin.y.float
+  let player_top = game.level.origin.y.float
   game.player.mesh.reset()
   game.player.mesh.pos += vec3f(0.5, 0.5, 0.5)
   game.player.mesh.pos.y = player_top
 
 proc follow_player*(game: var Game) =
-  let level = game.get_level()
   let coord = game.player.mesh.pos.rotate_coord
   let target = game.player.mesh.pos# * 0.5f
 
-  let y = (game.player.mesh.pos.y - level.origin.y.float) * 0.5
+  let y = (game.player.mesh.pos.y - game.level.origin.y.float) * 0.5
   game.pan.target = vec3f( coord.x, y, coord.z )
 
   let ly = target.y
@@ -85,15 +82,17 @@ proc toggle_pause*(game: var Game) =
     game.update_mouse_mode()
 
 proc init_player*(game: var Game) =
-  game.player.mesh = Mesh(
-    vao: newVAO(),
-    vert_vbo: newVBO(3, sphere),
-    color_vbo: newVBO(4, sphere_colors),
-    norm_vbo: newVBO(3, sphere_normals),
-    elem_vbo: newElemVBO(sphere_index),
-    program: newProgram(player_frags, player_verts, player_geoms),
-  )
-  game.reset_player()
+  if game.player.mesh == nil:
+    game.player.mesh = Mesh(
+      vao: newVAO(),
+      vert_vbo: newVBO(3, sphere),
+      color_vbo: newVBO(4, sphere_colors),
+      norm_vbo: newVBO(3, sphere_normals),
+      elem_vbo: newElemVBO(sphere_index),
+      program: newProgram(player_frags, player_verts, player_geoms),
+    )
+  if game.level != nil:
+    game.reset_player()
 
   var modelmat = mat4(1.0f)
   game.player.mesh.model = game.player.mesh.program.newMatrix(modelmat, "M")
@@ -102,22 +101,21 @@ proc init_player*(game: var Game) =
 
 
 proc init_floor_plane*(game: var Game) =
-  let level = game.get_level()
-  if level.floor_plane != nil:
+  if game.level.floor_plane != nil:
     return
-  load_level game.level
-  level.floor_plane = Mesh(
+  load_level game.level_number
+  game.level.floor_plane = Mesh(
     vao: newVAO(),
-    vert_vbo  : newVBO(3, level.floor_verts),
-    color_vbo : newVBO(4, level.floor_colors),
-    norm_vbo  : newVBO(3, level.floor_normals),
-    elem_vbo  : newElemVBO(level.floor_index),
+    vert_vbo  : newVBO(3, game.level.floor_verts),
+    color_vbo : newVBO(4, game.level.floor_colors),
+    norm_vbo  : newVBO(3, game.level.floor_normals),
+    elem_vbo  : newElemVBO(game.level.floor_index),
     program   : game.player.mesh.program,
   )
   var modelmat = mat4(1.0f).scale(1f, level_squash, 1f)
-  level.floor_plane.model = game.player.mesh.program.newMatrix(modelmat, "M")
-  var mvp = game.proj * game.view.mat.translate(-game.pan.pos) * level.floor_plane.model.mat
-  level.floor_plane.mvp = level.floor_plane.program.newMatrix(mvp, "MVP")
+  game.level.floor_plane.model = game.player.mesh.program.newMatrix(modelmat, "M")
+  var mvp = game.proj * game.view.mat.translate(-game.pan.pos) * game.level.floor_plane.model.mat
+  game.level.floor_plane.mvp = game.level.floor_plane.program.newMatrix(mvp, "MVP")
 
 proc newMesh(game: var Game, verts, colors, norms: var seq[cfloat], elems: var seq[Ind]): Mesh =
   var modelmat = mat4f(1)
@@ -156,31 +154,31 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
   else : result = newMesh( game, sphere      , sphere_normals     , sphere_normals      , sphere_index )
 
 proc init_piece*[T](game: var Game, piece: var T) =
-  let level = game.get_level()
   piece.mesh = game.newMesh(piece)
-  let x = (piece.origin.x - level.origin.x).float
+  let x = (piece.origin.x - game.level.origin.x).float
   let y =  piece.origin.y.float
-  let z = (piece.origin.z - level.origin.z).float
+  let z = (piece.origin.z - game.level.origin.z).float
 
   piece.mesh.pos    = vec3f(x, y, z)
   var mvp = game.proj * game.view.mat.translate(-game.pan.pos) * piece.mesh.model.mat
   piece.mesh.mvp = game.player.mesh.program.newMatrix(mvp, "MVP")
 
 proc init_fixtures*(game: var Game) =
-  let level = game.get_level()
-  for fixture in level.fixtures.mitems:
+  for fixture in game.level.fixtures.mitems:
     if fixture.mesh != nil:
       continue
     game.init_piece(fixture)
 
 proc init_actors*(game: var Game) =
-  let level = game.get_level()
-  for actor in level.actors.mitems:
+  for actor in game.level.actors.mitems:
     if actor.mesh != nil:
       continue
     game.init_piece(actor)
 
 proc set_level*(game: var Game) =
+  var num = game.level_number
+  game.level = get_level(num)
+  game.level_number = num
   let f = game.following
   game.following = false
   game.goal = false
@@ -194,7 +192,7 @@ proc set_level*(game: var Game) =
   game.pan.pos = game.pan.target
   game.reset_view()
   game.following = f
-  editor.level = game.get_level()
+  editor.level = game.level
   editor.name = editor.level.name
 
 proc init*(game: var Game) =
@@ -204,7 +202,7 @@ proc init*(game: var Game) =
 
   game.light.get_uniform_locations(game.player.mesh.program)
 
-  game.level = start_level
+  game.level_number = start_level
   game.set_level()
   game.init_floor_plane()
   game.init_actors()
@@ -291,12 +289,12 @@ action:
 
   proc prev_level*(game: var Game, press: bool) =
     if press:
-      dec game.level
+      dec game.level_number
       game.set_level()
 
   proc next_level*(game: var Game, press: bool) =
     if press:
-      inc game.level
+      inc game.level_number
       game.set_level()
   proc follow*(game: var Game, press: bool) =
     if press:
@@ -334,10 +332,9 @@ proc hazard(actor: Actor): bool =
   return actor.kind.hazard
 
 proc safe*(game: Game): bool =
-  let level = game.get_level()
   const distance = 5f
   let player_pos = game.player.mesh.pos
-  for actor in level.actors:
+  for actor in game.level.actors:
     if not actor.hazard: continue
     if (actor.mesh.pos - player_pos).length < distance:
       return false
@@ -388,7 +385,7 @@ proc physics*(game: Game, actor: var Actor, dt: float) =
       actor.pivot_pos = actor.mesh.pos
       actor.facing = random_direction()
     let next_pos = actor.mesh.pos + actor.facing * dt
-    if game.get_level().slope(next_pos.x, next_pos.z).length == 0:
+    if game.level.slope(next_pos.x, next_pos.z).length == 0:
       actor.mesh.pos = next_pos
     else:
       actor.facing = random_direction()

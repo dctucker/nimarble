@@ -210,7 +210,6 @@ proc setup_opengl() =
   glShadeModel GL_FLAT
 
 proc info_player =
-  let level = game.get_level()
   let coord = game.player.mesh.pos.rotate_coord
   if app.show_player:
     igSetNextWindowSize(ImVec2(x:300f, y:400f))
@@ -228,16 +227,16 @@ proc info_player =
       igSeparator()
       igSpacing()
 
-      var m0 = ($level.mask_at(coord.x, coord.z)).cstring
-      var m1 = ($level.mask_at(coord.x+1, coord.z)).cstring
-      var m2 = ($level.mask_at(coord.x, coord.z+1)).cstring
+      var m0 = ($game.level.mask_at(coord.x, coord.z)).cstring
+      var m1 = ($game.level.mask_at(coord.x+1, coord.z)).cstring
+      var m2 = ($game.level.mask_at(coord.x, coord.z+1)).cstring
       igText(m0, 2)
       igSameLine()
       igText(m1)
       igSameLine()
       igText(m2)
 
-      var sl = level.slope(coord.x, coord.z)
+      var sl = game.level.slope(coord.x, coord.z)
       igDragFloat3 "slope"     , sl.arr         , -sky, sky
 
       var respawns = game.respawns.int32
@@ -245,20 +244,20 @@ proc info_player =
       igCheckBox     "following"    , game.following.addr
       igCheckBox     "wireframe"    , game.wireframe.addr
       igCheckBox     "god"          , game.god.addr
-      igSliderInt    "level"        , game.level.addr, 1.int32, n_levels.int32 - 1
+      igSliderInt    "level #"      , game.level_number.addr, 1.int32, n_levels.int32 - 1
 
       #igText("average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
     igEnd()
 
   if app.show_cube_points:
     if igBegin("cube point"):
-      let (i,j) = level.xlat_coord(coord.x.floor, coord.z.floor)
-      if not level.has_coord( i,j ): igEnd() ; return
+      let (i,j) = game.level.xlat_coord(coord.x.floor, coord.z.floor)
+      if not game.level.has_coord( i,j ): igEnd() ; return
 
-      var p0 = level.cube_point(i, j, 23)
-      var p1 = level.cube_point(i, j, 24)
-      var p2 = level.cube_point(i, j, 25)
-      var p3 = level.cube_point(i, j, 26)
+      var p0 = game.level.cube_point(i, j, 23)
+      var p1 = game.level.cube_point(i, j, 24)
+      var p2 = game.level.cube_point(i, j, 25)
+      var p3 = game.level.cube_point(i, j, 26)
 
       igDragFloat3 "pos0", p0.pos.arr
       igDragFloat3 "pos1", p1.pos.arr
@@ -290,13 +289,12 @@ proc `or`*(f1, f2: ImGuiWindowFlags): ImGuiWindowFlags =
   return ImGuiWindowFlags( f1.ord or f2.ord )
 
 proc draw_imgui =
-  let level = game.get_level()
   igPushFont( small_font )
 
   app.main_menu()
   info_player()
-  if app.show_actors: level.actors.info_window()
-  if app.show_fixtures: level.fixtures.info_window()
+  if app.show_actors: game.level.actors.info_window()
+  if app.show_fixtures: game.level.fixtures.info_window()
 
   if app.show_camera:
     if game.camera.info_window():
@@ -341,7 +339,7 @@ proc imgui_frame =
   igOpenGL3RenderDrawData(igGetDrawData())
 
   if app.selected_level != 0:
-    game.level = app.selected_level.int32
+    game.level_number = app.selected_level.int32
     game.set_level()
     app.selected_level = 0
 
@@ -389,7 +387,7 @@ proc main =
     #let gravity = if game.level == 5: -98f else: 98f
     const gravity = -98f
     const max_vel = vec3f( 15f, -gravity * 0.5f, 15f )
-    let level = game.get_level()
+    let level = game.level
     if not game.goal:
       level.clock += 1
       level.clock = level.clock mod 3600
@@ -429,7 +427,7 @@ proc main =
     let sinx = sin(thx)
     let sinz = sin(thz)
     var ramp_a = vec3f( -ramp.x, sinx + sinz, -ramp.z ) * gravity
-    if game.level == 6: # works for ramps but not walls
+    if game.level_number == 6: # works for ramps but not walls
       ramp_a = vec3f( ramp.x, sinx + sinz, ramp.z ) * gravity
 
     var icy = level.around(IC, x,z)
@@ -541,10 +539,9 @@ proc main =
 
   # main loop
   while not w.windowShouldClose():
-    var level = game.get_level()
-    var floor_plane = level.floor_plane
-    var actors = level.actors
-    var fixtures = level.fixtures
+    var floor_plane = game.level.floor_plane
+    var actors = game.level.actors
+    var fixtures = game.level.fixtures
     time = glfwGetTime()
     dt = time - t
     t = time

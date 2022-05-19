@@ -806,10 +806,10 @@ proc load_level*(n: int) =
     if levels[n].floor_index.len == 0:
       setup_floor levels[n]
 
-proc get_level*(game: Game): Level =
-  while game.level > levels.high:
-    dec game.level
-  while game.level < 1:
-    inc game.level
-  return levels[game.level]
+proc get_level*(n: var int32): Level =
+  while n > levels.high:
+    dec n
+  while n < 1:
+    inc n
+  return levels[n]
 

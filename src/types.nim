@@ -15,14 +15,20 @@ type
     facing*: Vec3f
   Fixture* = ref object of Piece
 
-  Zone* = ref object
-    kind*: CliffMask
-    rect*: Vec4i
-
   CubePoint* = object
     pos*: Vec3f
     color*: Vec4f
     normal*: Vec3f
+
+  Zone* = ref object
+    kind*: CliffMask
+    rect*: Vec4i
+
+  LevelPoint* = ref object
+    height*: float
+    masks*: seq[CliffMask]
+
+  LevelMap* = Table[(int,int), LevelPoint]
 
   Level* = ref object
     width*, height*, span*: int
@@ -31,6 +37,7 @@ type
     color*: Vec3f
     data*: seq[float]
     mask*: seq[CliffMask]
+    map*: LevelMap
     floor_lookup*: TableRef[(cfloat, cfloat, cfloat), Ind]
     floor_colors*: seq[cfloat]
     floor_index*: seq[Ind]
@@ -122,7 +129,8 @@ type
     score*: int
     respawns*: uint
     hourglass*: float
-    level*: int32
+    level_number*: int32
+    level*: Level
     player*: Player
     proj*: Mat4f
     view*: Matrix
@@ -140,7 +148,7 @@ type
 proc newGame*: Game =
   Game(
     state: ATTRACT,
-    level: 1,
+    level_number: 1,
     player: Player(),
     light: newLight(
       pos            = vec3f( 0, 200, 200 ),
