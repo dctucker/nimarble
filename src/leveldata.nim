@@ -2,6 +2,7 @@ import glm
 import sequtils
 import strutils
 import std/tables
+import std/algorithm
 
 import wrapper
 import types
@@ -74,10 +75,21 @@ proc find_actors*(level: var Level) =
     for ac in level.actors:
       if ac ~= actor:
         return true
-
   for actor in find_actors(level.data, level.mask, level.width, level.height):
     if not level.has_actor(actor):
       level.actors.add actor
+
+iterator by_area(w,h: int): Vec2i =
+  proc cmp(v1, v2: Vec3i): int = cmp(v1.y, v2.y)
+  var points = newSeqOfCap[Vec3i](w*h)
+  for i in 0 ..< h:
+    for j in 0 ..< w:
+      var area = (i+1)*(j+1)
+      points.add vec3i( j.int32, area.int32, i.int32 )
+  points.sort(cmp)
+  for point in points:
+    yield vec2i(point.x, point.z)
+
 
 proc find_fixtures(data: seq[float], mask: seq[CliffMask], w,h: int): seq[Fixture] =
   for i in 0..<h:
@@ -305,6 +317,32 @@ proc find_closest*(level: Level, mask: CliffMask, x, z: float): Vec3f =
 
     i += di
     j += dj
+
+proc find_phase_blocks(level: Level): seq[Vec2i] =
+  var blocks: seq[Vec2i] = @[]
+  proc is_consumed(x,z: int32): bool =
+    return vec2i(x, z) in blocks
+
+  proc search_forward(sx,sz: int): Vec2i =
+    for point in by_area(5,5):
+      result = vec2i( int32 sx + 1 + point.x, int32 sz + 1 + point.z )
+      let mask = level.mask_at( result.x.float, result.z.float )
+      if mask == PH:
+        return
+    result = vec2i(0,0)
+
+  for z in -level.origin.z ..< level.height - level.origin.z:
+    for x in -level.origin.x ..< level.width - level.origin.x:
+      if is_consumed(x.int32, z.int32): continue
+      if level.mask_at(x.float, z.float) != PH: continue
+
+      # found start phase block
+      let found = search_forward(x.int, z.int)
+      if found.x == 0 and found.y == 0: continue
+
+      # found end phase block
+  result = blocks
+
 
 proc cliff_color(level: Level, mask: CliffMask): Vec4f =
   case mask:

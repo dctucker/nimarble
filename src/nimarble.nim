@@ -405,14 +405,16 @@ proc main =
 
     if game.player.animate(t): return
 
-    # figure out if we're in mortal danger
-    game.player.dead = mesh.pos.y < 10f or (mesh.acc.xz.length == 0f and mesh.vel.y <= -max_vel.y)
-    for actor in level.actors.mitems:
-      if actor.kind == EA:
-        if (actor.mesh.pos - game.player.mesh.pos).length < 1f:
-          actor.mesh.pos = game.player.mesh.pos
-          game.player.animate Dissolve, t + 1f
-          return
+
+    if not god():
+      # figure out if we're in mortal danger
+      game.player.dead = mesh.pos.y < 10f or (mesh.acc.xz.length == 0f and mesh.vel.y <= -max_vel.y)
+      for actor in level.actors.mitems:
+        if actor.kind == EA:
+          if (actor.mesh.pos - game.player.mesh.pos).length < 1f:
+            actor.mesh.pos = game.player.mesh.pos
+            game.player.animate Dissolve, t + 1f
+            return
 
     let ramp = level.slope(x,z) * level_squash * level_squash
     let thx = arctan(ramp.x)
