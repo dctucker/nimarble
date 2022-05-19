@@ -340,6 +340,11 @@ proc imgui_frame =
   igRender()
   igOpenGL3RenderDrawData(igGetDrawData())
 
+  if app.selected_level != 0:
+    game.level = app.selected_level.int32
+    game.set_level()
+    app.selected_level = 0
+
 proc cleanup(w: GLFWWindow) {.inline.} =
   w.destroyWindow
   glfwTerminate()

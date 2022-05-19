@@ -194,6 +194,7 @@ type
     show_keymap*       : bool
     show_joystick*     : bool
     show_metrics*      : bool
+    selected_level*    : int
 
 proc data*(editor: Editor): var seq[float]     = editor.level.data
 proc mask*(editor: Editor): var seq[CliffMask] = editor.level.mask

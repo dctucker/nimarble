@@ -286,12 +286,13 @@ proc main_menu*(app: Application) =
   assert igGetCurrentContext() != nil
   if igBeginMainMenuBar():
     if igBeginMenu("Level"):
-      igMenuItem("1")
-      igMenuItem("2")
-      igMenuItem("3")
-      igMenuItem("4")
-      igMenuItem("5")
-      igMenuItem("6")
+      if igMenuItem("0"): app.selected_level = 1
+      if igMenuItem("1"): app.selected_level = 2
+      if igMenuItem("2"): app.selected_level = 3
+      if igMenuItem("3"): app.selected_level = 4
+      if igMenuItem("4"): app.selected_level = 5
+      if igMenuItem("5"): app.selected_level = 6
+      if igMenuItem("6"): app.selected_level = 7
       igEndMenu()
     if igBeginMenu("Windows"):
       igMenuItem "Player"      , nil, app.show_player.addr

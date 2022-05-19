@@ -161,11 +161,14 @@ proc set_mask(editor: var Editor, mask: CliffMask) =
     if   mask == II: m = OI
   elif cur == P1:
     if   mask == P1: m = P2
-    if   mask == HH: m = PH
+  elif cur == P2:
+    if   mask == P1: m = P3
+  elif cur == P3:
+    if   mask == P1: m = P4
   elif cur == GG:
     if   mask == RH: m = GR
-  elif cur == SD:
-    if   mask == SD: m = SW
+  elif cur == S1:
+    if   mask == S1: m = S2
   elif mask.cliff():
     if cur == II and mask == NS:
         m = IN
@@ -185,6 +188,7 @@ action:
     of GLFWKey.A : AA
     of GLFWKey.B : BH
     of GLFWKey.C : IC
+    of GLFWKey.D : SD
     of GLFWKey.F : FL
     of GLFWKey.G : GG
     of GLFWKey.H : HH
@@ -196,10 +200,11 @@ action:
     of GLFWKey.O : OU
     of GLFWKey.P : P1
     of GLFWKey.R : RH
-    of GLFWKey.S : SD
+    of GLFWKey.S : S1
     of GLFWKey.T : TU
     of GLFWKey.U : CU
     of GLFWKey.V : VV
+    of GLFWKey.W : SW
     of GLFWKey.X : XX
     of GLFWKey.Y : EY
     else: return
@@ -349,6 +354,19 @@ proc select_more(editor: var Editor, drow, dcol: int) =
     if i > sel.z: editor.selection.z = i.int32
 
 action:
+  proc select_all*(editor: var Editor) =
+    editor.brush = false
+    let (x,y) = editor.level.find_first()
+    let (z,w) = editor.level.find_last()
+    editor.selection.x = x.int32 - 1
+    editor.selection.y = y.int32 - 1
+    editor.selection.z = z.int32 + 1
+    editor.selection.w = w.int32 + 1
+
+  proc select_none*(editor: var Editor) =
+    editor.brush = false
+    editor.select_one()
+
   proc toggle_brush*(editor: var Editor) =
     editor.brush = not editor.brush
     if editor.has_selection() and not editor.cursor_in_selection():
@@ -579,12 +597,14 @@ action:
   proc cursor_diag_right(editor: var Editor) = editor.cursor(-1,+1)
 
 let editor_keymap_command* = {
+  GLFWKey.Y          : redo              ,
+  GLFWKey.A          : select_all        ,
+  GLFWKey.D          : select_none       ,
+  GLFWKey.S          : do_save           ,
   GLFWKey.Z          : undo              ,
   GLFWKey.X          : do_cut            ,
   GLFWKey.C          : do_copy           ,
   GLFWKey.V          : do_paste          ,
-  GLFWKey.Y          : redo              ,
-  GLFWKey.S          : do_save           ,
 }.toOrderedTable
 
 let editor_keymap_shift* = {
@@ -752,50 +772,6 @@ proc draw*(editor: Editor) =
       color.value = ImVec4(x: 0.0, y: 0.0, z: 0.0, w: 0.0)
     igTextColored(color.value, text)
 
-  #[
-  const mask_chars = {
-    LL: "⇐",
-    AA: "⇑",
-    JJ: "⇒",
-    VV: "⇓",
-    HH: "⇔",
-    II: "⇕",
-  }.toTable
-  ]#
-  #[
-    LA: "←↑"
-    LL: "←←"
-    LV: "←↓"
-    VV: "↓↓"
-    VJ: "↓→"
-    JJ: "→→"
-    AJ: "↑→"
-    AA: "↑↑"
-    HH: "←→"
-    II: "↕↕"
-    IH: "↕↔"
-    AH: "↑↔"
-    VH: "↓↔"
-    IL: "←↕"
-    IJ: "↕→"
-  ]#
-  const mask_chars = {
-    AA: "▀▀",
-    VV: "▄▄",
-    LL: "▌ ",
-    JJ: " ▐",
-    LA: "▛▀",
-    AJ: "▀▜",
-    LV: "▙▄",
-    VJ: "▄▟",
-    HH: "▌▐",
-    AH: "▛▜",
-    VH: "▙▟",
-    II: "■■",
-    IL: "█■",
-    IJ: "■█",
-    IH: "██",
-  }.toTable
   proc draw_mask_cell(m: CliffMask, enabled: bool = true) =
     var txt = if m.cliff():
       mask_chars[m] #mask_chars[($m)[0]] & mask_chars[($m)[1]]

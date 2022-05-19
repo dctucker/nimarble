@@ -1,3 +1,4 @@
+import std/tables
 import macros
 
 macro cliff_masks(body: untyped): untyped =
@@ -54,9 +55,12 @@ cliff_masks:
   BH      "bumpy horizontal"
   BI      "bumpy vertical"
   SW      "sine wave"
-  PH      "phased blocks"
-  P1      "player 1 start position"
-  P2      "player 2 start position"
+  P1      "phased block 1"
+  P2      "phased block 2"
+  P3      "phased block 3"
+  P4      "phased block 4"
+  S1      "player 1 start position"
+  S2      "player 2 start position"
   EA      "entity: acid"
   EM      "entity: marble"
   EV      "entity: vacuum"
@@ -64,6 +68,51 @@ cliff_masks:
   EH      "entity: hammer"
   EB      "entity: bird"
   EY      "entity: yum"
+
+#[
+const mask_chars = {
+  LL: "⇐",
+  AA: "⇑",
+  JJ: "⇒",
+  VV: "⇓",
+  HH: "⇔",
+  II: "⇕",
+}.toTable
+]#
+#[
+  LA: "←↑"
+  LL: "←←"
+  LV: "←↓"
+  VV: "↓↓"
+  VJ: "↓→"
+  JJ: "→→"
+  AJ: "↑→"
+  AA: "↑↑"
+  HH: "←→"
+  II: "↕↕"
+  IH: "↕↔"
+  AH: "↑↔"
+  VH: "↓↔"
+  IL: "←↕"
+  IJ: "↕→"
+]#
+const mask_chars* = {
+  AA: "▀▀",
+  VV: "▄▄",
+  LL: "▌ ",
+  JJ: " ▐",
+  LA: "▛▀",
+  AJ: "▀▜",
+  LV: "▙▄",
+  VJ: "▄▟",
+  HH: "▌▐",
+  AH: "▛▜",
+  VH: "▙▟",
+  II: "■■",
+  IL: "█■",
+  IJ: "■█",
+  IH: "██",
+}.toTable
 
 proc name*(mask: CliffMask): string =
   return cliff_mask_names[mask.ord]

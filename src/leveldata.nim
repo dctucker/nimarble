@@ -14,6 +14,8 @@ import assets
 const EE = 0
 const sky* = 200f
 
+proc find_phase_blocks*(level: Level): seq[Vec4i]
+
 proc flatten[T](input: seq[seq[T]]): seq[T] =
   for row in input:
     for value in row:
@@ -49,10 +51,10 @@ proc tsv_masks(line: string): seq[CliffMask] =
     result = parse_mask(s)
   )
 
-proc find_p1(data: seq[float], mask: seq[CliffMask], w,h: int): Vec3i =
+proc find_s1(data: seq[float], mask: seq[CliffMask], w,h: int): Vec3i =
   for i in 0..<h:
     for j in 0..<w:
-      if mask[i*w+j] == P1:
+      if mask[i*w+j] == S1:
         return Vec3i(arr: [j.int32, data[i*w+j].int32, i.int32])
 
 proc find_actors(data: seq[float], mask: seq[CliffMask], w,h: int): seq[Actor] =
@@ -78,17 +80,6 @@ proc find_actors*(level: var Level) =
   for actor in find_actors(level.data, level.mask, level.width, level.height):
     if not level.has_actor(actor):
       level.actors.add actor
-
-iterator by_area(w,h: int): Vec2i =
-  proc cmp(v1, v2: Vec3i): int = cmp(v1.y, v2.y)
-  var points = newSeqOfCap[Vec3i](w*h)
-  for i in 0 ..< h:
-    for j in 0 ..< w:
-      var area = (i+1)*(j+1)
-      points.add vec3i( j.int32, area.int32, i.int32 )
-  points.sort(cmp)
-  for point in points:
-    yield vec2i(point.x, point.z)
 
 
 proc find_fixtures(data: seq[float], mask: seq[CliffMask], w,h: int): seq[Fixture] =
@@ -150,14 +141,44 @@ proc validate(level: Level): bool =
           mask.unsloped()
 
 proc find_span(level: Level): int =
-  for i in 0..<level.height:
-    for j in 0..<level.width:
+  for j in 0..<level.width:
+    for i in 0..<level.height:
       if level.data[ level.offset(i,j) ] != 0:
         result = max(result, j - i)
 
-proc init_level(name, data_src, mask_src: string, color: Vec3f): Level =
-  var i,j: int
+proc find_first*(level: Level): (int,int) =
+  var ii, jj: int
+  for i in 0..<level.height:
+    for j in 0..<level.width:
+      if level.data[i*level.width + j] != 0:
+        ii = i
+        break
+    if ii > 0: break
+  for j in 0..<level.width:
+    for i in 0..<level.height:
+      if level.data[i*level.width + j] != 0:
+        jj = j
+    if jj > 0: break
+  echo "first = ", ii, ",", jj
+  return (ii,jj)
 
+proc find_last*(level: Level): (int,int) =
+  var ii, jj: int
+  for i in countdown(level.height - 1, 0):
+    for j in countdown(level.width - 1, 0):
+      if level.data[i*level.width + j] != 0:
+        ii = i
+    if ii > 0: break
+  for j in countdown(level.width - 1, 0):
+    for i in countdown(level.height - 1, 0):
+      if level.data[i*level.width + j] != 0:
+        jj = j
+    if jj > 0: break
+  echo "last = ", ii, ",", jj
+  return (ii,jj)
+
+
+proc init_level(name, data_src, mask_src: string, color: Vec3f): Level =
   let source_lines = data_src.splitLines().filter(proc(line:string): bool = return line.len > 0)
   let data = source_lines.map(tsv_floats).flatten()
   let mask = mask_src.splitLines.map(tsv_masks).flatten()
@@ -172,10 +193,11 @@ proc init_level(name, data_src, mask_src: string, color: Vec3f): Level =
     color: color,
   )
   discard result.validate()
-  result.origin   = find_p1(data, mask, width, height)
+  result.origin   = find_s1(data, mask, width, height)
   result.actors   = find_actors(data, mask, width, height)
   result.fixtures = find_fixtures(data, mask, width, height)
   result.span     = result.find_span()
+  discard result.find_phase_blocks()
   echo "Level ", result.width, "x", result.height, " span ", result.span
 
 proc format(value: float): string =
@@ -318,31 +340,51 @@ proc find_closest*(level: Level, mask: CliffMask, x, z: float): Vec3f =
     i += di
     j += dj
 
-proc find_phase_blocks(level: Level): seq[Vec2i] =
-  var blocks: seq[Vec2i] = @[]
+iterator by_area(w,h: int): Vec2i =
+  proc cmp(v1, v2: Vec3i): int = cmp(v1.y, v2.y)
+  var points = newSeqOfCap[Vec3i](w*h)
+  for i in 0 ..< h:
+    for j in 0 ..< w:
+      var area = (i+1)*(j+1)
+      points.add vec3i( j.int32, area.int32, i.int32 )
+  points.sort(cmp)
+  for point in points:
+    yield vec2i(point.x, point.z)
+
+proc find_phase_blocks*(level: Level): seq[Vec4i] =
+  var consumed: seq[Vec2i] = @[]
+  var criteria: CliffMask
+  var first: Vec2i
+
   proc is_consumed(x,z: int32): bool =
-    return vec2i(x, z) in blocks
+    return vec2i(x, z) in consumed
 
   proc search_forward(sx,sz: int): Vec2i =
     for point in by_area(5,5):
-      result = vec2i( int32 sx + 1 + point.x, int32 sz + 1 + point.z )
-      let mask = level.mask_at( result.x.float, result.z.float )
-      if mask == PH:
+      result = vec2i( int32 sx + 1 + point.x, int32 sz + 1 + point.y )
+      let mask = level.mask_at( result.x.float, result.y.float )
+      if mask == criteria:
         return
     result = vec2i(0,0)
 
-  for z in -level.origin.z ..< level.height - level.origin.z:
-    for x in -level.origin.x ..< level.width - level.origin.x:
+  for x in -level.origin.x ..< level.width - level.origin.x:
+    for z in -level.origin.z ..< level.height - level.origin.z:
       if is_consumed(x.int32, z.int32): continue
-      if level.mask_at(x.float, z.float) != PH: continue
+      criteria = level.mask_at(x.float, z.float)
+      if not (criteria in {P1, P2, P3, P4}): continue
 
       # found start phase block
-      let found = search_forward(x.int, z.int)
-      if found.x == 0 and found.y == 0: continue
+      first = vec2i(x.int32, z.int32)
+      let last = search_forward(x.int, z.int)
+      if last.x == 0 and last.y == 0: continue
 
       # found end phase block
-  result = blocks
+      result.add vec4i( first.x, first.y, last.x, last.y )
+      consumed.add first
+      consumed.add last
 
+  for b in result:
+    echo cell_name(b.y + level.origin.z, b.x + level.origin.x), "..", cell_name(b.w + level.origin.z, b.z + level.origin.x)
 
 proc cliff_color(level: Level, mask: CliffMask): Vec4f =
   case mask:
@@ -361,10 +403,10 @@ proc mask_color(level: Level, mask: CliffMask): Vec4f =
     return vec4f( 1, 1, 1, 1 )
   of TU, IN, OU:
     return vec4f( level.color.x * 0.5, level.color.y * 0.5, level.color.z * 0.5, 1.0 )
-  #of P1: return vec4f( 0.0, 0.0, 0.5, 0.8 )
+  #of S1: return vec4f( 0.0, 0.0, 0.5, 0.8 )
   #of EM: return vec4f( 0.1, 0.1, 0.1, 1.0 )
   #of EY, EA: return vec4f( 0.4, 9.0, 0.0, 1.0 )
-  of PH:
+  of P1, P2, P3, P4:
     return vec4f( 0.2, 0.2, 0.2, 0.5 )
   of SW:
     return vec4f( 0.1, 0.6, 0.6, 1.0 )
