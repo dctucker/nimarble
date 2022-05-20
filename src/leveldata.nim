@@ -187,11 +187,10 @@ proc init_map(level: var Level) =
     for j in 0 ..< level.width:
       let o = i*level.width + j
       let mask = level.mask[o]
-      if mask != XX:
+      if mask notin {XX,P1,P2,P3,P4}:
         level.map[i,j].add mask
       level.map[i,j].height = level.data[o]
   for zone in level.zones:
-    # ugh
     for i in zone.rect.y .. zone.rect.w:
       for j in zone.rect.x .. zone.rect.z:
         level.map[i + level.origin.z, j + level.origin.x].masks.incl zone.kind
@@ -423,7 +422,7 @@ proc find_phase_blocks*(level: Level): seq[Zone] =
 
       # found end phase block
       result.add Zone(
-        rect: vec4i( first.x, first.y, last.x, last.y ),
+        rect: vec4i( first.x, first.y, last.x - 1, last.y - 1 ),
         kind: criteria,
       )
       consumed.add first
@@ -489,11 +488,9 @@ proc point_color(level: Level, i,j: int): Vec4f =
   let y = level.data[k]
   if y == EE: return
 
-  let zone = level.which_zone(i - level.origin.z, j - level.origin.x)
-  if zone.kind != XX:
-    #echo "zone ", $zone.kind, $zone.rect
-    return level.mask_color(zone.kind)
-
+  #let zone = level.which_zone(i - level.origin.z, j - level.origin.x)
+  #if zone.kind != XX:
+  #  return level.mask_color(zone.kind)
 
   if   level.around(IC, j.float - level.origin.x.float, i.float - level.origin.z.float):
     return vec4f( 0.0, 1.0, 1.0, 1.0)
