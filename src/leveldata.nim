@@ -320,6 +320,9 @@ let levels = @[
 ]
 let n_levels* = levels.len()
 
+proc xlat_coord*[T:Ordinal](level: Level, x,z: T): (int,int) =
+  return ((z+level.origin.z).int, (x+level.origin.x).int)
+
 proc xlat_coord*(level: Level, x,z: float): (int,int) =
   return ((z.floor+level.origin.z.float).int, (x.floor+level.origin.x.float).int)
 
@@ -644,6 +647,29 @@ proc update_vbos*(level: Level) =
   level.floor_plane.norm_vbo.update  level.floor_normals
 
 const floor_span = 48
+proc index_offset(level: Level, i,j: int): int =
+  result = (i-1) * floor_span + (j-7)
+  if result < 0: return 0
+
+proc phase_out_index(level: Level, zone: Zone) =
+  let (i1,j1) = level.xlat_coord(zone.rect.x, zone.rect.y)
+  let (i2,j2) = level.xlat_coord(zone.rect.z, zone.rect.w)
+  for i in i1 .. i2:
+    for j in j1 .. j2:
+      for n in cube_index.low .. cube_index.high:
+        let o = level.index_offset(i,j) * cube_index.len + n
+        level.floor_index[o] = 0
+
+proc phase_in_index(level: Level, zone: Zone) =
+  let (i1,j1) = level.xlat_coord(zone.rect.x, zone.rect.y)
+  let (i2,j2) = level.xlat_coord(zone.rect.z, zone.rect.w)
+  for i in i1 .. i2:
+    for j in j1 .. j2:
+      for n in cube_index.low .. cube_index.high:
+        let o = level.index_offset(i,j) * cube_index.len + n
+        level.floor_index[o] = o.Ind
+
+
 proc calculate_vbos*(level: Level, i,j: int) =
   let color_span  = 4 * cube_index.len
   let normal_span = 3 * cube_index.len
@@ -651,8 +677,8 @@ proc calculate_vbos*(level: Level, i,j: int) =
 
   if not level.has_coord(i,j): return
 
-  let o = (i-1) * floor_span + (j-7)
-  if o < 0: return
+  let o = level.index_offset(i,j) # (i-1) * floor_span + (j-7)
+  if o <= 0: return
   for n in cube_index.low .. cube_index.high:
     let p = level.cube_point(i, j, n)
     if p.empty: continue
@@ -869,10 +895,16 @@ proc tick*(level: var Level, t: float) =
     level.phase = phase
 
     for zone in level.zones:
-      if zone.kind notin {previous, level.phase}: continue
-      for z in zone.rect.y .. zone.rect.w:
-        for x in zone.rect.x .. zone.rect.z:
-          let (i,j) = level.xlat_coord(x.float, z.float)
-          level.apply_phase(i,j)
-  level.update_vbos()
+      if zone.kind == previous:
+        level.phase_in_index(zone)
+      if zone.kind == level.phase:
+        level.phase_out_index(zone)
+      #if zone.kind notin {previous, level.phase}: continue
+
+      #for z in zone.rect.y .. zone.rect.w:
+      #  for x in zone.rect.x .. zone.rect.z:
+      #    let (i,j) = level.xlat_coord(x.float, z.float)
+      #    level.apply_phase(i,j)
+  #level.floor_plane.vert_vbo.update  level.floor_verts
+  level.floor_plane.elem_vbo.update level.floor_index
 

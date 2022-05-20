@@ -23,6 +23,7 @@ type
   Zone* = ref object
     kind*: CliffMask
     rect*: Vec4i # e.g. vec4i( left, top, right, bottom )
+    index*: seq[Ind]
 
   LevelPoint* = object
     height*: float
