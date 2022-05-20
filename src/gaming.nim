@@ -401,3 +401,15 @@ proc physics*(game: Game, actor: var Actor, dt: float) =
   else:
     discard
 
+
+proc reaction(e: CliffMask): Animation =
+  case e
+  of EA: Dissolve
+  of EM: Shove
+  of EV: Consume
+  of EP: Launch
+  of EH: Shove
+  of EB: Explode
+  of EY: Consume
+  else: None
+

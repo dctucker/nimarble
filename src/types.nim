@@ -48,24 +48,23 @@ type
 
   Level* = ref object
     width*, height*, span*: int
-    origin*: Vec3i
-    clock*: float
-    phase*: CliffMask
-    color*: Vec3f
-    data*: seq[float]
-    mask*: seq[CliffMask]
-    map*: LevelMap
-    floor_lookup*: TableRef[(cfloat, cfloat, cfloat), Ind]
-    floor_colors*: seq[cfloat]
-    floor_index*: seq[Ind]
-    floor_verts*: seq[cfloat]
-    floor_normals*: seq[cfloat]
-    floor_plane*: Mesh
-    actors*: seq[Actor]
-    fixtures*: seq[Fixture]
-    zones*: seq[Zone]
-    name*: string
-    updates*: seq[LevelUpdate]
+    origin*        : Vec3i
+    clock*         : float
+    phase*         : CliffMask
+    color*         : Vec3f
+    data*          : seq[float]
+    mask*          : seq[CliffMask]
+    map*           : LevelMap
+    floor_colors*  : seq[cfloat]
+    floor_index*   : seq[Ind]
+    floor_verts*   : seq[cfloat]
+    floor_normals* : seq[cfloat]
+    floor_plane*   : Mesh
+    actors*       : seq[Actor]
+    fixtures*     : seq[Fixture]
+    zones*        : seq[Zone]
+    name*         : string
+    updates*      : seq[LevelUpdate]
 
 proc newLevelMap*(w,h: int): LevelMap =
   return LevelMap(
@@ -81,7 +80,7 @@ proc cliffs*(point: LevelPoint): CliffMask =
   for cliff in point.masks * CLIFFS:
     result += cliff
 
-proc `[]`*(map: var LevelMap, i,j: int): var LevelPoint =
+proc `[]`*[T:Ordinal](map: var LevelMap, i,j: T): var LevelPoint =
   let o = i * map.width + j
   if o < 0 or o >= map.points.len:
     return map.points[0]
@@ -140,11 +139,14 @@ type
 
   Animation* = enum
     None
-    Teleport
-    Broken
-    Dissolve
-    Eaten
     Respawn
+    Teleport
+    Break
+    Dissolve
+    Consume
+    Shove
+    Launch
+    Explode
 
   Player* = ref object
     mesh*: Mesh
@@ -156,7 +158,10 @@ type
 
 proc next*(ani: Animation): Animation =
   result = case ani
-    of Dissolve, Eaten: Respawn
+    of Dissolve,
+       Explode,
+       Break,
+       Consume   : Respawn
     else: Animation.None
 
 proc visible*(p: Player): bool =

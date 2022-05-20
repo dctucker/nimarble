@@ -219,7 +219,7 @@ proc init_level(name, data_src, mask_src: string, color: Vec3f): Level =
   result.init_map()
   echo "Level ", result.width, "x", result.height, " span ", result.span
 
-proc `[]=`*(level: Level, i,j: int, mask: CliffMask) =
+proc `[]=`*[T:Ordinal](level: Level, i,j: T, mask: CliffMask) =
   let o = level.offset(i,j)
   if o == 0: return
   let cur = level.mask[o]
@@ -227,7 +227,7 @@ proc `[]=`*(level: Level, i,j: int, mask: CliffMask) =
   level.map[i,j].masks.excl cur
   level.map[i,j].masks.excl mask
 
-proc `[]=`*(level: Level, i,j: int, value: float) =
+proc `[]=`*[T:Ordinal](level: Level, i,j: T, value: float) =
   let o = level.offset(i,j)
   if o == 0: return
   level.map[i,j].height = value
@@ -604,7 +604,8 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
     if   (y2 - y3) >= too_high: y2 = y3
     elif (y3 - y2) >= too_high: y3 = y2
     if   (y1 - y3) >= too_high: y1 = y3
-    if   (y3 - y1) >= too_high: y3 = y1
+    elif (y3 - y1) >= too_high: y3 = y1
+
     if   vert.z == 0 and vert.x == 0: y = y0
     elif vert.z == 0 and vert.x == 1: y = y1
     elif vert.z == 1 and vert.x == 0: y = y2
@@ -725,21 +726,14 @@ proc setup_floor(level: Level) =
     index.add nn
 
   proc add_point(x,y,z: cfloat, c: Vec4f) =
-    if lookup.hasKey((x,y,z)):
-      let nn = lookup[(x,y,z)]
-      index.add nn
-      #echo "n: ", nn
-    else:
-      verts.add x
-      verts.add y
-      verts.add z
+    verts.add x
+    verts.add y
+    verts.add z
 
-      # TODO: lookup is current unused, and complicates the update calculations
-      #lookup[(x,y,z)] = n
-      #echo "n: ", $n, ", x: ", $x, ", y: ", $y, ", z: ", $z
-      add_index()
-      colors.add_color c
-      #normals.add_normal normal
+    #echo "n: ", $n, ", x: ", $x, ", y: ", $y, ", z: ", $z
+    add_index()
+    colors.add_color c
+    #normals.add_normal normal
 
   for i in  1..<level.height - 1:
     for j in 1..<level.width - 1:
@@ -752,7 +746,6 @@ proc setup_floor(level: Level) =
         const margin = 0.98
         add_point point.pos.x, point.pos.y, point.pos.z, point.color
 
-  level.floor_lookup = lookup
   level.floor_colors = colors
   level.floor_verts = verts
   level.floor_index = index
@@ -900,21 +893,22 @@ proc tick*(level: var Level, t: float) =
   level.clock = t
   let phase = CliffMask(P1.ord + (level.clock.floor.int mod 4))
 
-  if level.phase != phase:
-    let previous = level.phase
-    level.phase = phase
+  if level.phase == phase: return
 
-    for zone in level.zones:
-      if zone.kind == previous:
-        level.phase_in_index(zone)
+  let previous = level.phase
+  level.phase = phase
 
-    if level.updates.len > 0:
-      for update in level.updates:
-        level.apply_update(update)
-      level.updates = @[]
+  for zone in level.zones:
+    if zone.kind == previous:
+      level.phase_in_index(zone)
 
-    for zone in level.zones:
-      if zone.kind == level.phase:
-        level.phase_out_index(zone)
+  if level.updates.len > 0:
+    for update in level.updates:
+      level.apply_update(update)
+    level.updates = @[]
 
-    level.floor_plane.elem_vbo.update level.floor_index # TODO update subset only for performance
+  for zone in level.zones:
+    if zone.kind == level.phase:
+      level.phase_out_index(zone)
+
+  level.floor_plane.elem_vbo.update level.floor_index # TODO update subset only for performance
