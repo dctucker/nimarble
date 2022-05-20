@@ -260,7 +260,7 @@ proc info_player =
       igSliderFloat  "clock"        , clock.addr, 0f, 1f
 
       var phase = game.level.phase.int32
-      igSliderInt    "phase"        , phase.addr, 0.int32, 100.int32
+      igSliderInt    "phase"        , phase.addr, P1.int32, P4.int32
 
       #igText("average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
     igEnd()

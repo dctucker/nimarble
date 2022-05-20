@@ -428,9 +428,9 @@ proc find_phase_blocks*(level: Level): seq[Zone] =
       consumed.add first
       consumed.add last
 
-  for z in result:
-    let b = z.rect
-    echo $z.kind, " ", cell_name(b.y + level.origin.z, b.x + level.origin.x), "..", cell_name(b.w + level.origin.z, b.z + level.origin.x)
+  #for z in result:
+  #  let b = z.rect
+  #  echo $z.kind, " ", cell_name(b.y + level.origin.z, b.x + level.origin.x), "..", cell_name(b.w + level.origin.z, b.z + level.origin.x)
 
 proc cliff_color(level: Level, mask: CliffMask): Vec4f =
   case mask:
@@ -783,12 +783,15 @@ proc wave_height*(level: Level, x,z: float): float =
   result = clamp( result, 0, max_height )
 
 proc floor_height*(level: Level, x,z: float): float =
+  let masks = level.masks_at(x,z)
   result = level.data_at(x,z)
-  if level.masks_at(x,z).has SW:
+  if masks.has SW:
     result += level.wave_height(x,z)
     #let (i,j) = level.xlat_coord(x,z)
     #if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return
     #level.floor_verts[4 * (i * level.width + j)] = result
+  elif (masks * {P1,P2,P3,P4}).has level.phase:
+    result = 0f
 
 proc surface_normal*(level: Level, x,z: float): Vec3f =
   let p0 = level.floor_height(x,z)
@@ -897,23 +900,20 @@ proc tick*(level: var Level, t: float) =
   let phase = CliffMask(P1.ord + (level.clock.floor.int mod 4))
 
   if level.phase != phase:
-    if level.updates.len > 0:
-      for update in level.updates:
-        level.apply_update(update)
-      level.updates = @[]
     let previous = level.phase
     level.phase = phase
 
     for zone in level.zones:
       if zone.kind == previous:
         level.phase_in_index(zone)
+
+    if level.updates.len > 0:
+      for update in level.updates:
+        level.apply_update(update)
+      level.updates = @[]
+
+    for zone in level.zones:
       if zone.kind == level.phase:
         level.phase_out_index(zone)
-      #if zone.kind notin {previous, level.phase}: continue
 
-      #for z in zone.rect.y .. zone.rect.w:
-      #  for x in zone.rect.x .. zone.rect.z:
-      #    let (i,j) = level.xlat_coord(x.float, z.float)
-      #    level.apply_phase(i,j)
-  #level.floor_plane.vert_vbo.update  level.floor_verts
-  level.floor_plane.elem_vbo.update level.floor_index
+    level.floor_plane.elem_vbo.update level.floor_index
