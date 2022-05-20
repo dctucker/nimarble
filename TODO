@@ -11,7 +11,7 @@ Should include level colors, reference decal textures.
 	Ensure minimal execution when single mask point is found.
 	
 	1. On-axis search; expect two coordinates to form a line.
-		Rails fixture uses linear
+		GR	Rails fixture uses linear
 	2. Grid search smallest area; expect two coordinates to form a rectangle.
 		- compute area for all possible points
 		- sort points by area
@@ -49,6 +49,4 @@ Should include level colors, reference decal textures.
 	EB	materialize from origin and fly in a straight line
 	EV	vacuum appears when in proximity, pulls player, disappears after a delay when distant
 	EP	pre-defined piston patterns in rhythm launch and repel player
-	PH	phase blocks in and out of the floor space, drop player when absent
-			needs to change to allow phase specificaton
 

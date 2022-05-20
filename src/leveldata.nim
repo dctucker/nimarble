@@ -639,6 +639,7 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   )
 
 proc update_vbos*(level: Level) =
+  # TODO update subset only for performance
   level.floor_plane.vert_vbo.update  level.floor_verts
   level.floor_plane.color_vbo.update level.floor_colors
   level.floor_plane.norm_vbo.update  level.floor_normals
@@ -916,4 +917,4 @@ proc tick*(level: var Level, t: float) =
       if zone.kind == level.phase:
         level.phase_out_index(zone)
 
-    level.floor_plane.elem_vbo.update level.floor_index
+    level.floor_plane.elem_vbo.update level.floor_index # TODO update subset only for performance

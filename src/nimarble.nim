@@ -233,6 +233,14 @@ proc info_player =
       #igSliderFloat3 "normal" , game.player.mesh.normal.arr, -1.0, 1.0
       igSliderFloat3 "respawn_pos" , game.player.respawn_pos.arr  , -sky, sky
 
+      var respawns = game.respawns.int32
+      igSliderInt    "respawns"     , respawns.addr, 0.int32, 10.int32
+
+      var anim_time = game.player.animation_time.float32
+      igSliderFloat    "player clock" , anim_time.addr, 0f, 1f
+      var anim = "player animation" & $game.player.animation
+      igText    anim.cstring
+
       igSpacing()
       igSeparator()
       igSpacing()
@@ -249,8 +257,6 @@ proc info_player =
       var sl = game.level.slope(coord.x, coord.z)
       igDragFloat3 "slope"     , sl.arr         , -sky, sky
 
-      var respawns = game.respawns.int32
-      igSliderInt    "respawns"     , respawns.addr, 0.int32, 10.int32
       igCheckBox     "following"    , game.following.addr
       igCheckBox     "wireframe"    , game.wireframe.addr
       igCheckBox     "god"          , game.god.addr

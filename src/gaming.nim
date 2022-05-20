@@ -367,7 +367,6 @@ proc animate*(player: var Player, t: float): bool =
     player.die("dissolving")
     player.mesh.pos.y -= 0.03125f
   of Respawn:
-    echo "respawning..."
     player.mesh.vel *= 0
     player.mesh.acc *= 0
     player.mesh.pos = player.respawn_pos

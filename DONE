@@ -6,3 +6,7 @@
 		- traverse sorted points in linear order
 			- if point contains expected mask, return point
 
+## Behaviors needed
+...
+	PH	phase blocks in and out of the floor space, drop player when absent
+			needs to change to allow phase specificaton
