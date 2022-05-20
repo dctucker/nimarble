@@ -145,3 +145,6 @@ proc rotate*(mask: CliffMask): CliffMask =
 proc hazard*(kind: CliffMask): bool =
   return EA <= kind and kind <= EY
 
+proc phase*(kind: CliffMask): bool =
+  return P1 <= kind and kind <= P4
+

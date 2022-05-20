@@ -177,7 +177,7 @@ proc find_last*(level: Level): (int,int) =
   echo "last = ", ii, ",", jj
   return (ii,jj)
 
-proc find_zones(level: Level): seq[Zone] =
+proc find_zones*(level: Level): seq[Zone] =
   let blocks = level.find_phase_blocks()
   for b in blocks:
     result.add b
@@ -883,11 +883,24 @@ proc get_level*(n: var int32): Level =
 proc apply_phase(level: Level, i,j: int) =
   level.calculate_vbos(i,j)
 
+proc queue_update*(level: Level, update: LevelUpdate) =
+  level.updates.add update
+
+proc apply_update(level: var Level, update: LevelUpdate) =
+  case update.kind
+  of Actors   : level.actors   = update.actors
+  of Fixtures : level.fixtures = update.fixtures
+  of Zones    : level.zones    = update.zones
+
 proc tick*(level: var Level, t: float) =
   level.clock = t
   let phase = CliffMask(P1.ord + (level.clock.floor.int mod 4))
 
   if level.phase != phase:
+    if level.updates.len > 0:
+      for update in level.updates:
+        level.apply_update(update)
+      level.updates = @[]
     let previous = level.phase
     level.phase = phase
 
@@ -904,4 +917,3 @@ proc tick*(level: var Level, t: float) =
       #    level.apply_phase(i,j)
   #level.floor_plane.vert_vbo.update  level.floor_verts
   level.floor_plane.elem_vbo.update level.floor_index
-

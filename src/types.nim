@@ -34,6 +34,18 @@ type
     width*: int
     height*: int
 
+  UpdateKind* = enum
+    Actors
+    Zones
+    Fixtures
+
+  LevelUpdate* = ref object
+    case kind*: UpdateKind
+    of Actors   : actors*   : seq[Actor]
+    of Zones    : zones*    : seq[Zone]
+    of Fixtures : fixtures* : seq[Fixture]
+
+
   Level* = ref object
     width*, height*, span*: int
     origin*: Vec3i
@@ -53,6 +65,7 @@ type
     fixtures*: seq[Fixture]
     zones*: seq[Zone]
     name*: string
+    updates*: seq[LevelUpdate]
 
 proc newLevelMap*(w,h: int): LevelMap =
   return LevelMap(

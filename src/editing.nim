@@ -180,8 +180,11 @@ proc set_mask(editor: var Editor, mask: CliffMask) =
 
   editor.level[editor.row, editor.col] = m
   editor.dirty = true
+
+  if m.phase or cur.phase:
+    editor.level.queue_update LevelUpdate(kind: Zones, zones: editor.level.find_zones())
   #if m.hazard:
-  #  editor.level.find_actors()
+  #  editor.level.queue_update LevelUpdate(kind: Actors, actors: editor.level.find_actors())
 
 action:
   proc input_mask(editor: var Editor) =
