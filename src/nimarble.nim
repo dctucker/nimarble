@@ -426,7 +426,11 @@ proc main =
 
     if not god():
       # figure out if we're in mortal danger
-      game.player.dead = mesh.pos.y < 10f or (mesh.acc.xz.length == 0f and mesh.vel.y <= -max_vel.y)
+      if mesh.pos.y < 10f:
+        game.player.die "fell off"
+      if mesh.acc.xz.length == 0f and mesh.vel.y <= -max_vel.y:
+        game.player.die "terminal velocity"
+
       for actor in level.actors.mitems:
         if actor.kind == EA:
           if (actor.mesh.pos - game.player.mesh.pos).length < 1f:
@@ -468,7 +472,7 @@ proc main =
     let flat = ramp.length == 0
     let nonzero = level.point_height(x.floor, z.floor) > 0f
 
-    safe = flat and nonzero and cur_masks.has XX
+    safe = flat and nonzero
     safe = safe and not icy and not copper
     safe = safe and game.safe
     if safe:
@@ -485,7 +489,8 @@ proc main =
 
     mesh.acc *= 0
     mesh.acc += mass * vec3f(m.x, 0, -m.y) * traction  # mouse motion
-    mesh.acc += vec3f(0, (1f-traction) * gravity, 0)   # free fall
+    if not sandy and not oily:
+      mesh.acc += vec3f(0, (1f-traction) * gravity, 0)   # free fall
     mesh.acc += ramp_a * traction
 
     if god(): mesh.acc.y = gravity * 0.125
@@ -519,7 +524,7 @@ proc main =
 
     const brake = 0.986
     if not icy and not copper and not oily:
-      mesh.vel  *= brake
+      mesh.vel *= brake
 
     mouse *= 0
 
@@ -532,12 +537,15 @@ proc main =
       let dest = level.find_closest(OU, x, z)
       if dest.length != 0:
         game.player.teleport_dest = dest
-        game.player.animation_time = t + 1.2f
-        game.player.animation = Teleport
+        game.player.animate(Teleport, t + 1.2f)
+        game.player.mesh.vel *= 0
+        game.player.mesh.acc *= 0
         game.player.mesh.pos = game.player.teleport_dest
-        #game.player.respawn_pos = game.player.mesh.pos
+        game.player.respawn_pos = game.player.teleport_dest
 
     if game.player.dead:
+      echo "ur ded"
+      game.player.dead = false
       game.player.animate(Respawn, t + 1f)
       game.respawns += 1
 
