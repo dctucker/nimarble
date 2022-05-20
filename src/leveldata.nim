@@ -531,6 +531,12 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   var y2 = level.map[i+1, j+0].height
   var y3 = level.map[i+1, j+1].height
 
+  if level.map[i,j].masks.has level.phase:
+    y0 = 0
+    y1 = 0
+    y2 = 0
+    y3 = 0
+
   const margin = 0.98
   let x = (j - level.origin.x).float + vert.x.float * margin
   let z = (i - level.origin.z).float + vert.z.float * margin
@@ -849,4 +855,24 @@ proc get_level*(n: var int32): Level =
   while n < 1:
     inc n
   return levels[n]
+
+
+proc apply_phase(level: Level, i,j: int) =
+  level.calculate_vbos(i,j)
+
+proc tick*(level: var Level, t: float) =
+  level.clock = t
+  let phase = CliffMask(P1.ord + (level.clock.floor.int mod 4))
+
+  if level.phase != phase:
+    let previous = level.phase
+    level.phase = phase
+
+    for zone in level.zones:
+      if zone.kind notin {previous, level.phase}: continue
+      for z in zone.rect.y .. zone.rect.w:
+        for x in zone.rect.x .. zone.rect.z:
+          let (i,j) = level.xlat_coord(x.float, z.float)
+          level.apply_phase(i,j)
+  level.update_vbos()
 

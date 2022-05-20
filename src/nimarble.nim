@@ -256,6 +256,12 @@ proc info_player =
       igCheckBox     "god"          , game.god.addr
       igSliderInt    "level #"      , game.level_number.addr, 1.int32, n_levels.int32 - 1
 
+      var clock = game.level.clock.float32
+      igSliderFloat  "clock"        , clock.addr, 0f, 1f
+
+      var phase = game.level.phase.int32
+      igSliderInt    "phase"        , phase.addr, 0.int32, 100.int32
+
       #igText("average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
     igEnd()
 
@@ -399,8 +405,7 @@ proc main =
     const max_vel = vec3f( 15f, -gravity * 0.5f, 15f )
     let level = game.level
     if not game.goal:
-      level.clock += 1
-      level.clock = level.clock mod 3600
+      game.level.tick(t)
     let coord = mesh.pos.rotate_coord
     let x = coord.x
     let z = coord.z

@@ -22,7 +22,7 @@ type
 
   Zone* = ref object
     kind*: CliffMask
-    rect*: Vec4i # e.g. vec4i( first.x, first.y, last.x, last.y )
+    rect*: Vec4i # e.g. vec4i( left, top, right, bottom )
 
   LevelPoint* = object
     height*: float
@@ -36,7 +36,8 @@ type
   Level* = ref object
     width*, height*, span*: int
     origin*: Vec3i
-    clock*: int
+    clock*: float
+    phase*: CliffMask
     color*: Vec3f
     data*: seq[float]
     mask*: seq[CliffMask]

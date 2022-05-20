@@ -255,6 +255,7 @@ proc info_window*(mask: CliffMask) =
   igEnd()
 
 proc info_window*(joystick: var Joystick) =
+  # TODO refactor this to use Gamepad API
   if igBegin("joystick"):
     let size = ImVec2(x: 16, y: 64)
     igSliderFloat  "left thumb x"  ,        joystick.left_thumb.x.addr  , -1,  1
