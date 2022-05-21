@@ -134,6 +134,7 @@ proc find_actors(data: seq[float], mask: seq[CliffMask], w,h: int): seq[Actor] =
 proc `~=`(a1, a2: Actor): bool =
   return a1.kind == a2.kind and a1.origin == a2.origin
 
+# TODO refactor this to use HashSet, search masks_at rather than mask[o]
 proc find_actors*(level: var Level) =
   proc has_actor(level: Level, actor: Actor): bool =
     result = false
@@ -166,7 +167,6 @@ iterator by_area(w,h: int): Vec2i =
   points.sort(cmp)
   for point in points:
     yield vec2i(point.x, point.z)
-
 
 proc find_zones*(level: Level, masks: set[CliffMask]): ZoneSet =
   var consumed: seq[Vec2i] = @[]
@@ -205,8 +205,8 @@ proc find_zones*(level: Level, masks: set[CliffMask]): ZoneSet =
       consumed.add last
 
 proc find_zones*(level: Level): ZoneSet =
-  result.incl level.find_zones({P1,P2,P3,P4})
-  result.incl level.find_zones({EP})
+  result.incl level.find_zones {P1,P2,P3,P4}
+  result.incl level.find_zones {EP}
 
 
 proc column_letter(j: int): string =
@@ -649,23 +649,24 @@ proc index_offset(level: Level, i,j: int): int =
   result = (i-1) * floor_span + (j-7)
   if result < 0: return 0
 
-proc phase_out_index(level: Level, zone: Zone) =
+iterator coords(level: Level, zone: Zone): (int, int) =
   let (i1,j1) = level.xlat_coord(zone.rect.x, zone.rect.y)
   let (i2,j2) = level.xlat_coord(zone.rect.z, zone.rect.w)
   for i in i1 .. i2:
     for j in j1 .. j2:
-      for n in cube_index.low .. cube_index.high:
-        let o = level.index_offset(i,j) * cube_index.len + n
-        level.floor_index[o] = 0
+      yield (i,j)
+
+proc phase_out_index(level: Level, zone: Zone) =
+  for i,j in level.coords(zone):
+    for n in cube_index.low .. cube_index.high:
+      let o = level.index_offset(i,j) * cube_index.len + n
+      level.floor_index[o] = 0
 
 proc phase_in_index(level: Level, zone: Zone) =
-  let (i1,j1) = level.xlat_coord(zone.rect.x, zone.rect.y)
-  let (i2,j2) = level.xlat_coord(zone.rect.z, zone.rect.w)
-  for i in i1 .. i2:
-    for j in j1 .. j2:
-      for n in cube_index.low .. cube_index.high:
-        let o = level.index_offset(i,j) * cube_index.len + n
-        level.floor_index[o] = o.Ind
+  for i,j in level.coords(zone):
+    for n in cube_index.low .. cube_index.high:
+      let o = level.index_offset(i,j) * cube_index.len + n
+      level.floor_index[o] = o.Ind
 
 
 proc calculate_vbos*(level: Level, i,j: int) =
@@ -898,8 +899,13 @@ proc apply_update(level: var Level, update: LevelUpdate) =
   of Fixtures : level.fixtures.update update.fixtures
   of Zones    : level.zones.update    update.zones
 
-proc tick*(level: var Level, t: float) =
-  level.clock = t
+proc process_updates(level: var Level) =
+  if level.updates.len > 0:
+    for update in level.updates:
+      level.apply_update(update)
+    level.updates = @[]
+
+proc do_phase_zones(level: var Level) =
   let phase = CliffMask(P1.ord + (level.clock.floor.int mod 4))
 
   if level.phase == phase: return
@@ -911,13 +917,24 @@ proc tick*(level: var Level, t: float) =
     if zone.kind == previous:
       level.phase_in_index(zone)
 
-  if level.updates.len > 0:
-    for update in level.updates:
-      level.apply_update(update)
-    level.updates = @[]
+  level.process_updates()
 
   for zone in level.zones:
     if zone.kind == level.phase:
       level.phase_out_index(zone)
 
   level.floor_plane.elem_vbo.update level.floor_index # TODO update subset only for performance
+
+proc do_pistons*(zone: Zone, t: float) =
+  zone.clock = t
+  if zone.clock.int mod 2 == 0:
+    discard
+
+
+proc tick*(level: var Level, t: float) =
+  level.clock = t
+  level.do_phase_zones()
+  for zone in level.zones:
+    if zone.kind != EP: continue
+    zone.do_pistons(t)
+
