@@ -47,7 +47,7 @@ type
 
   LevelUpdate* = ref object
     case kind*: UpdateKind
-    of Actors   : actors*   : seq[Actor]
+    of Actors   : actors*   : ActorSet
     of Fixtures : fixtures* : seq[Fixture]
     of Zones    : zones*    : ZoneSet
 
@@ -66,7 +66,7 @@ type
     floor_verts*   : seq[cfloat]
     floor_normals* : seq[cfloat]
     floor_plane*   : Mesh
-    actors*       : seq[Actor]
+    actors*       : ActorSet
     fixtures*     : seq[Fixture]
     zones*        : ZoneSet
     name*         : string

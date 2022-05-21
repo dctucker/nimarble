@@ -7,7 +7,7 @@ import nimgl/imgui
 import nimgl/imgui/[impl_opengl, impl_glfw]
 #import zippy
 from scene import Camera, Light, pos, vel, acc
-from types import Application, Joystick, JoyButtons, Actor, Fixture
+from types import Application, Joystick, JoyButtons, Actor, ActorSet, Fixture
 from leveldata import sky
 import masks
 import assets
@@ -214,7 +214,7 @@ proc info_window*(light: var Light): bool =
   igEnd()
   result = dirty
 
-proc info_window*(actors: seq[Actor]) =
+proc info_window*(actors: ActorSet) =
   #igSetNextWindowPos(ImVec2(x:500, y:5))
   igBegin("actors")
   if actors.len > 0:

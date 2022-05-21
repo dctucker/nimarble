@@ -1,6 +1,7 @@
 import glm
 import sequtils
 import strutils
+import std/math
 import std/sets
 import std/tables
 import std/algorithm
@@ -132,7 +133,7 @@ proc find_s1(data: seq[float], mask: seq[CliffMask], w,h: int): Vec3i =
       if mask[i*w+j] == S1:
         return Vec3i(arr: [j.int32, data[i*w+j].int32, i.int32])
 
-#proc find_actors(data: seq[float], mask: seq[CliffMask], w,h: int): seq[Actor] =
+#proc find_actors(data: seq[float], mask: seq[CliffMask], w,h: int): ActorSet
 #  for i in 0..<h:
 #    for j in 0..<w:
 #      let o = i * w + j
@@ -937,16 +938,32 @@ proc do_phase_zones(level: var Level) =
 
   level.floor_plane.elem_vbo.update level.floor_index # TODO update subset only for performance
 
-proc do_pistons*(zone: Zone, t: float) =
-  zone.clock = t
-  if zone.clock.int mod 2 == 0:
+proc do_pistons*(level: Level, zone: Zone, t: float) =
+  zone.clock = t * 4
+
+  let phase = zone.clock - zone.clock.int.float
+
+  # TODO coordinate piston timing behavior across zone
+  case zone.clock.int mod 7
+  of 0:
     for i,j in level.coords(zone):
-      discard
+      for actor in level.actors:
+        if actor.kind != EP: continue
+        if actor.origin.x != j or actor.origin.z != i: continue
+        actor.mesh.scale = vec3f(1, 4 * phase,1)
+  of 1:
+    for i,j in level.coords(zone):
+      for actor in level.actors:
+        if actor.kind != EP: continue
+        if actor.origin.x != j or actor.origin.z != i: continue
+        actor.mesh.scale = vec3f(1, 4 * (1-phase),1)
+  else:
+    discard
 
 proc tick*(level: var Level, t: float) =
   level.clock = t
   level.do_phase_zones()
   for zone in level.zones:
     if zone.kind != EP: continue
-    zone.do_pistons(t)
+    level.do_pistons(zone, t)
 
