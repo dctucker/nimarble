@@ -65,6 +65,18 @@ proc has_coord*[T](level: Level, i,j: T): bool =
            j >= i            and
            j - i <= level.span
 
+iterator coords(level: Level): (int, int) =
+  for i in 0 ..< level.height:
+    for j in 0 ..< level.width:
+      yield (i,j)
+iterator coords(level: Level, zone: Zone): (int, int) =
+  let (i1,j1) = level.xlat_coord(zone.rect.x, zone.rect.y)
+  let (i2,j2) = level.xlat_coord(zone.rect.z, zone.rect.w)
+  for i in i1 .. i2:
+    for j in j1 .. j2:
+      yield (i,j)
+
+
 proc data_at(level: Level, x,z: float): float =
   let (i,j) = level.xlat_coord(x,z)
   if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return EE.float
@@ -120,31 +132,37 @@ proc find_s1(data: seq[float], mask: seq[CliffMask], w,h: int): Vec3i =
       if mask[i*w+j] == S1:
         return Vec3i(arr: [j.int32, data[i*w+j].int32, i.int32])
 
-proc find_actors(data: seq[float], mask: seq[CliffMask], w,h: int): seq[Actor] =
-  for i in 0..<h:
-    for j in 0..<w:
-      let o = i * w + j
-      let mask = mask[o]
+#proc find_actors(data: seq[float], mask: seq[CliffMask], w,h: int): seq[Actor] =
+#  for i in 0..<h:
+#    for j in 0..<w:
+#      let o = i * w + j
+#      let mask = mask[o]
+#      if mask in {EY, EM, EA, EV, EP, EH}:
+#        result.add Actor(
+#          origin: vec3i( j.int32, data[o].int32, i.int32 ),
+#          kind: mask,
+#        )
+#
+#proc find_actors*(level: var Level) =
+#  proc has_actor(level: Level, actor: Actor): bool =
+#    result = false
+#    for ac in level.actors:
+#      if ac ~= actor:
+#        return true
+#  for actor in find_actors(level.data, level.mask, level.width, level.height):
+#    if not level.has_actor(actor):
+#      level.actors.add actor
+
+## TODO refactor this to use HashSet
+proc find_actors*(level: var Level): ActorSet =
+  for i,j in level.coords:
+    let height = level.map[i,j].height
+    for mask in level.map[i,j].masks:
       if mask in {EY, EM, EA, EV, EP, EH}:
         result.add Actor(
-          origin: vec3i( j.int32, data[o].int32, i.int32 ),
+          origin: vec3i( j.int32, height.int32, i.int32 ),
           kind: mask,
         )
-
-proc `~=`(a1, a2: Actor): bool =
-  return a1.kind == a2.kind and a1.origin == a2.origin
-
-# TODO refactor this to use HashSet, search masks_at rather than mask[o]
-proc find_actors*(level: var Level) =
-  proc has_actor(level: Level, actor: Actor): bool =
-    result = false
-    for ac in level.actors:
-      if ac ~= actor:
-        return true
-  for actor in find_actors(level.data, level.mask, level.width, level.height):
-    if not level.has_actor(actor):
-      level.actors.add actor
-
 
 proc find_fixtures(data: seq[float], mask: seq[CliffMask], w,h: int): seq[Fixture] =
   for i in 0..<h:
@@ -207,7 +225,6 @@ proc find_zones*(level: Level, masks: set[CliffMask]): ZoneSet =
 proc find_zones*(level: Level): ZoneSet =
   result.incl level.find_zones {P1,P2,P3,P4}
   result.incl level.find_zones {EP}
-
 
 proc column_letter(j: int): string =
   result = ""
@@ -298,8 +315,9 @@ proc init_map(level: var Level) =
     for j in 0 ..< level.width:
       let o = i*level.width + j
       let mask = level.mask[o]
-      if mask notin {XX,P1,P2,P3,P4}:
-        level.map[i,j].add mask
+      if mask != XX:
+        if not mask.zone():
+          level.map[i,j].add mask
       level.map[i,j].height = level.data[o]
   for zone in level.zones:
     for i in zone.rect.y .. zone.rect.w:
@@ -323,12 +341,13 @@ proc init_level(name, data_src, mask_src: string, color: Vec3f): Level =
   )
   discard result.validate()
   result.origin   = find_s1(data, mask, width, height)
-  result.actors   = find_actors(data, mask, width, height)
   result.fixtures = find_fixtures(data, mask, width, height)
   result.span     = result.find_span()
   result.zones    = result.find_zones()
   result.init_map()
+  result.actors   = result.find_actors()
   echo "Level ", result.width, "x", result.height, " span ", result.span
+  echo result.actors.len, " actors"
 
 proc `[]=`*[T:Ordinal](level: Level, i,j: T, mask: CliffMask) =
   let o = level.offset(i,j)
@@ -648,13 +667,6 @@ const floor_span = 48
 proc index_offset(level: Level, i,j: int): int =
   result = (i-1) * floor_span + (j-7)
   if result < 0: return 0
-
-iterator coords(level: Level, zone: Zone): (int, int) =
-  let (i1,j1) = level.xlat_coord(zone.rect.x, zone.rect.y)
-  let (i2,j2) = level.xlat_coord(zone.rect.z, zone.rect.w)
-  for i in i1 .. i2:
-    for j in j1 .. j2:
-      yield (i,j)
 
 proc phase_out_index(level: Level, zone: Zone) =
   for i,j in level.coords(zone):
