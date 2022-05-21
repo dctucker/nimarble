@@ -57,6 +57,7 @@ type
 
   Mesh* = ref object
     motion*: Motion
+    scale*: Vec3f
     rot*: Quatf
     vao*: VAO
     vert_vbo*, color_vbo*: VBO[cfloat]
@@ -75,6 +76,7 @@ proc reset*(mesh: var Mesh) =
   mesh.pos = vec3f(0f, 0f, 0f)
   mesh.vel = vec3f(0,0,0)
   mesh.acc = vec3f(0,0,0)
+  mesh.scale = vec3f(1,1,1)
   mesh.rot = quatf(vec3f(0,-1,0),0).normalize
   mesh.normal = vec3f(0,-1,0)
   #mesh.rvel = vec3f(0,0,0)

@@ -940,8 +940,8 @@ proc do_phase_zones(level: var Level) =
 proc do_pistons*(zone: Zone, t: float) =
   zone.clock = t
   if zone.clock.int mod 2 == 0:
-    discard
-
+    for i,j in level.coords(zone):
+      discard
 
 proc tick*(level: var Level, t: float) =
   level.clock = t

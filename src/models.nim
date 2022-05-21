@@ -255,28 +255,30 @@ proc cylinderTexCoords*(segments: int): seq[Vec2f] =
     result[2*(segments+1) + 1 + j] = vec2f(x,y)
     result[3*(segments+1) + 2 + j] = vec2f(x,y)
 
-proc cylinderColors*(segments: int): seq[Vec4f] =
+proc cylinderColors*(segments: int, color: Vec3f): seq[Vec4f] =
   result.newSeq((segments+1) * 4 + 2)
 
-  result[2 * (segments+1)] = vec4f(0.5f, 0.5f, 0, 1)
-  result[3 * (segments+1) + 1] = vec4f(0.5f, 0.5f, 0, 1)
+  result[2 * (segments+1) + 0] = vec4f(1f, 1f, 1f, 1)
+  result[3 * (segments+1) + 1] = vec4f(1f, 1f, 1f, 1)
 
   for j in 0 .. segments:
     let
       u = (j / segments).float32
       beta = (j / segments) * 2 * PI
-      x = cos(beta).float32 * 0.5f + 0.5f
+      x = cos(45f.radians + beta).float32 * 0.5f + 0.5f
       y = sin(beta).float32 * 0.5f + 0.5f
 
-    result[2*j+0] = vec4f(u, 0, 0, 1)
-    result[2*j+1] = vec4f(u, 1, 0, 1)
-    result[2*(segments+1) + 1 + j] = vec4f(x,y, 0, 1)
-    result[3*(segments+1) + 2 + j] = vec4f(x,y, 0, 1)
+    let contrast = 0.6
+    let s = y * contrast + (1f - contrast)
+    result[2*j+0] = vec4f(s, s, s, 1)
+    result[2*j+1] = vec4f(s, s, s, 1)
+    result[2*(segments+1) + 1 + j] = vec4f(s,s,s, 1)
+    result[3*(segments+1) + 2 + j] = vec4f(s,s,s, 1)
 
   for c in result.mitems:
-    c.x = 0.7
-    c.y = 0.1
-    c.z = 0.0
+    c.x *= color.x
+    c.y *= color.y
+    c.z *= color.z
 
 proc cylinderIndices*(segments: int): seq[Ind] =
   result.newSeq(0)
@@ -304,10 +306,21 @@ proc cylinderIndices*(segments: int): seq[Ind] =
 
 var yum* = toCfloats cylinderVertices(nseg, 0.5f)
 
-var single_rail*         = toCfloats(         cylinderVertices(6, 0.25f)      )
-var single_rail_normals* = toCfloats(          cylinderNormals(6)      )
-var single_rail_colors*  = toCfloats(           cylinderColors(6)         , 4 )
-var single_rail_index*   =          (          cylinderIndices(6)             )
+const rail_segs = 6
+var single_rail*         = toCfloats(   cylinderVertices(rail_segs, 0.25f)      )
+var single_rail_normals* = toCfloats(    cylinderNormals(rail_segs)             )
+var single_rail_colors*  = toCfloats(     cylinderColors(rail_segs, vec3f(0.7f, 0.1f, 0f))         , 4 )
+var single_rail_index*   =          (    cylinderIndices(rail_segs)             )
+
+const piston_segs = 16
+var piston_verts*        = toCfloats(   cylinderVertices(piston_segs, 0.375f)    )
+var piston_normals*      = toCfloats(    cylinderNormals(piston_segs)           )
+var piston_colors*       = toCfloats(     cylinderColors(piston_segs, vec3f(0.6f, 0.61f, 0.61f))       , 4 )
+var piston_index*        =          (    cylinderIndices(piston_segs)           )
+
+#for i, v in piston_verts.mpairs:
+#  if i mod 3 == 2: continue
+#  v += 0.5f
 
 #[
 

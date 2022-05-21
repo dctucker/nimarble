@@ -388,7 +388,8 @@ proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
 proc render[T: Piece](piece: var T) =
   var mesh = piece.mesh
   mesh.model.mat = mat4(1.0f)
-    .translate(mesh.pos * vec3f(1,level_squash,1)) * mesh.rot.mat4f
+    .translate(mesh.pos * vec3f(1,level_squash,1))
+    .scale(mesh.scale) * mesh.rot.mat4f
 
   glPolygonMode      GL_FRONT_AND_BACK, GL_FILL
   mesh.render        GL_TRIANGLE_STRIP

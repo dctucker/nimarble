@@ -220,8 +220,14 @@ proc info_window*(actors: seq[Actor]) =
   if actors.len > 0:
     for a in actors.low .. actors.high:
       var actor = actors[a]
-      let name = cstring("actor " & $a & " pos")
+      var name: cstring
+
+      name = cstring("actor " & $a & " pos")
       igDragFloat3 name, actors[a].mesh.pos.arr, 0.125, -sky, sky
+
+      name = cstring("actor " & $a & " scale")
+      igDragFloat3 name, actors[a].mesh.scale.arr, 0.125, -sky, sky
+      igSeparator()
   igEnd()
 
 proc info_window*(fixtures: seq[Fixture]) =

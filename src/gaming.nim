@@ -127,6 +127,7 @@ proc newMesh(game: var Game, verts, colors, norms: var seq[cfloat], elems: var s
     elem_vbo  : newElemVBO(elems),
     program   : game.player.mesh.program,
     model     : game.player.mesh.program.newMatrix(modelmat, "M"),
+    scale     : vec3f(1,1,1)
   )
   result.reset()
 
@@ -135,6 +136,11 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
   of EM: result = newMesh( game, sphere      , yum_colors         , sphere_normals      , sphere_index )
   of EY: result = newMesh( game, yum         , yum_colors         , sphere_normals      , sphere_index )
   of EA: result = newMesh( game, acid_verts  , acid_colors        , acid_normals        , acid_index   )
+  of EP:
+    result = newMesh( game, piston_verts, piston_colors      , piston_normals      , piston_index )
+    result.rot = quatf(vec3f(1, 0, 0).normalize, 90f.radians)
+    result.scale = vec3f(1f, 0f, 1f)
+    result.pos = vec3f(0.5, 0.0, 0.5)
   of GR:
     var verts   = single_rail
     var colors  = single_rail_colors
@@ -159,7 +165,7 @@ proc init_piece*[T](game: var Game, piece: var T) =
   let y =  piece.origin.y.float
   let z = (piece.origin.z - game.level.origin.z).float
 
-  piece.mesh.pos    = vec3f(x, y, z)
+  piece.mesh.pos    += vec3f(x, y, z)
   var mvp = game.proj * game.view.mat.translate(-game.pan.pos) * piece.mesh.model.mat
   piece.mesh.mvp = game.player.mesh.program.newMatrix(mvp, "MVP")
 
