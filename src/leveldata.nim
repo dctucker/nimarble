@@ -1,6 +1,7 @@
 import glm
 import sequtils
 import strutils
+import std/sets
 import std/tables
 import std/algorithm
 
@@ -13,8 +14,6 @@ import assets
 
 const EE = 0
 const sky* = 200f
-
-proc find_phase_blocks*(level: Level): seq[Zone]
 
 proc flatten[T](input: seq[seq[T]]): seq[T] =
   for row in input:
@@ -50,6 +49,70 @@ proc tsv_masks(line: string): seq[CliffMask] =
     j += 1
     result = parse_mask(s)
   )
+
+
+proc xlat_coord*[T:Ordinal](level: Level, x,z: T): (int,int) =
+  return ((z+level.origin.z).int, (x+level.origin.x).int)
+
+proc xlat_coord*(level: Level, x,z: float): (int,int) =
+  return ((z.floor+level.origin.z.float).int, (x.floor+level.origin.x.float).int)
+
+proc has_coord*[T](level: Level, i,j: T): bool =
+  result = i >= 0            and
+           j >= 0            and
+           i <  level.height and
+           j <  level.width  and
+           j >= i            and
+           j - i <= level.span
+
+proc data_at(level: Level, x,z: float): float =
+  let (i,j) = level.xlat_coord(x,z)
+  if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return EE.float
+  return level.data[i * level.width + j].float
+
+proc mask_at*(level: Level, x,z: float): CliffMask =
+  let (i,j) = level.xlat_coord(x,z)
+  if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return XX
+  return level.mask[i * level.width + j]
+
+proc masks_at*(level: Level, x,z: float): set[CliffMask] =
+  let (i,j) = level.xlat_coord(x,z)
+  if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return {}
+  return level.map[i,j].masks
+
+proc around*(level: Level, m: CliffMask, x,z: float): bool =
+  if level.masks_at(x,z).has m:
+    return true
+  for i in -1..1:
+    for j in -1..1:
+      if level.masks_at(x+i.float,z+j.float).has m:
+        return true
+  return false
+
+proc find_closest*(level: Level, mask: CliffMask, x, z: float): Vec3f =
+  var i, j, di, dj, radius: int
+  i = -radius ; j = -radius
+
+  while radius < 50:
+    if i <= -radius and j == -radius:
+      radius.inc ; i = -radius ; j = -radius ; di =  0 ; dj =  1
+    elif i == -radius and j >= radius        : di =  1 ; dj =  0
+    elif i >= radius and j == radius         : di =  0 ; dj = -1
+    elif i == radius and j <= -radius        : di = -1 ; dj =  0
+
+    #echo "i,j = ", $i, ",", $j
+
+    let xi = x + i.float
+    let zj = z + j.float
+    if level.masks_at(zj, xi).has mask:
+      let y = level.data_at(zj, xi)
+      result = vec3f( zj, y, xi )
+      #echo "FOUND at ", result
+      return
+
+    i += di
+    j += dj
+
 
 proc find_s1(data: seq[float], mask: seq[CliffMask], w,h: int): Vec3i =
   for i in 0..<h:
@@ -92,6 +155,59 @@ proc find_fixtures(data: seq[float], mask: seq[CliffMask], w,h: int): seq[Fixtur
           origin: vec3i( j.int32, data[o].int32, i.int32 ),
           kind: mask,
         )
+
+iterator by_area(w,h: int): Vec2i =
+  proc cmp(v1, v2: Vec3i): int = cmp(v1.y, v2.y)
+  var points = newSeqOfCap[Vec3i](w*h)
+  for i in 0 ..< h:
+    for j in 0 ..< w:
+      var area = (i+1)*(j+1)
+      points.add vec3i( j.int32, area.int32, i.int32 )
+  points.sort(cmp)
+  for point in points:
+    yield vec2i(point.x, point.z)
+
+
+proc find_zones*(level: Level, masks: set[CliffMask]): ZoneSet =
+  var consumed: seq[Vec2i] = @[]
+  var criteria: CliffMask
+  var first: Vec2i
+
+  proc is_consumed(x,z: int32): bool =
+    return vec2i(x, z) in consumed
+
+  proc search_forward(sx,sz: int): Vec2i =
+    for point in by_area(5,5):
+      result = vec2i( int32 sx + 1 + point.x, int32 sz + 1 + point.y )
+      # singular mask detection to identify points within source data
+      let mask = level.mask_at( result.x.float, result.y.float )
+      if mask == criteria:
+        return
+    result = vec2i(0,0)
+
+  for x in -level.origin.x ..< level.width - level.origin.x:
+    for z in -level.origin.z ..< level.height - level.origin.z:
+      if is_consumed(x.int32, z.int32): continue
+      criteria = level.mask_at(x.float, z.float)
+      if not (criteria in masks): continue
+
+      # found start phase block
+      first = vec2i(x.int32, z.int32)
+      let last = search_forward(x.int, z.int)
+      if last.x == 0 and last.y == 0: continue
+
+      # found end phase block
+      result.incl Zone(
+        rect: vec4i( first.x, first.y, last.x - 1, last.y - 1 ),
+        kind: criteria,
+      )
+      consumed.add first
+      consumed.add last
+
+proc find_zones*(level: Level): ZoneSet =
+  result.incl level.find_zones({P1,P2,P3,P4})
+  result.incl level.find_zones({EP})
+
 
 proc column_letter(j: int): string =
   result = ""
@@ -176,11 +292,6 @@ proc find_last*(level: Level): (int,int) =
     if jj > 0: break
   echo "last = ", ii, ",", jj
   return (ii,jj)
-
-proc find_zones*(level: Level): seq[Zone] =
-  let blocks = level.find_phase_blocks()
-  for b in blocks:
-    result.add b
 
 proc init_map(level: var Level) =
   for i in 0 ..< level.height:
@@ -319,118 +430,6 @@ let levels = @[
 ]
 let n_levels* = levels.len()
 
-proc xlat_coord*[T:Ordinal](level: Level, x,z: T): (int,int) =
-  return ((z+level.origin.z).int, (x+level.origin.x).int)
-
-proc xlat_coord*(level: Level, x,z: float): (int,int) =
-  return ((z.floor+level.origin.z.float).int, (x.floor+level.origin.x.float).int)
-
-proc has_coord*[T](level: Level, i,j: T): bool =
-  result = i >= 0            and
-           j >= 0            and
-           i <  level.height and
-           j <  level.width  and
-           j >= i            and
-           j - i <= level.span
-
-proc data_at(level: Level, x,z: float): float =
-  let (i,j) = level.xlat_coord(x,z)
-  if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return EE.float
-  return level.data[i * level.width + j].float
-
-proc mask_at*(level: Level, x,z: float): CliffMask =
-  let (i,j) = level.xlat_coord(x,z)
-  if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return XX
-  return level.mask[i * level.width + j]
-
-proc masks_at*(level: Level, x,z: float): set[CliffMask] =
-  let (i,j) = level.xlat_coord(x,z)
-  if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return {}
-  return level.map[i,j].masks
-
-proc around*(level: Level, m: CliffMask, x,z: float): bool =
-  if level.masks_at(x,z).has m:
-    return true
-  for i in -1..1:
-    for j in -1..1:
-      if level.masks_at(x+i.float,z+j.float).has m:
-        return true
-  return false
-
-proc find_closest*(level: Level, mask: CliffMask, x, z: float): Vec3f =
-  var i, j, di, dj, radius: int
-  i = -radius ; j = -radius
-
-  while radius < 50:
-    if i <= -radius and j == -radius:
-      radius.inc ; i = -radius ; j = -radius ; di =  0 ; dj =  1
-    elif i == -radius and j >= radius        : di =  1 ; dj =  0
-    elif i >= radius and j == radius         : di =  0 ; dj = -1
-    elif i == radius and j <= -radius        : di = -1 ; dj =  0
-
-    #echo "i,j = ", $i, ",", $j
-
-    let xi = x + i.float
-    let zj = z + j.float
-    if level.masks_at(zj, xi).has mask:
-      let y = level.data_at(zj, xi)
-      result = vec3f( zj, y, xi )
-      #echo "FOUND at ", result
-      return
-
-    i += di
-    j += dj
-
-iterator by_area(w,h: int): Vec2i =
-  proc cmp(v1, v2: Vec3i): int = cmp(v1.y, v2.y)
-  var points = newSeqOfCap[Vec3i](w*h)
-  for i in 0 ..< h:
-    for j in 0 ..< w:
-      var area = (i+1)*(j+1)
-      points.add vec3i( j.int32, area.int32, i.int32 )
-  points.sort(cmp)
-  for point in points:
-    yield vec2i(point.x, point.z)
-
-proc find_phase_blocks*(level: Level): seq[Zone] =
-  var consumed: seq[Vec2i] = @[]
-  var criteria: CliffMask
-  var first: Vec2i
-
-  proc is_consumed(x,z: int32): bool =
-    return vec2i(x, z) in consumed
-
-  proc search_forward(sx,sz: int): Vec2i =
-    for point in by_area(5,5):
-      result = vec2i( int32 sx + 1 + point.x, int32 sz + 1 + point.y )
-      # singular mask detection to identify points within source data
-      let mask = level.mask_at( result.x.float, result.y.float )
-      if mask == criteria:
-        return
-    result = vec2i(0,0)
-
-  for x in -level.origin.x ..< level.width - level.origin.x:
-    for z in -level.origin.z ..< level.height - level.origin.z:
-      if is_consumed(x.int32, z.int32): continue
-      criteria = level.mask_at(x.float, z.float)
-      if not (criteria in {P1, P2, P3, P4}): continue
-
-      # found start phase block
-      first = vec2i(x.int32, z.int32)
-      let last = search_forward(x.int, z.int)
-      if last.x == 0 and last.y == 0: continue
-
-      # found end phase block
-      result.add Zone(
-        rect: vec4i( first.x, first.y, last.x - 1, last.y - 1 ),
-        kind: criteria,
-      )
-      consumed.add first
-      consumed.add last
-
-  #for z in result:
-  #  let b = z.rect
-  #  echo $z.kind, " ", cell_name(b.y + level.origin.z, b.x + level.origin.x), "..", cell_name(b.w + level.origin.z, b.z + level.origin.x)
 
 proc cliff_color(level: Level, mask: CliffMask): Vec4f =
   case mask:
@@ -883,11 +882,21 @@ proc apply_phase(level: Level, i,j: int) =
 proc queue_update*(level: Level, update: LevelUpdate) =
   level.updates.add update
 
+proc update[T: HashSet](a: var T, b: T) = a = (a * b) + b
+
+proc update[T: Piece](a: var seq[T], b: seq[T]) =
+  let h1 = a.toHashSet
+  let h2 = b.toHashSet
+  let h3 = (h1 * h2) + h2
+  a = @[]
+  for x in h3:
+    a.add x
+
 proc apply_update(level: var Level, update: LevelUpdate) =
   case update.kind
-  of Actors   : level.actors   = update.actors
-  of Fixtures : level.fixtures = update.fixtures
-  of Zones    : level.zones    = update.zones
+  of Actors   : level.actors.update   update.actors
+  of Fixtures : level.fixtures.update update.fixtures
+  of Zones    : level.zones.update    update.zones
 
 proc tick*(level: var Level, t: float) =
   level.clock = t

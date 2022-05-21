@@ -1,5 +1,7 @@
 import nimgl/[glfw,opengl]
 import glm
+import std/hashes
+import std/sets
 import std/tables
 import masks
 import wrapper
@@ -39,11 +41,13 @@ type
     Zones
     Fixtures
 
+  ZoneSet* = HashSet[Zone]
+
   LevelUpdate* = ref object
     case kind*: UpdateKind
     of Actors   : actors*   : seq[Actor]
-    of Zones    : zones*    : seq[Zone]
     of Fixtures : fixtures* : seq[Fixture]
+    of Zones    : zones*    : ZoneSet
 
 
   Level* = ref object
@@ -62,9 +66,17 @@ type
     floor_plane*   : Mesh
     actors*       : seq[Actor]
     fixtures*     : seq[Fixture]
-    zones*        : seq[Zone]
+    zones*        : ZoneSet
     name*         : string
     updates*      : seq[LevelUpdate]
+
+proc hash*(z: Zone): Hash =
+  result = z.kind.hash !& z.rect.hash
+  result = !$result
+
+proc hash*(z: Piece): Hash =
+  result = z.kind.hash !& z.origin.hash
+  result = !$result
 
 proc newLevelMap*(w,h: int): LevelMap =
   return LevelMap(
