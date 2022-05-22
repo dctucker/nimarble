@@ -76,6 +76,14 @@ iterator coords(level: Level, zone: Zone): (int, int) =
   for i in i1 .. i2:
     for j in j1 .. j2:
       yield (i,j)
+iterator indexed_coords(level: Level, zone: Zone): (int, int, int) =
+  var n = 0
+  let (i1,j1) = level.xlat_coord(zone.rect.x, zone.rect.y)
+  let (i2,j2) = level.xlat_coord(zone.rect.z, zone.rect.w)
+  for i in i1 .. i2:
+    for j in j1 .. j2:
+      yield (n,i,j)
+      inc n
 
 
 proc data_at(level: Level, x,z: float): float =
@@ -938,25 +946,73 @@ proc do_phase_zones(level: var Level) =
 
   level.floor_plane.elem_vbo.update level.floor_index # TODO update subset only for performance
 
+const piston_sequences = @[
+  @[
+    @[0,4,8],
+    @[],
+    @[1,5,9],
+    @[],
+    @[2,6,10],
+    @[],
+    @[3,7,11],
+    @[],
+    @[],
+  ],
+  @[
+    @[2,5,8],
+    @[],
+    @[3,6,9],
+    @[],
+    @[0,10,7],
+    @[],
+    @[4,1,11],
+    @[],
+    @[],
+  ],
+  @[
+    @[0,4],
+    @[],
+    @[5,9],
+    @[],
+    @[2,6],
+    @[],
+    @[7,11],
+    @[],
+    @[],
+  ],
+  @[
+    @[8,6],
+    @[],
+    @[9,11],
+    @[],
+    @[0,10],
+    @[],
+    @[1,7],
+    @[],
+    @[4,2],
+    @[],
+    @[5,3],
+    @[],
+    @[],
+  ],
+  # etc...
+  # TODO possibly rewrite to indicate firing phase of each piston instead of piston sequence per phase
+]
+
 proc do_pistons*(level: Level, zone: Zone, t: float) =
-  zone.clock = t * 4
+  zone.clock = t * 3
 
-  let phase = zone.clock - zone.clock.int.float
+  const sequence = piston_sequences[2]
+  let firing = zone.clock.int mod sequence.len
 
-  # TODO coordinate piston timing behavior across zone
-  case zone.clock.int mod 7
-  of 0:
-    for i,j in level.coords(zone):
+  if zone.clock - zone.clock.int.float < 0.1:
+    for n,i,j in level.indexed_coords(zone):
+      if n notin sequence[firing]: continue
+      let n = (i - zone.rect.y) * (zone.rect.z - zone.rect.x) + (j - zone.rect.x)
       for actor in level.actors:
         if actor.kind != EP: continue
         if actor.origin.x != j or actor.origin.z != i: continue
-        actor.mesh.scale = vec3f(1, 4 * phase,1)
-  of 1:
-    for i,j in level.coords(zone):
-      for actor in level.actors:
-        if actor.kind != EP: continue
-        if actor.origin.x != j or actor.origin.z != i: continue
-        actor.mesh.scale = vec3f(1, 4 * (1-phase),1)
+        actor.firing = true
   else:
     discard
 

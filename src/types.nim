@@ -9,7 +9,9 @@ from scene import Mesh, Light, newLight, Camera, Pan
 
 type
   Piece* = ref object of RootObj
-    kind*: CliffMask
+    case kind*: CliffMask
+    of EP: firing*: bool
+    else: discard
     origin*: Vec3i
     mesh*: Mesh
   Actor*   = ref object of Piece
@@ -23,7 +25,9 @@ type
     normal*: Vec3f
 
   Zone* = ref object
-    kind*: CliffMask
+    case kind*: CliffMask
+    of EP: piston_sequence: seq[seq[int]]
+    else: discard
     rect*: Vec4i # e.g. vec4i( left, top, right, bottom )
     clock*: float
     index*: seq[Ind]
