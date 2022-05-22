@@ -399,7 +399,7 @@ var acid_normals*: seq[cfloat] = @[
 ]
 
 
-const wave_angles = 360
+const wave_angles* = 360
 proc gen_wave_verts: seq[Vec3f] =
   for a in 0..<wave_angles:
     let aa = a.float

@@ -14,6 +14,7 @@ type
     id: uint32
     dimensions: cint
     n_verts*: cint
+    offset*: cint
     data: seq[T]
   Shader* = object
     id: uint32
@@ -140,7 +141,7 @@ proc draw*(vbo: VBO, kind: GLEnum = GL_TRIANGLES) {.inline.} =
 
 proc draw_elem*(vbo: VBO, kind: GLEnum = GL_TRIANGLES) {.inline.} =
   glBindBuffer GL_ELEMENT_ARRAY_BUFFER, vbo.id
-  glDrawElements kind, vbo.n_verts, GL_UNSIGNED_INT, nil
+  glDrawElements kind, vbo.n_verts, GL_UNSIGNED_INT, cast[pointer](vbo.offset)
 
 proc use*(program: Program) =
   glUseProgram program.id

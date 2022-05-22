@@ -131,6 +131,10 @@ proc newMesh(game: var Game, verts, colors, norms: var seq[cfloat], elems: var s
   )
   result.reset()
 
+var shared_wave_verts: VBO[cfloat]
+var shared_wave_colors: VBO[cfloat]
+var shared_wave_norms: VBO[cfloat]
+
 proc newMesh(game: var Game, piece: Piece): Mesh =
   case piece.kind
   of EM: result = newMesh( game, sphere      , yum_colors         , sphere_normals      , sphere_index )
@@ -160,8 +164,29 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
     )
     result.pos = vec3f(0.5, 0.0, 0.5)
   of SW:
-    result = newMesh( game, wave_verts  , wave_colors        , wave_normals        , wave_index   )
-    result.scale = vec3f(1f/30f, 1, 1)
+    # wavelength is 12 units of 16 pixels each
+    if shared_wave_verts.n_verts == 0:
+      echo "init shared wave vbos"
+      shared_wave_verts  = newVBO(3, wave_verts)
+      shared_wave_colors = newVBO(4, wave_colors)
+      shared_wave_norms  = newVBO(3, wave_normals)
+    var modelmat = mat4f(1)
+    result = Mesh(
+      vao       : newVAO(),
+      vert_vbo  : shared_wave_verts,
+      color_vbo : shared_wave_colors,
+      norm_vbo  : shared_wave_norms,
+      elem_vbo  : newElemVBO(wave_index),
+      program   : game.player.mesh.program,
+      model     : game.player.mesh.program.newMatrix(modelmat, "M"),
+      scale     : vec3f(1f/30f,3,1),
+    )
+    let xm = (piece.origin.x mod 12).float
+    let offset = cint (shared_wave_verts.n_verts.float / 12f) * xm
+    result.elem_vbo.offset = offset
+    echo result.elem_vbo.offset
+    result.elem_vbo.n_verts = shared_wave_verts.n_verts div 12
+    result.pos = vec3f(-xm/30f,0,0)
   else : result = newMesh( game, sphere      , sphere_normals     , sphere_normals      , sphere_index )
 
 proc init_piece*[T](game: var Game, piece: var T) =
