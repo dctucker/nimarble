@@ -69,7 +69,7 @@ cliff_masks:
   EB      "entity: bird"
   EY      "entity: yum"
 
-const zone_masks = {P1,P2,P3,P4,EP}
+const zone_masks* = {P1, P2, P3, P4, EP, GR, SW, SD, OI, IC, MI, BH, BI}
 proc zone*(mask: CliffMask)  : bool = mask in zone_masks
 
 #[

@@ -21,6 +21,10 @@ proc `~=`*(a1, a2: Actor): bool =
  3 6 9  4 7 10
 ]#
 
+#[ TODO store this as 2D vector (frequency, offset)
+  - frequency would be aligned for the less complex patterns with only offset differing each piston
+  - offset would vary for more complex polyrhythmic patterns
+]#
 const piston_time_variations = @[
   @[
     10, 30, 30, 10,

@@ -233,7 +233,7 @@ proc find_zones*(level: Level, masks: set[CliffMask]): ZoneSet =
     result = vec2i(0,0)
 
   proc search_forward(sx,sz: int): Vec2i =
-    for point in by_area(5,5):
+    for point in by_area(24,5):
       result = vec2i( int32 sx + 1 + point.x, int32 sz + 1 + point.y )
       # singular mask detection to identify points within source data
       let mask = level.mask_at( result.x.float, result.y.float )
@@ -276,9 +276,7 @@ proc find_zones*(level: Level, masks: set[CliffMask]): ZoneSet =
       consumed.add last
 
 proc find_zones*(level: Level): ZoneSet =
-  result.incl level.find_zones {P1,P2,P3,P4}
-  result.incl level.find_zones {EP}
-  result.incl level.find_zones {GR}
+  result.incl level.find_zones zone_masks
 
 proc column_letter(j: int): string =
   result = ""
@@ -515,26 +513,28 @@ proc cliff_color(level: Level, mask: CliffMask): Vec4f =
   else:
     return vec4f( 0.6, 0.6, 0.6, 1.0 )
 
-proc mask_color(level: Level, mask: CliffMask): Vec4f =
-  case mask:
-  of GG:
-    return vec4f( 1, 1, 1, 1 )
-  of TU, IN, OU:
-    return vec4f( level.color.x * 0.5, level.color.y * 0.5, level.color.z * 0.5, 1.0 )
-  #of S1: return vec4f( 0.0, 0.0, 0.5, 0.8 )
-  #of EM: return vec4f( 0.1, 0.1, 0.1, 1.0 )
-  #of EY, EA: return vec4f( 0.4, 9.0, 0.0, 1.0 )
-  of P1: return vec4f( 0.1, 0.2, 0.3, 0.7 )
-  of P2: return vec4f( 0.3, 0.1, 0.2, 0.7 )
-  of P3: return vec4f( 0.2, 0.3, 0.1, 0.7 )
-  of P4: return vec4f( 0.3, 0.2, 0.1, 0.7 )
-  of SW:
-    return vec4f( 0.1, 0.6, 0.6, 1.0 )
-  of RI, RH:
-    return vec4f( 0.2, 0.7, 0.7, 0.9 )
-  else:
-    return vec4f( 0.6, 0.6, 0.6, 1.0 )
-    #return vec4f(((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), 0.9)
+proc mask_color(level: Level, masks: set[CliffMask]): Vec4f =
+  for mask in masks:
+    case mask:
+    of GG:
+      return vec4f( 1, 1, 1, 1 )
+    of TU, IN, OU:
+      return vec4f( level.color.x * 0.5, level.color.y * 0.5, level.color.z * 0.5, 1.0 )
+    #of S1: return vec4f( 0.0, 0.0, 0.5, 0.8 )
+    #of EM: return vec4f( 0.1, 0.1, 0.1, 1.0 )
+    #of EY, EA: return vec4f( 0.4, 9.0, 0.0, 1.0 )
+    of P1: return vec4f( 0.1, 0.2, 0.3, 0.7 )
+    of P2: return vec4f( 0.3, 0.1, 0.2, 0.7 )
+    of P3: return vec4f( 0.2, 0.3, 0.1, 0.7 )
+    of P4: return vec4f( 0.3, 0.2, 0.1, 0.7 )
+    of SW:
+      return vec4f( 0.1, 0.6, 0.6, 1.0 )
+    of RI, RH:
+      return vec4f( 0.2, 0.7, 0.7, 0.9 )
+    else:
+      return vec4f( 0.6, 0.6, 0.6, 1.0 )
+      #return vec4f(((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), 0.9)
+  return vec4f( 0.6, 0.6, 0.6, 1.0 )
 
 proc point_cliff_color(level: Level, i,j: int): Vec4f =
   let k = level.width * i + j
@@ -560,10 +560,6 @@ proc point_color(level: Level, i,j: int): Vec4f =
   let y = level.data[k]
   if y == EE: return
 
-  #let zone = level.which_zone(i - level.origin.z, j - level.origin.x)
-  #if zone.kind != XX:
-  #  return level.mask_color(zone.kind)
-
   if   level.around(IC, j.float - level.origin.x.float, i.float - level.origin.z.float):
     return vec4f( 0.0, 1.0, 1.0, 1.0)
   elif level.around(CU, j.float - level.origin.x.float, i.float - level.origin.z.float):
@@ -576,7 +572,7 @@ proc point_color(level: Level, i,j: int): Vec4f =
        level.around(BH, j.float - level.origin.x.float, i.float - level.origin.z.float):
     return vec4f( 0.4, 0.4, 0.4, 1.0 )
   else:
-    return level.mask_color(level.mask[k])
+    return level.mask_color(level.map[i,j].masks)
 
 proc add_normal(normals: var seq[cfloat], n: Vec3f) =
   let nn = n.normalize()
