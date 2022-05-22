@@ -141,7 +141,7 @@ proc draw*(vbo: VBO, kind: GLEnum = GL_TRIANGLES) {.inline.} =
 
 proc draw_elem*(vbo: VBO, kind: GLEnum = GL_TRIANGLES) {.inline.} =
   glBindBuffer GL_ELEMENT_ARRAY_BUFFER, vbo.id
-  glDrawElements kind, vbo.n_verts, GL_UNSIGNED_INT, cast[pointer](vbo.offset)
+  glDrawElements kind, vbo.n_verts, GL_UNSIGNED_INT, cast[pointer](vbo.offset * sizeof(cfloat))
 
 proc use*(program: Program) =
   glUseProgram program.id

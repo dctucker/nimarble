@@ -379,6 +379,15 @@ proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
   mesh.vert_vbo.apply 0
   mesh.color_vbo.apply 1
   mesh.norm_vbo.apply 2
+
+  if mesh.wireframe:
+    glDisable          GL_POLYGON_OFFSET_FILL
+    glPolygonMode      GL_FRONT_AND_BACK, GL_LINE
+  else:
+    glEnable           GL_POLYGON_OFFSET_FILL
+    glPolygonOffset 1f, 1f
+    glPolygonMode GL_FRONT_AND_BACK, GL_FILL
+
   if mesh.elem_vbo.n_verts > 0:
     mesh.elem_vbo.draw_elem kind
   else:
@@ -392,7 +401,6 @@ proc render[T: Piece](piece: var T) =
     .translate(mesh.pos * vec3f(1,level_squash,1))
     .scale(mesh.scale) * mesh.rot.mat4f
 
-  glPolygonMode      GL_FRONT_AND_BACK, GL_FILL
   mesh.render        GL_TRIANGLE_STRIP
 
 proc main =
@@ -599,27 +607,21 @@ proc main =
 
     glClear            GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
 
-    if not game.wireframe:
-      glPolygonMode      GL_FRONT_AND_BACK, GL_FILL
-      glEnable           GL_POLYGON_OFFSET_FILL
-      glPolygonOffset 1f, 1f
-      floor_plane.render GL_TRIANGLE_STRIP
-      glDisable          GL_POLYGON_OFFSET_FILL
-
-    glPolygonMode        GL_FRONT_AND_BACK, GL_LINE
+    floor_plane.wireframe = game.wireframe
+    floor_plane.render GL_TRIANGLE_STRIP
+    floor_plane.wireframe = true
     floor_plane.render   GL_TRIANGLE_STRIP
 
-    glPolygonMode        GL_FRONT_AND_BACK, GL_FILL
-
     if game.player.visible:
+      game.player.mesh.wireframe = game.wireframe
       game.player.mesh.render
 
     for actor in actors.mitems:
-      #if actor.mesh == nil: # still SIGSEGV
-      #  game.init_piece(actor)
+      actor.mesh.wireframe = game.wireframe
       actor.render()
 
     for fixture in fixtures.mitems:
+      fixture.mesh.wireframe = game.wireframe
       fixture.render()
 
     imgui_frame()

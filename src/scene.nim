@@ -56,6 +56,7 @@ type
     pan*      : Pan
 
   Mesh* = ref object
+    wireframe*: bool
     motion*: Motion
     scale*: Vec3f
     rot*: Quatf

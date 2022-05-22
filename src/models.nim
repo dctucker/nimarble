@@ -399,33 +399,83 @@ var acid_normals*: seq[cfloat] = @[
 ]
 
 
-const wave_angles* = 360
+
+#[ cube under sine
+      2_____3
+      /|   /|
+     / |  / |
+   4/____/5 |
+    |  |_|__|
+    | 0  |  /1
+    |    | /
+    |____|/
+   6     7
+]#
+const wave_res* = 2
+const wave_len* = 12
+const wave_angles* = wave_res * wave_len
+const wave_nverts* = 8
+const wave_ninds*  = 8
+
 proc gen_wave_verts: seq[Vec3f] =
-  for a in 0..<wave_angles:
-    let aa = a.float
-    result.add vec3f(aa+0f, sin((0f+aa).radians), 0f)
-    result.add vec3f(aa+0f, sin((1f+aa).radians), 1f)
-    result.add vec3f(aa+1f, sin((0f+aa).radians), 0f)
-    result.add vec3f(aa+1f, sin((1f+aa).radians), 1f)
+  for a in 0 ..< wave_len:
+    for b in 0 ..< wave_res:
+      let x = a * wave_res + b
+      let x0 = (x + 0).float
+      let x1 = (x + 1).float
+      let t0 = 360f * x0 / wave_len.float / wave_res.float
+      let t1 = 360f * x1 / wave_len.float / wave_res.float
+
+      let z0 = 1f/16f
+      let z1 = 15f/16f
+
+      let y0 = max(0, sin(radians t0))
+      let y1 = max(0, sin(radians t1))
+
+      result.add vec3f(x0,  0, z0)
+      result.add vec3f(x1,  0, z0)
+      result.add vec3f(x0, y0, z0)
+      result.add vec3f(x1, y1, z0)
+      result.add vec3f(x0, y0, z1)
+      result.add vec3f(x1, y1, z1)
+      result.add vec3f(x0,  0, z1)
+      result.add vec3f(x1,  0, z1)
+
+      echo y0
+
 proc gen_wave_colors: seq[Vec4f] =
   for a in 0..<wave_angles:
-     result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
-     result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
-     result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
-     result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+    result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+    result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+    result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+    result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+    result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+    result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+    result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+    result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+
 proc gen_wave_normals: seq[Vec3f] =
-  for a in 0..<wave_angles:
-    let c = cos(a.float.radians)
-    result.add vec3f(0, c, c).normalize
-    result.add vec3f(0, c, c).normalize
-    result.add vec3f(0, c, c).normalize
-    result.add vec3f(0, c, c).normalize
+  for a in 0 ..< wave_len:
+    for b in 0 ..< wave_res:
+      let x0 = (a * wave_res + b).float
+      let x1 = (a * wave_res + b + 1).float
+      let t0 = 360f * x0 / wave_len.float / wave_res.float
+      let t1 = 360f * x1 / wave_len.float / wave_res.float
+      let c = cos(radians a.float / wave_res)
+      result.add vec3f( -1, -1, -1 ).normalize
+      result.add vec3f(  1, -1, -1 ).normalize
+      result.add vec3f( -1, t0, -1 ).normalize
+      result.add vec3f(  1, t1, -1 ).normalize
+      result.add vec3f( -1, t0,  1 ).normalize
+      result.add vec3f(  1, t1,  1 ).normalize
+      result.add vec3f( -1,  0,  1 ).normalize
+      result.add vec3f(  1,  0,  1 ).normalize
+
 proc gen_wave_index: seq[Ind] =
-  for a in 0..<wave_angles:
-    result.add Ind a*4 + 0
-    result.add Ind a*4 + 1
-    result.add Ind a*4 + 2
-    result.add Ind a*4 + 3
+  for a in 0 ..< wave_angles:
+    let v = a * wave_nverts
+    for n in 0 ..< wave_nverts:
+      result.add Ind v + n
 
 var wave_verts*   = toCfloats( gen_wave_verts()   , 3)
 var wave_colors*  = toCfloats( gen_wave_colors()  , 4)

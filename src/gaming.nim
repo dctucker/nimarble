@@ -144,7 +144,7 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
     result = newMesh( game, piston_verts, piston_colors      , piston_normals      , piston_index )
     result.rot = quatf(vec3f(1, 0, 0).normalize, 90f.radians)
     result.scale = vec3f(1f, 0f, 1f)
-    result.pos = vec3f(0.5, 0.0, 0.5)
+    result.pos = vec3f(0.5, 0.03125, 0.5)
   of GR:
     var verts   = single_rail
     var colors  = single_rail_colors
@@ -163,6 +163,7 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
       scale     : vec3f(1,1,1),
     )
     result.pos = vec3f(0.5, 0.0, 0.5)
+
   of SW:
     # wavelength is 12 units of 16 pixels each
     if shared_wave_verts.n_verts == 0:
@@ -179,15 +180,17 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
       elem_vbo  : newElemVBO(wave_index),
       program   : game.player.mesh.program,
       model     : game.player.mesh.program.newMatrix(modelmat, "M"),
-      scale     : vec3f(1f/30f,3,1),
+      scale     : vec3f(1f/wave_res,3,1),
     )
-    let xm = (piece.origin.x mod 12).float
-    let offset = cint (shared_wave_verts.n_verts.float / 12f) * xm
+    let xm = (piece.origin.x mod wave_len).float
+    let offset = cint xm * wave_ninds * wave_res
+    echo offset
     result.elem_vbo.offset = offset
-    echo result.elem_vbo.offset
-    result.elem_vbo.n_verts = shared_wave_verts.n_verts div 12
-    result.pos = vec3f(-xm/30f,0,0)
-  else : result = newMesh( game, sphere      , sphere_normals     , sphere_normals      , sphere_index )
+    result.elem_vbo.n_verts = wave_res * wave_ninds
+    result.pos = vec3f(-xm,-0.03125,0)
+
+  else:
+    result = newMesh( game, sphere      , sphere_normals     , sphere_normals      , sphere_index )
 
 proc init_piece*[T](game: var Game, piece: var T) =
   piece.mesh = game.newMesh(piece)
