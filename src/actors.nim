@@ -73,7 +73,7 @@ const piston_sequences = @[
   # TODO possibly rewrite to indicate firing phase of each piston instead of piston sequence per phase
 ]
 
-proc do_pistons*(level: Level, zone: Zone, t: float) =
+proc tick_pistons*(level: Level, zone: Zone, t: float) =
   zone.clock = t * 3
 
   const sequence = piston_sequences[^1]
@@ -91,7 +91,7 @@ proc do_pistons*(level: Level, zone: Zone, t: float) =
     discard
 
 
-proc do_phase_zones*(level: var Level) =
+proc tick_phase_zones*(level: var Level) =
   let phase = CliffMask(P1.ord + (level.clock.floor.int mod 4))
 
   if level.phase == phase: return
@@ -114,10 +114,10 @@ proc do_phase_zones*(level: var Level) =
 
 proc tick*(level: var Level, t: float) =
   level.clock = t
-  level.do_phase_zones()
+  level.tick_phase_zones()
   for zone in level.zones:
     if zone.kind != EP: continue
-    level.do_pistons(zone, t)
+    level.tick_pistons(zone, t)
 
 const directions = @[
   vec3f( -1,  0,  0 ),
@@ -139,7 +139,7 @@ proc meander*(game: Game, actor: var Actor, dt: float) =
   else:
     actor.facing = random_direction()
 
-proc fire_piston(game: Game, actor: var Actor, dt: float) =
+proc animate_piston(game: Game, actor: var Actor, dt: float) =
   const max_y = 4f
   let dy = 18f * dt
   if actor.mesh.scale.y >= max_y:
@@ -170,7 +170,7 @@ proc physics*(game: Game, actor: var Actor, dt: float) =
     if game.player.animation == Dissolve: return
     game.meander(actor, dt)
   of EP:
-    game.fire_piston(actor, dt)
+    game.animate_piston(actor, dt)
   else:
     discard
 
