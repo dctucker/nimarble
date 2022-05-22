@@ -173,16 +173,35 @@ proc find_actors*(level: var Level): ActorSet =
           kind: mask,
         )
 
-proc find_fixtures(data: seq[float], mask: seq[CliffMask], w,h: int): seq[Fixture] =
-  for i in 0..<h:
-    for j in 0..<w:
-      let o = i * w + j
-      let mask = mask[o]
+#proc find_fixtures(data: seq[float], mask: seq[CliffMask], w,h: int): seq[Fixture] =
+#  for i in 0..<h:
+#    for j in 0..<w:
+#      let o = i * w + j
+#      let mask = mask[o]
+#      if mask in {GR}:
+#        result.add Fixture(
+#          origin: vec3i( j.int32, data[o].int32, i.int32 ),
+#          kind: mask,
+#        )
+
+proc find_fixtures*(level: var Level): seq[Fixture] =
+  for i,j in level.coords:
+    for mask in level.map[i,j].masks:
       if mask in {GR}:
         result.add Fixture(
-          origin: vec3i( j.int32, data[o].int32, i.int32 ),
+          origin: vec3i( j.int32, level.map[i,j].height.int32, i.int32 ),
           kind: mask,
         )
+
+iterator by_axis(d: int): Vec2i =
+  proc cmp(v1, v2: Vec3i): int = cmp(v1.y, v2.y)
+  var points = newSeqOfCap[Vec3i](2*d)
+  for n in 1 .. d:
+    points.add vec3i( n.int32, n.int32, 0       )
+    points.add vec3i( 0,       n.int32, n.int32 )
+  points.sort(cmp)
+  for point in points:
+    yield vec2i(point.x, point.z)
 
 iterator by_area(w,h: int): Vec2i =
   proc cmp(v1, v2: Vec3i): int = cmp(v1.y, v2.y)
@@ -203,6 +222,16 @@ proc find_zones*(level: Level, masks: set[CliffMask]): ZoneSet =
   proc is_consumed(x,z: int32): bool =
     return vec2i(x, z) in consumed
 
+  proc search_axes(sx,sz: int): Vec2i =
+    for point in by_axis(5):
+      result = vec2i( int32 sx + point.x, int32 sz + point.y )
+      # singular mask detection to identify points within source data
+      let mask = level.mask_at( result.x.float, result.y.float )
+      if mask == criteria:
+        return
+
+    result = vec2i(0,0)
+
   proc search_forward(sx,sz: int): Vec2i =
     for point in by_area(5,5):
       result = vec2i( int32 sx + 1 + point.x, int32 sz + 1 + point.y )
@@ -220,20 +249,36 @@ proc find_zones*(level: Level, masks: set[CliffMask]): ZoneSet =
 
       # found start phase block
       first = vec2i(x.int32, z.int32)
-      let last = search_forward(x.int, z.int)
-      if last.x == 0 and last.y == 0: continue
 
-      # found end phase block
-      result.incl Zone(
-        rect: vec4i( first.x, first.y, last.x - 1, last.y - 1 ),
-        kind: criteria,
-      )
+      var last: Vec2i
+
+      if criteria in {GR}: # linear
+        last = search_axes(x.int, z.int)
+        if last.x == 0 and last.y == 0: continue
+
+        # found end point
+        result.incl Zone(
+          rect: vec4i( first.x, first.y, last.x, last.y ),
+          kind: criteria,
+        )
+
+      else: # rectangular
+        last = search_forward(x.int, z.int)
+        if last.x == 0 and last.y == 0: continue
+
+        # found end corner
+        result.incl Zone(
+          rect: vec4i( first.x, first.y, last.x - 1, last.y - 1 ),
+          kind: criteria,
+        )
+
       consumed.add first
       consumed.add last
 
 proc find_zones*(level: Level): ZoneSet =
   result.incl level.find_zones {P1,P2,P3,P4}
   result.incl level.find_zones {EP}
+  result.incl level.find_zones {GR}
 
 proc column_letter(j: int): string =
   result = ""
@@ -350,11 +395,11 @@ proc init_level(name, data_src, mask_src: string, color: Vec3f): Level =
   )
   discard result.validate()
   result.origin   = find_s1(data, mask, width, height)
-  result.fixtures = find_fixtures(data, mask, width, height)
   result.span     = result.find_span()
   result.zones    = result.find_zones()
   result.init_map()
   result.actors   = result.find_actors()
+  result.fixtures = result.find_fixtures()
   echo "Level ", result.width, "x", result.height, " span ", result.span
   echo result.actors.len, " actors"
 

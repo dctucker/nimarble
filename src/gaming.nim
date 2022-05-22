@@ -156,7 +156,9 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
       program   : game.player.mesh.program,
       model     : game.player.mesh.program.newMatrix(modelmat, "M"),
       rot       : quatf(vec3f(1, 0, 0).normalize, 90f.radians),
+      scale     : vec3f(1,1,1),
     )
+    result.pos = vec3f(0.5, 0.0, 0.5)
   else : result = newMesh( game, sphere      , sphere_normals     , sphere_normals      , sphere_index )
 
 proc init_piece*[T](game: var Game, piece: var T) =
