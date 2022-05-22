@@ -12,84 +12,55 @@ proc `$`*(a: Actor): string =
 proc `~=`*(a1, a2: Actor): bool =
   return a1.kind == a2.kind and a1.origin == a2.origin
 
-const piston_sequences = @[
+#[
+1   2   3   4
+5   6   7   8
+9   10  11  12
+
+1 11 8  5 2 12
+ 3 6 9  4 7 10
+]#
+
+const piston_time_variations = @[
   @[
-    @[0,4,8],
-    @[],
-    @[1,5,9],
-    @[],
-    @[2,6,10],
-    @[],
-    @[3,7,11],
-    @[],
-    @[],
+    10, 30, 30, 10,
+    10, 30, 30, 10,
+    10, 30, 30, 10,
   ],
   @[
-    @[2,5,8],
-    @[],
-    @[3,6,9],
-    @[],
-    @[0,10,7],
-    @[],
-    @[4,1,11],
-    @[],
-    @[],
+    35, 45, 60, 75,
+    60, 75, 10, 45,
+    10, 20, 35, 20,
   ],
   @[
-    @[0,4],
-    @[],
-    @[5,9],
-    @[],
-    @[2,6],
-    @[],
-    @[7,11],
-    @[],
-    @[],
+    10, 35, 60, 85,
+    35, 60, 85, 10,
+    60, 85, 10, 35,
   ],
   @[
-    @[8,6],
-    @[],
-    @[9,11],
-    @[],
-    @[0,10],
-    @[],
-    @[1,7],
-    @[],
-    @[4,2],
-    @[],
-    @[5,3],
-    @[],
-    @[],
+    85, 60,35, 10,
+    85, 60,35, 10,
+    85, 60,35, 10,
   ],
   @[
-    @[1,5,9,2,6,10],
-    @[],
-    @[0,4,8,3,7,11],
-    @[],
-    @[],
-    @[],
+    40, 10, 40, 10,
+    40, 10, 40, 10,
+    40, 10, 40, 10,
   ],
-  # etc...
-  # TODO possibly rewrite to indicate firing phase of each piston instead of piston sequence per phase
 ]
+const piston_times = piston_time_variations[^1]
 
 proc tick_pistons*(level: Level, zone: Zone, t: float) =
-  zone.clock = t * 3
+  zone.clock = t * 0.375
+  let cur_time = (zone.clock * 100).floor.int mod 100
+  if cur_time notin piston_times: return
 
-  const sequence = piston_sequences[^1]
-  let firing = zone.clock.int mod sequence.len
-
-  if zone.clock - zone.clock.int.float < 0.1:
-    for n,i,j in level.indexed_coords(zone):
-      if n notin sequence[firing]: continue
-      let n = (i - zone.rect.y) * (zone.rect.z - zone.rect.x) + (j - zone.rect.x)
-      for actor in level.actors:
-        if actor.kind != EP: continue
-        if actor.origin.x != j or actor.origin.z != i: continue
-        actor.firing = true
-  else:
-    discard
-
+  for n,i,j in level.indexed_coords(zone):
+    if piston_times[n mod piston_times.len] != cur_time: continue
+    for actor in level.actors:
+      if actor.kind != EP: continue
+      if actor.origin.x != j or actor.origin.z != i: continue
+      actor.firing = true
 
 proc tick_phase_zones*(level: var Level) =
   let phase = CliffMask(P1.ord + (level.clock.floor.int mod 4))
