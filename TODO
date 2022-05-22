@@ -19,14 +19,15 @@ Should include level colors, reference decal textures.
 			- if point contains expected mask, return point
 
 # Additions / Changes
-	Fix color leaking on non-affected tiles.
+	- Fix color leaking on non-affected tiles.
+	- Marble should look like it's made of glass (material properties)
+	- Shadows
 
 	TR	Change level 4 IN/OU teleport for trebuchet TR
 	MI	miniature floor texture
 	NS	non-sloped slope for visual illusions... how the hell is this gonna work?
 
 ## Pieces needed
-	EP	piston model
 	TU	tube model(s)
 		Archway fixture for level 4
 	EV	vacuum model

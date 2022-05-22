@@ -7,6 +7,7 @@ import nimgl/imgui/[impl_opengl, impl_glfw]
 import glm
 import wrapper
 
+import actors
 import types
 import masks
 import models

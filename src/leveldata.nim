@@ -66,17 +66,17 @@ proc has_coord*[T](level: Level, i,j: T): bool =
            j >= i            and
            j - i <= level.span
 
-iterator coords(level: Level): (int, int) =
+iterator coords*(level: Level): (int, int) =
   for i in 0 ..< level.height:
     for j in 0 ..< level.width:
       yield (i,j)
-iterator coords(level: Level, zone: Zone): (int, int) =
+iterator coords*(level: Level, zone: Zone): (int, int) =
   let (i1,j1) = level.xlat_coord(zone.rect.x, zone.rect.y)
   let (i2,j2) = level.xlat_coord(zone.rect.z, zone.rect.w)
   for i in i1 .. i2:
     for j in j1 .. j2:
       yield (i,j)
-iterator indexed_coords(level: Level, zone: Zone): (int, int, int) =
+iterator indexed_coords*(level: Level, zone: Zone): (int, int, int) =
   var n = 0
   let (i1,j1) = level.xlat_coord(zone.rect.x, zone.rect.y)
   let (i2,j2) = level.xlat_coord(zone.rect.z, zone.rect.w)
@@ -672,23 +672,25 @@ proc update_vbos*(level: Level) =
   level.floor_plane.color_vbo.update level.floor_colors
   level.floor_plane.norm_vbo.update  level.floor_normals
 
+proc update_index_vbo*(level: Level) = 
+  level.floor_plane.elem_vbo.update level.floor_index
+
 const floor_span = 48
 proc index_offset(level: Level, i,j: int): int =
   result = (i-1) * floor_span + (j-7)
   if result < 0: return 0
 
-proc phase_out_index(level: Level, zone: Zone) =
+proc phase_out_index*(level: Level, zone: Zone) =
   for i,j in level.coords(zone):
     for n in cube_index.low .. cube_index.high:
       let o = level.index_offset(i,j) * cube_index.len + n
       level.floor_index[o] = 0
 
-proc phase_in_index(level: Level, zone: Zone) =
+proc phase_in_index*(level: Level, zone: Zone) =
   for i,j in level.coords(zone):
     for n in cube_index.low .. cube_index.high:
       let o = level.index_offset(i,j) * cube_index.len + n
       level.floor_index[o] = o.Ind
-
 
 proc calculate_vbos*(level: Level, i,j: int) =
   let color_span  = 4 * cube_index.len
@@ -898,15 +900,15 @@ proc get_level*(n: var int32): Level =
   return levels[n]
 
 
-proc apply_phase(level: Level, i,j: int) =
+proc apply_phase*(level: Level, i,j: int) =
   level.calculate_vbos(i,j)
 
 proc queue_update*(level: Level, update: LevelUpdate) =
   level.updates.add update
 
-proc update[T: HashSet](a: var T, b: T) = a = (a * b) + b
+proc update*[T: HashSet](a: var T, b: T) = a = (a * b) + b
 
-proc update[T: Piece](a: var seq[T], b: seq[T]) =
+proc update*[T: Piece](a: var seq[T], b: seq[T]) =
   let h1 = a.toHashSet
   let h2 = b.toHashSet
   let h3 = (h1 * h2) + h2
@@ -914,112 +916,15 @@ proc update[T: Piece](a: var seq[T], b: seq[T]) =
   for x in h3:
     a.add x
 
-proc apply_update(level: var Level, update: LevelUpdate) =
+proc apply_update*(level: var Level, update: LevelUpdate) =
   case update.kind
   of Actors   : level.actors.update   update.actors
   of Fixtures : level.fixtures.update update.fixtures
   of Zones    : level.zones.update    update.zones
 
-proc process_updates(level: var Level) =
+proc process_updates*(level: var Level) =
   if level.updates.len > 0:
     for update in level.updates:
       level.apply_update(update)
     level.updates = @[]
-
-proc do_phase_zones(level: var Level) =
-  let phase = CliffMask(P1.ord + (level.clock.floor.int mod 4))
-
-  if level.phase == phase: return
-
-  let previous = level.phase
-  level.phase = phase
-
-  for zone in level.zones:
-    if zone.kind == previous:
-      level.phase_in_index(zone)
-
-  level.process_updates()
-
-  for zone in level.zones:
-    if zone.kind == level.phase:
-      level.phase_out_index(zone)
-
-  level.floor_plane.elem_vbo.update level.floor_index # TODO update subset only for performance
-
-const piston_sequences = @[
-  @[
-    @[0,4,8],
-    @[],
-    @[1,5,9],
-    @[],
-    @[2,6,10],
-    @[],
-    @[3,7,11],
-    @[],
-    @[],
-  ],
-  @[
-    @[2,5,8],
-    @[],
-    @[3,6,9],
-    @[],
-    @[0,10,7],
-    @[],
-    @[4,1,11],
-    @[],
-    @[],
-  ],
-  @[
-    @[0,4],
-    @[],
-    @[5,9],
-    @[],
-    @[2,6],
-    @[],
-    @[7,11],
-    @[],
-    @[],
-  ],
-  @[
-    @[8,6],
-    @[],
-    @[9,11],
-    @[],
-    @[0,10],
-    @[],
-    @[1,7],
-    @[],
-    @[4,2],
-    @[],
-    @[5,3],
-    @[],
-    @[],
-  ],
-  # etc...
-  # TODO possibly rewrite to indicate firing phase of each piston instead of piston sequence per phase
-]
-
-proc do_pistons*(level: Level, zone: Zone, t: float) =
-  zone.clock = t * 3
-
-  const sequence = piston_sequences[2]
-  let firing = zone.clock.int mod sequence.len
-
-  if zone.clock - zone.clock.int.float < 0.1:
-    for n,i,j in level.indexed_coords(zone):
-      if n notin sequence[firing]: continue
-      let n = (i - zone.rect.y) * (zone.rect.z - zone.rect.x) + (j - zone.rect.x)
-      for actor in level.actors:
-        if actor.kind != EP: continue
-        if actor.origin.x != j or actor.origin.z != i: continue
-        actor.firing = true
-  else:
-    discard
-
-proc tick*(level: var Level, t: float) =
-  level.clock = t
-  level.do_phase_zones()
-  for zone in level.zones:
-    if zone.kind != EP: continue
-    level.do_pistons(zone, t)
 

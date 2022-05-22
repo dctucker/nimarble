@@ -76,12 +76,6 @@ type
     name*         : string
     updates*      : seq[LevelUpdate]
 
-proc `$`*(a: Actor): string =
-  return $(a.kind) & " " & $(a.origin)
-
-proc `~=`*(a1, a2: Actor): bool =
-  return a1.kind == a2.kind and a1.origin == a2.origin
-
 proc hash*(z: Zone): Hash =
   result = z.kind.hash !& z.rect.hash
   result = !$result
