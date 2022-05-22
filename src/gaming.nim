@@ -159,6 +159,9 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
       scale     : vec3f(1,1,1),
     )
     result.pos = vec3f(0.5, 0.0, 0.5)
+  of SW:
+    result = newMesh( game, wave_verts  , wave_colors        , wave_normals        , wave_index   )
+    result.scale = vec3f(1f/30f, 1, 1)
   else : result = newMesh( game, sphere      , sphere_normals     , sphere_normals      , sphere_index )
 
 proc init_piece*[T](game: var Game, piece: var T) =

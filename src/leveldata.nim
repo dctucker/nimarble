@@ -187,7 +187,7 @@ proc find_actors*(level: var Level): ActorSet =
 proc find_fixtures*(level: var Level): seq[Fixture] =
   for i,j in level.coords:
     for mask in level.map[i,j].masks:
-      if mask in {GR}:
+      if mask.fixture():
         result.add Fixture(
           origin: vec3i( j.int32, level.map[i,j].height.int32, i.int32 ),
           kind: mask,
@@ -835,7 +835,7 @@ proc setup_floor_colors[T](level: Level): seq[cfloat] =
       result[index+3] = c.w
 
 proc wave_height*(level: Level, x,z: float): float =
-  let phase = 15f * -x + level.clock.float
+  let phase = 15f * -x + (level.clock mod 30).float
   const max_height = 3f
   result = max_height * sin(phase.radians)
   result = clamp( result, 0, max_height )

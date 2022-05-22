@@ -198,6 +198,13 @@ proc toCfloats(vecs: seq[Vec4f], dim: int = 3): seq[cfloat] =
     if dim >= 3: result.add vec.z
     if dim >= 4: result.add vec.w
 
+proc toCfloats(vecs: seq[Vec3f], dim: int = 3): seq[cfloat] =
+  result = newSeqOfCap[cfloat](dim * vecs.len)
+  for vec in vecs:
+    if dim >= 1: result.add vec.x
+    if dim >= 2: result.add vec.y
+    if dim >= 3: result.add vec.z
+
 proc cylinderVertices*(segments: int, radius: float32 = 1, length: float32 = 1): seq[Vec4f] =
   result.newSeq((segments+1) * 4 + 2)
   let l2 = length / 2f
@@ -390,3 +397,37 @@ var acid_normals*: seq[cfloat] = @[
   0f, +1f, 0f,
   0f, +1f, 0f,
 ]
+
+
+const wave_angles = 360
+proc gen_wave_verts: seq[Vec3f] =
+  for a in 0..<wave_angles:
+    let aa = a.float
+    result.add vec3f(aa+0f, sin((0f+aa).radians), 0f)
+    result.add vec3f(aa+0f, sin((1f+aa).radians), 1f)
+    result.add vec3f(aa+1f, sin((0f+aa).radians), 0f)
+    result.add vec3f(aa+1f, sin((1f+aa).radians), 1f)
+proc gen_wave_colors: seq[Vec4f] =
+  for a in 0..<wave_angles:
+     result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+     result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+     result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+     result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+proc gen_wave_normals: seq[Vec3f] =
+  for a in 0..<wave_angles:
+    let c = cos(a.float.radians)
+    result.add vec3f(0, c, c).normalize
+    result.add vec3f(0, c, c).normalize
+    result.add vec3f(0, c, c).normalize
+    result.add vec3f(0, c, c).normalize
+proc gen_wave_index: seq[Ind] =
+  for a in 0..<wave_angles:
+    result.add Ind a*4 + 0
+    result.add Ind a*4 + 1
+    result.add Ind a*4 + 2
+    result.add Ind a*4 + 3
+
+var wave_verts*   = toCfloats( gen_wave_verts()   , 3)
+var wave_colors*  = toCfloats( gen_wave_colors()  , 4)
+var wave_normals* = toCfloats( gen_wave_normals() , 3)
+var wave_index*   =          ( gen_wave_index()   )
