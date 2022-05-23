@@ -166,7 +166,7 @@ proc animate_wave(game: Game, piece: var Fixture, dt: float) =
 
   let xm = (piece.origin.x mod wave_len).float
   piece.mesh.translate.x += 0.125
-  if piece.mesh.translate.x >= -xm + 12f:
+  if piece.mesh.translate.x > 0f:
     piece.mesh.translate.x -= 12f
 
 proc reaction(e: CliffMask): Animation =
