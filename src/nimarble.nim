@@ -408,6 +408,8 @@ proc render[T: Piece](piece: var T) =
 
   mesh.render        GL_TRIANGLE_STRIP
 
+var beats = 0
+
 proc main =
   editor = Editor(cursor_data: true, cursor_mask: true, stamp: Stamp(width:0, height: 0))
   game = newGame()
@@ -438,11 +440,12 @@ proc main =
     for actor in level.actors.mitems:
       game.physics(actor, dt)
 
-    if game.animate_next_step:
-      #if (game.level.clock * 60f).int mod 20 == 0:
+    beats.inc
+    #if true or game.animate_next_step:
+    if beats mod 2 == 0:
       for fixture in level.fixtures.mitems:
         game.physics(fixture, dt)
-      game.animate_next_step = false
+    #game.animate_next_step = false
 
     mesh.model.mat = mat4(1.0f)
       .translate(vec3f(0, player_radius,0))

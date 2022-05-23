@@ -192,7 +192,7 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
     result.elem_vbo.n_verts = wave_res * wave_ninds
     result.pos = vec3f(0,-0.03125,0)
     result.translate.x = -xm
-    result.translate.z = (piece.origin.x mod 2).float * 0.125 # ugly debug
+    #result.translate.z = (piece.origin.x mod 2).float * 0.125 # ugly debug
 
   else:
     result = newMesh( game, sphere      , sphere_normals     , sphere_normals      , sphere_index )

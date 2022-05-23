@@ -410,7 +410,7 @@ var acid_normals*: seq[cfloat] = @[
     |____|/
    6     7
 ]#
-const wave_res* = 8
+const wave_res* = 16
 const wave_len* = 12
 const wave_angles* = wave_res * wave_len
 const wave_nverts* = 8
