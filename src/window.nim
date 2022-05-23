@@ -1,5 +1,6 @@
 {. warning[HoleEnumConv]:off .}
 
+import std/tables
 import strutils
 import glm
 import nimgl/glfw
@@ -222,6 +223,9 @@ proc info_window*(actors: ActorSet) =
       var actor = actors[a]
       var name: cstring
 
+      var kind = cstring $actor.kind
+      igText kind
+
       name = cstring("actor " & $a & " pos")
       igDragFloat3 name, actors[a].mesh.pos.arr, 0.125, -sky, sky
 
@@ -230,16 +234,35 @@ proc info_window*(actors: ActorSet) =
       igSeparator()
   igEnd()
 
+iterator fixtures_by_kind(s: seq[Fixture]): (CliffMask, var seq[Fixture]) =
+  var tbl = newTable[CliffMask, seq[Fixture]]()
+  for f in s:
+    if not tbl.hasKey f.kind:
+      tbl[f.kind] = @[]
+    tbl[f.kind].add f
+  for k,v in tbl.mpairs:
+    yield (k,v)
+
+import models
 proc info_window*(fixtures: seq[Fixture]) =
   #igSetNextWindowPos(ImVec2(x:500, y:5))
   igBegin("fixtures")
-  if fixtures.len > 0:
-    for f in fixtures.low .. fixtures.high:
-      var fixture = fixtures[f]
-      let name = cstring("fixture " & $f & " pos")
-      igDragFloat3 name   , fixtures[f].mesh.pos.arr, 0.125, -sky, sky
-      let rotname = cstring("fixture " & $f & " rot")
-      igDragFloat4 rotname, fixtures[f].mesh.rot.arr, 1f.radians, -180f.radians, 180f.radians
+  for kind, s in fixtures.fixtures_by_kind:
+    var k = cstring $kind
+    if igCollapsingHeader(k, DefaultOpen):
+      for f, fixture in s.mpairs:
+
+        let name = cstring("fixture " & $f & " pos")
+        igDragFloat3 name   , fixture.mesh.pos.arr, 0.125, -sky, sky
+
+        let rotname = cstring("fixture " & $f & " rot")
+        igDragFloat4 rotname, fixture.mesh.rot.arr, 1f.radians, -180f.radians, 180f.radians
+
+        let offname = cstring "fixture" & $f & " offset"
+        igDragInt  offname, fixture.mesh.elem_vbo.offset.addr, wave_ninds, 0, wave_ninds * wave_res * wave_len
+
+        igSeparator()
+      igSpacing()
   igEnd()
 
 proc info_window*(mask: CliffMask) =

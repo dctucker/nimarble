@@ -411,7 +411,7 @@ var acid_normals*: seq[cfloat] = @[
     |____|/
    6     7
 ]#
-const wave_res* = 2
+const wave_res* = 8
 const wave_len* = 12
 const wave_angles* = wave_res * wave_len
 const wave_nverts* = 8
@@ -444,7 +444,16 @@ proc gen_wave_verts: seq[Vec3f] =
       echo y0
 
 proc gen_wave_colors: seq[Vec4f] =
-  for a in 0..<wave_angles:
+  result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
+  result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
+  result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
+  result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
+  result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
+  result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
+  result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
+  result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
+
+  for a in 1..<wave_angles:
     result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
     result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
     result.add vec4f( 0.1, 0.6, 0.6, 1.0 )

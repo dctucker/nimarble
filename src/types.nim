@@ -207,6 +207,7 @@ type
     goal*: bool
     god*: bool
     wireframe*: bool
+    animate_next_step* : bool
     recent_input*      : GLFWKey
 
 proc newGame*: Game =

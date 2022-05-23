@@ -21,6 +21,10 @@ const start_level* = 1
 var app* = Application() # ugh, this needs to be moved out
 var editor*: Editor
 
+action:
+  proc animate_step*(game: var Game, press: bool) =
+    if press: game.animate_next_step = true
+
 proc rotate_coord*(v: Vec3f): Vec3f =
   let v4 = mat4f(1f).translate(v).rotateY(radians(45f))[3]
   result = vec3f(v4.x, v4.y, v4.z)
@@ -184,7 +188,6 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
     )
     let xm = (piece.origin.x mod wave_len).float
     let offset = cint xm * wave_ninds * wave_res
-    echo offset
     result.elem_vbo.offset = offset
     result.elem_vbo.n_verts = wave_res * wave_ninds
     result.pos = vec3f(-xm,-0.03125,0)

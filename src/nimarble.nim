@@ -56,6 +56,7 @@ let game_keymap = {
   GLFWKey.L            : toggle_mouse_lock ,
   GLFWKey.G            : toggle_god        ,
   GLFWKey.E            : focus_editor      ,
+  GLFWKey.A            : animate_step      ,
   GLFWKey.Escape       : toggle_all        ,
 }.toOrderedTable
 
@@ -312,6 +313,10 @@ proc `or`*(f1, f2: ImGuiWindowFlags): ImGuiWindowFlags =
   return ImGuiWindowFlags( f1.ord or f2.ord )
 
 proc draw_imgui =
+  glEnable           GL_POLYGON_OFFSET_FILL
+  glPolygonOffset 1f, 1f
+  glPolygonMode GL_FRONT_AND_BACK, GL_FILL
+
   igPushFont( small_font )
 
   app.main_menu()
@@ -432,6 +437,12 @@ proc main =
 
     for actor in level.actors.mitems:
       game.physics(actor, dt)
+
+    if game.animate_next_step:
+      #if (game.level.clock * 60f).int mod 20 == 0:
+      for fixture in level.fixtures.mitems:
+        game.physics(fixture, dt)
+      game.animate_next_step = false
 
     mesh.model.mat = mat4(1.0f)
       .translate(vec3f(0, player_radius,0))
