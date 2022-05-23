@@ -163,10 +163,11 @@ proc animate_wave(game: Game, piece: var Fixture, dt: float) =
 
   piece.mesh.elem_vbo.offset = offset
   #piece.mesh.pos.x =  - (offset / (wave_ninds * wave_res)).float
-  piece.mesh.pos.x += 0.125
-  #if (24f + piece.mesh.pos.x).int mod 12 == 8:
-  #  piece.mesh.pos.x = -4f
-  #  let xm = (piece.origin.x mod wave_len).float
+
+  let xm = (piece.origin.x mod wave_len).float
+  piece.mesh.translate.x += 0.125
+  if piece.mesh.translate.x >= -xm + 12f:
+    piece.mesh.translate.x -= 12f
 
 proc reaction(e: CliffMask): Animation =
   case e

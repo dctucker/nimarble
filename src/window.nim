@@ -252,13 +252,16 @@ proc info_window*(fixtures: seq[Fixture]) =
     if igCollapsingHeader(k, DefaultOpen):
       for f, fixture in s.mpairs:
 
-        let name = cstring("fixture " & $f & " pos")
+        let name = cstring "pos##" & $f
         igDragFloat3 name   , fixture.mesh.pos.arr, 0.125, -sky, sky
 
-        let rotname = cstring("fixture " & $f & " rot")
+        let tname = cstring "translate##" & $f
+        igDragFloat3 tname   , fixture.mesh.translate.arr, 0.125, -12f, 12f
+
+        let rotname = cstring "rot##" & $f
         igDragFloat4 rotname, fixture.mesh.rot.arr, 1f.radians, -180f.radians, 180f.radians
 
-        let offname = cstring "fixture" & $f & " offset"
+        let offname = cstring "offset##" & $f
         igDragInt  offname, fixture.mesh.elem_vbo.offset.addr, wave_ninds, 0, wave_ninds * wave_res * wave_len
 
         igSeparator()

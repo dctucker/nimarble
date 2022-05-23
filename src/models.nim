@@ -24,7 +24,6 @@ let cube_verts* = @[
   vec3i( 1, 1, 0 ), #6
   vec3i( 1, 1, 1 ), #7
 ]
-echo cube_verts.len
 
 let cube_index* = @[
   0,
@@ -429,8 +428,8 @@ proc gen_wave_verts: seq[Vec3f] =
       let z0 = 1f/16f
       let z1 = 15f/16f
 
-      let y0 = max(0, sin(radians t0))
-      let y1 = max(0, sin(radians t1))
+      let y0 = max(0, sin(radians t0+180))
+      let y1 = max(0, sin(radians t1+180))
 
       result.add vec3f(x0,  0, z0)
       result.add vec3f(x1,  0, z0)
@@ -440,8 +439,6 @@ proc gen_wave_verts: seq[Vec3f] =
       result.add vec3f(x1, y1, z1)
       result.add vec3f(x0,  0, z1)
       result.add vec3f(x1,  0, z1)
-
-      echo y0
 
 proc gen_wave_colors: seq[Vec4f] =
   result.add vec4f( 1.0, 0.2, 1.0, 1.0 )

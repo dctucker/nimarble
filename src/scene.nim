@@ -57,7 +57,8 @@ type
 
   Mesh* = ref object
     wireframe*: bool
-    motion*: Motion
+    motion*: Motion   # relative to level
+    translate*: Vec3f # relative to current pos, useful for offsets
     scale*: Vec3f
     rot*: Quatf
     vao*: VAO

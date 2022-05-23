@@ -139,7 +139,6 @@ proc poll_joystick*(game: var Game) =
   const xbox = 2 # TODO
   var n_axes: int32
   var ax = glfwGetJoystickAxes(xbox, n_axes.addr)
-  echo n_axes
   if n_axes == 6:
     joystick.id = xbox
   else:
@@ -404,6 +403,7 @@ proc render[T: Piece](piece: var T) =
   var mesh = piece.mesh
   mesh.model.mat = mat4(1.0f)
     .translate(mesh.pos * vec3f(1,level_squash,1))
+    .translate(mesh.translate)
     .scale(mesh.scale) * mesh.rot.mat4f
 
   mesh.render        GL_TRIANGLE_STRIP

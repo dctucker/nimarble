@@ -391,7 +391,7 @@ proc init_level(name, data_src, mask_src: string, color: Vec3f): Level =
     color: color,
     map: newLevelMap(width, height),
   )
-  discard result.validate()
+  #discard result.validate()
   result.origin   = find_s1(data, mask, width, height)
   result.span     = result.find_span()
   result.zones    = result.find_zones()

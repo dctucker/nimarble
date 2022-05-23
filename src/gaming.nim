@@ -190,7 +190,9 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
     let offset = cint xm * wave_ninds * wave_res
     result.elem_vbo.offset = offset
     result.elem_vbo.n_verts = wave_res * wave_ninds
-    result.pos = vec3f(-xm,-0.03125,0)
+    result.pos = vec3f(0,-0.03125,0)
+    result.translate.x = -xm
+    result.translate.z = (piece.origin.x mod 2).float * 0.25
 
   else:
     result = newMesh( game, sphere      , sphere_normals     , sphere_normals      , sphere_index )
