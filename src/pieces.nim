@@ -115,18 +115,18 @@ proc meander*(game: Game, actor: var Actor, dt: float) =
     actor.facing = random_direction()
 
 proc animate_piston(game: Game, actor: var Actor, dt: float) =
-  const max_y = 4f
-  let dy = 18f * dt
-  if actor.mesh.scale.y >= max_y:
+  const max_y = 2f
+  let dy = 12f * dt
+  if actor.mesh.translate.y >= max_y:
     actor.firing = false
 
   if actor.firing:
-    actor.mesh.scale.y += dy
+    actor.mesh.translate.y += dy
   else:
-    if actor.mesh.scale.y > 0:
-      actor.mesh.scale.y -= dy
-      if actor.mesh.scale.y < 0:
-        actor.mesh.scale.y = 0
+    if actor.mesh.translate.y > 0:
+      actor.mesh.translate.y -= dy
+      if actor.mesh.translate.y < 0:
+        actor.mesh.translate.y = 0
 
 
 #[

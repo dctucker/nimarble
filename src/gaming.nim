@@ -147,8 +147,8 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
   of EP:
     result = newMesh( game, piston_verts, piston_colors      , piston_normals      , piston_index )
     result.rot = quatf(vec3f(1, 0, 0).normalize, 90f.radians)
-    result.scale = vec3f(1f, 0f, 1f)
-    result.pos = vec3f(0.5, 0.03125, 0.5)
+    result.scale = vec3f(1f, 2f, 1f)
+    result.pos = vec3f(0.5, -1.96875, 0.5)
   of GR:
     var verts   = single_rail
     var colors  = single_rail_colors
@@ -192,7 +192,7 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
     result.elem_vbo.n_verts = wave_res * wave_ninds
     result.pos = vec3f(0,-0.03125,0)
     result.translate.x = -xm
-    result.translate.z = (piece.origin.x mod 2).float * 0.25
+    result.translate.z = (piece.origin.x mod 2).float * 0.125 # ugly debug
 
   else:
     result = newMesh( game, sphere      , sphere_normals     , sphere_normals      , sphere_index )
