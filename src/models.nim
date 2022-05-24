@@ -429,14 +429,14 @@ proc wave_func[T](t: T): T =
   # gaussian
   const a = 1f
   const b = 2f
-  const c = 1f/3f
+  const c = 2f/5f
   result = a * exp -pow(t.radians-b, 2f) / (2f*c*c)
   #]#
 
   const epsilon = 1/256f
   if result < epsilon: result = 0
 
-proc gen_wave_verts: seq[Vec3f] =
+proc gen_wave_verts: seq[Vec3f] {.compileTime.} =
   for a in 0 ..< wave_len:
     for b in 0 ..< wave_res:
       let x = a * wave_res + b
@@ -464,56 +464,87 @@ proc gen_wave_verts: seq[Vec3f] =
       result.add vec3f(x0,  0, z1)
       result.add vec3f(x1,  0, z1)
 
-proc gen_wave_colors: seq[Vec4f] =
-  result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
-  result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
-  result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
-  result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
-  result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
-  result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
-  result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
-  result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
-  result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
-  result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
-  result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
-  result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
-
-  for a in 1..<wave_angles:
-    result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
-    result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
-    result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
-    result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
-    result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
-    result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
-    result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
-    result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
-    result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
-    result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
-    result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
-    result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
-
-proc gen_wave_normals: seq[Vec3f] =
+proc gen_wave_colors: seq[Vec4f] {.compileTime.} =
   for a in 0 ..< wave_len:
     for b in 0 ..< wave_res:
-      let x0 = (a * wave_res + b).float
-      let x1 = (a * wave_res + b + 1).float
+      result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+      result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+      result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+      result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+
+      let x = a * wave_res + b
+      let x0 = (x + 0).float
+      let x1 = (x + 1).float
       let t0 = 360f * x0 / wave_len.float / wave_res.float
       let t1 = 360f * x1 / wave_len.float / wave_res.float
-      let c = cos(radians a.float / wave_res)
-      result.add vec3f( -1, -1, -1 ).normalize
-      result.add vec3f(  1, -1, -1 ).normalize
-      result.add vec3f( -1, t0, -1 ).normalize
-      result.add vec3f(  1, t1, -1 ).normalize
-      result.add vec3f( -1, t0, -1 ).normalize
-      result.add vec3f(  1, t1, -1 ).normalize
-      result.add vec3f( -1, t0,  1 ).normalize
-      result.add vec3f(  1, t1,  1 ).normalize
-      result.add vec3f( -1, t0,  1 ).normalize
-      result.add vec3f(  1, t1,  1 ).normalize
-      result.add vec3f( -1,  0,  1 ).normalize
-      result.add vec3f(  1,  0,  1 ).normalize
 
-proc gen_wave_index: seq[Ind] =
+      var y0 = wave_func t0
+      var y1 = wave_func t1
+
+      let z0 = 1f/256f
+      let z1 = 255f/256f
+
+      let sx = 1f/wave_res
+      let sy = 3f
+      let a = vec3f(x0 * sx, y0 * sy, z0)
+      let b = vec3f(x1 * sx, y1 * sy, z0)
+      let c = vec3f(x0 * sx, y0 * sy, z1)
+      let d = vec3f(x1 * sx, y1 * sy, z1)
+
+      let n0 = -normalize (b - a).cross(c - a)
+      let n1 = -normalize (d - b).cross(c - b)
+      let v = n0.y
+
+      result.add vec4f( 0.0, 0.5 * v, 0.5 * v, 1.0 )
+      result.add vec4f( 0.0, 0.5 * v, 0.5 * v, 1.0 )
+      result.add vec4f( 0.0, 0.5 * v, 0.5 * v, 1.0 )
+      result.add vec4f( 0.0, 0.5 * v, 0.5 * v, 1.0 )
+      echo v
+
+      result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+      result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+      result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+      result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+
+proc gen_wave_normals: seq[Vec3f] {.compileTime.} =
+  for a in 0 ..< wave_len:
+    for b in 0 ..< wave_res:
+      let x = a * wave_res + b
+      let x0 = (x + 0).float
+      let x1 = (x + 1).float
+      let t0 = 360f * x0 / wave_len.float / wave_res.float
+      let t1 = 360f * x1 / wave_len.float / wave_res.float
+
+      var y0 = wave_func t0
+      var y1 = wave_func t1
+
+      let z0 = 1f/256f
+      let z1 = 255f/256f
+
+      let sx = 1f/wave_res
+      let sy = 3f
+      let a = vec3f(x0 * sx, y0 * sy, z0)
+      let b = vec3f(x1 * sx, y1 * sy, z0)
+      let c = vec3f(x0 * sx, y0 * sy, z1)
+      let d = vec3f(x1 * sx, y1 * sy, z1)
+
+      let n0 = -normalize (b - a).cross(c - a)
+      let n1 = -normalize (d - b).cross(c - b)
+
+      result.add vec3f( -1,  0, -1 ).normalize
+      result.add vec3f( +1,  0, -1 ).normalize
+      result.add vec3f( -1,  0, -1 ).normalize
+      result.add vec3f( +1,  0, -1 ).normalize
+      result.add n0
+      result.add n1
+      result.add n0
+      result.add n1
+      result.add vec3f( -1,  0, +1 ).normalize
+      result.add vec3f( +1,  0, +1 ).normalize
+      result.add vec3f( -1,  0, +1 ).normalize
+      result.add vec3f( +1,  0, +1 ).normalize
+
+proc gen_wave_index: seq[Ind] {.compileTime.} =
   for a in 0 ..< wave_angles:
     let v = a * wave_nverts
     for n in 0 ..< wave_nverts:
