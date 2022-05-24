@@ -413,8 +413,28 @@ var acid_normals*: seq[cfloat] = @[
 const wave_res* = 16
 const wave_len* = 12
 const wave_angles* = wave_res * wave_len
-const wave_nverts* = 8
-const wave_ninds*  = 8
+const wave_nverts* = 12
+const wave_ninds*  = 12
+
+proc wave_func[T](t: T): T =
+  var y0, y1: float
+  #[ sinusoidal
+  result = sin(radians t + 180)
+  #]#
+
+  #[ hyperbolic secant
+  result = 1f / cosh(radians(4*(t - 180)))
+  #]#
+
+  # gaussian
+  const a = 1f
+  const b = 2f
+  const c = 1f/3f
+  result = a * exp -pow(t.radians-b, 2f) / (2f*c*c)
+  #]#
+
+  const epsilon = 1/256f
+  if result < epsilon: result = 0
 
 proc gen_wave_verts: seq[Vec3f] =
   for a in 0 ..< wave_len:
@@ -428,33 +448,17 @@ proc gen_wave_verts: seq[Vec3f] =
       let z0 = 1f/256f
       let z1 = 255f/256f
 
-      var y0, y1: float
-      #[ sinusoidal
-      let y0 = max(0, sin(radians t0+180))
-      let y1 = max(0, sin(radians t1+180))
-      #]#
-
-      #[ hyperbolic secant
-      var y0 = max(0, 1f/cosh(radians(4*(t0-180))))
-      var y1 = max(0, 1f/cosh(radians(4*(t1-180))))
-      #]#
-
-      # gaussian
-      const a = 1f
-      const b = 2f
-      const c = 1f/3f
-      y0 = a*exp -pow(t0.radians-b,2f) / (2f*c*c)
-      y1 = a*exp -pow(t1.radians-b,2f) / (2f*c*c)
-      #]#
-
-      const epsilon = 1/256f
-      if y0 < epsilon: y0 = 0
-      if y1 < epsilon: y1 = 0
+      var y0 = wave_func t0
+      var y1 = wave_func t1
 
       result.add vec3f(x0,  0, z0)
       result.add vec3f(x1,  0, z0)
       result.add vec3f(x0, y0,  0)
       result.add vec3f(x1, y1,  0)
+      result.add vec3f(x0, y0,  0)
+      result.add vec3f(x1, y1,  0)
+      result.add vec3f(x0, y0,  1)
+      result.add vec3f(x1, y1,  1)
       result.add vec3f(x0, y0,  1)
       result.add vec3f(x1, y1,  1)
       result.add vec3f(x0,  0, z1)
@@ -469,8 +473,16 @@ proc gen_wave_colors: seq[Vec4f] =
   result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
   result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
   result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
+  result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
+  result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
+  result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
+  result.add vec4f( 1.0, 0.2, 1.0, 1.0 )
 
   for a in 1..<wave_angles:
+    result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+    result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+    result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+    result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
     result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
     result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
     result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
@@ -492,6 +504,10 @@ proc gen_wave_normals: seq[Vec3f] =
       result.add vec3f(  1, -1, -1 ).normalize
       result.add vec3f( -1, t0, -1 ).normalize
       result.add vec3f(  1, t1, -1 ).normalize
+      result.add vec3f( -1, t0, -1 ).normalize
+      result.add vec3f(  1, t1, -1 ).normalize
+      result.add vec3f( -1, t0,  1 ).normalize
+      result.add vec3f(  1, t1,  1 ).normalize
       result.add vec3f( -1, t0,  1 ).normalize
       result.add vec3f(  1, t1,  1 ).normalize
       result.add vec3f( -1,  0,  1 ).normalize
