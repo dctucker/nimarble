@@ -462,11 +462,14 @@ proc main =
         game.player.die "terminal velocity"
 
       for actor in level.actors.mitems:
-        if actor.kind == EA:
-          if (actor.mesh.pos - game.player.mesh.pos).length < 1f:
-            actor.mesh.pos = game.player.mesh.pos
-            game.player.animate Dissolve, t + 1f
-            return
+        if (actor.mesh.pos - game.player.mesh.pos).length < 1f:
+          if actor.mesh.scale.length < 1f:
+            actor.mesh.scale.y = 0.1f
+            continue
+          if actor.kind == EA:
+              actor.mesh.pos = game.player.mesh.pos
+              game.player.animate Dissolve, t + 1f
+              return
 
     let ramp = level.slope(x,z) * level_squash * level_squash
     let thx = arctan(ramp.x)

@@ -203,6 +203,8 @@ proc init_piece*[T](game: var Game, piece: var T) =
   let y =  piece.origin.y.float
   let z = (piece.origin.z - game.level.origin.z).float
 
+  if MI in game.level.map[ piece.origin.z, piece.origin.x ].masks:
+    piece.mesh.scale *= 0.5
   piece.mesh.pos    += vec3f(x, y, z)
   var mvp = game.proj * game.view.mat.translate(-game.pan.pos) * piece.mesh.model.mat
   piece.mesh.mvp = game.player.mesh.program.newMatrix(mvp, "MVP")

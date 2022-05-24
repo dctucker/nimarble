@@ -72,7 +72,7 @@ cliff_masks:
 const fixture_masks* = {GR, SW}
 proc fixture*(mask: CliffMask): bool = mask in fixture_masks
 
-const zone_masks* = {P1, P2, P3, P4, EP, GR, SW, SD, OI, IC, MI, BH, BI}
+const zone_masks* = {P1, P2, P3, P4, EP, GR, SW, SD, OI, IC, MI, BH, BI, MI}
 proc zone*(mask: CliffMask)  : bool = mask in zone_masks
 
 #[

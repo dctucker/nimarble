@@ -286,7 +286,7 @@ proc cylinderColors*(segments: int, color: Vec3f): seq[Vec4f] =
     c.y *= color.y
     c.z *= color.z
 
-proc cylinderIndices*(segments: int): seq[Ind] =
+proc cylinderIndices*(segments: int): seq[Ind] {.compileTime.} =
   result.newSeq(0)
 
   for i in 0 ..< segments:
@@ -453,14 +453,14 @@ proc gen_wave_verts: seq[Vec3f] {.compileTime.} =
 
       result.add vec3f(x0,  0, z0)
       result.add vec3f(x1,  0, z0)
-      result.add vec3f(x0, y0,  0)
-      result.add vec3f(x1, y1,  0)
+      result.add vec3f(x0, y0, z0)
+      result.add vec3f(x1, y1, z0)
       result.add vec3f(x0, y0,  0)
       result.add vec3f(x1, y1,  0)
       result.add vec3f(x0, y0,  1)
       result.add vec3f(x1, y1,  1)
-      result.add vec3f(x0, y0,  1)
-      result.add vec3f(x1, y1,  1)
+      result.add vec3f(x0, y0, z1)
+      result.add vec3f(x1, y1, z1)
       result.add vec3f(x0,  0, z1)
       result.add vec3f(x1,  0, z1)
 
@@ -495,11 +495,10 @@ proc gen_wave_colors: seq[Vec4f] {.compileTime.} =
       let n1 = -normalize (d - b).cross(c - b)
       let v = n0.y
 
-      result.add vec4f( 0.0, 0.5 * v, 0.5 * v, 1.0 )
-      result.add vec4f( 0.0, 0.5 * v, 0.5 * v, 1.0 )
-      result.add vec4f( 0.0, 0.5 * v, 0.5 * v, 1.0 )
-      result.add vec4f( 0.0, 0.5 * v, 0.5 * v, 1.0 )
-      echo v
+      result.add vec4f( 0.0, 0.6 * v, 0.6 * v, 1.0 )
+      result.add vec4f( 0.0, 0.6 * v, 0.6 * v, 1.0 )
+      result.add vec4f( 0.0, 0.6 * v, 0.6 * v, 1.0 )
+      result.add vec4f( 0.0, 0.6 * v, 0.6 * v, 1.0 )
 
       result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
       result.add vec4f( 0.1, 0.6, 0.6, 1.0 )

@@ -102,7 +102,7 @@ const directions = @[
 ]
 proc random_direction: Vec3f = return directions[rand(directions.low..directions.high)]
 
-proc meander*(game: Game, actor: var Actor, dt: float) =
+proc meander(game: Game, actor: var Actor, dt: float) =
   if actor.facing.length == 0:
     actor.facing = random_direction()
   if (actor.pivot_pos - actor.mesh.pos).length >= 1f:
@@ -113,6 +113,18 @@ proc meander*(game: Game, actor: var Actor, dt: float) =
     actor.mesh.pos = next_pos
   else:
     actor.facing = random_direction()
+
+proc slink(game: Game, actor: var Actor, dt: float) =
+  game.meander(actor, dt)
+  # TODO apply slink animation
+
+proc roll(game: Game, actor: var Actor, dt: float) =
+  game.meander(actor, dt)
+  # TODO apply roll by affecting actor's accelleration
+
+proc stalk(game: Game, actor: var Actor, dt: float) =
+  # TODO chase the player
+  discard
 
 proc animate_piston(game: Game, actor: var Actor, dt: float) =
   const max_y = 2f
@@ -184,7 +196,16 @@ proc physics*(game: Game, actor: var Actor, dt: float) =
   case actor.kind
   of EA:
     if game.player.animation == Dissolve: return
+    if actor.mesh.scale.y < 0.125f: return
     game.meander(actor, dt)
+  of EM:
+    if actor.mesh.scale.y < 0.125f: return
+    game.roll(actor, dt)
+    if (actor.mesh.pos - game.player.mesh.pos).length < 3f:
+      game.stalk(actor, dt)
+  of EY:
+    if actor.mesh.scale.y < 0.125f: return
+    game.slink(actor, dt)
   of EP:
     game.animate_piston(actor, dt)
   else:
