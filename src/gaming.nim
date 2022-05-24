@@ -190,8 +190,8 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
     let offset = cint xm * wave_ninds * wave_res
     result.elem_vbo.offset = offset
     result.elem_vbo.n_verts = wave_res * wave_ninds - 1
-    result.pos = vec3f(0,-0.03125,0)
     result.translate.x = -xm
+    result.translate.y = -1/32f
     #result.translate.z = (piece.origin.x mod 2).float * 0.125 # ugly debug
 
   else:

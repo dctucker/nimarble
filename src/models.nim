@@ -428,13 +428,28 @@ proc gen_wave_verts: seq[Vec3f] =
       let z0 = 1f/256f
       let z1 = 255f/256f
 
-      #let y0 = max(0, sin(radians t0+180))
-      #let y1 = max(0, sin(radians t1+180))
-      let a = 1f
-      let b = 2f
-      let c = 1f/3f
-      let y0 = a*exp -pow(t0.radians-b,2f) / (2f*c*c)
-      let y1 = a*exp -pow(t1.radians-b,2f) / (2f*c*c)
+      var y0, y1: float
+      #[ sinusoidal
+      let y0 = max(0, sin(radians t0+180))
+      let y1 = max(0, sin(radians t1+180))
+      #]#
+
+      #[ hyperbolic secant
+      var y0 = max(0, 1f/cosh(radians(4*(t0-180))))
+      var y1 = max(0, 1f/cosh(radians(4*(t1-180))))
+      #]#
+
+      # gaussian
+      const a = 1f
+      const b = 2f
+      const c = 1f/3f
+      y0 = a*exp -pow(t0.radians-b,2f) / (2f*c*c)
+      y1 = a*exp -pow(t1.radians-b,2f) / (2f*c*c)
+      #]#
+
+      const epsilon = 1/256f
+      if y0 < epsilon: y0 = 0
+      if y1 < epsilon: y1 = 0
 
       result.add vec3f(x0,  0, z0)
       result.add vec3f(x1,  0, z0)
