@@ -218,7 +218,7 @@ proc setup_opengl() =
 
   glEnable GL_BLEND
   glBlendFunc GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
-  glShadeModel GL_FLAT
+  #glShadeModel GL_FLAT
 
 proc info_player =
   let coord = game.player.mesh.pos.rotate_coord

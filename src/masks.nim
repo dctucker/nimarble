@@ -58,7 +58,7 @@ cliff_masks:
   P2      "phased block 2"
   P3      "phased block 3"
   P4      "phased block 4"
-  SW      "sine wave"
+  SW      "sea wave"
   S1      "player 1 start position"
   S2      "player 2 start position"
   EA      "entity: acid"

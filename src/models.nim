@@ -425,18 +425,23 @@ proc gen_wave_verts: seq[Vec3f] =
       let t0 = 360f * x0 / wave_len.float / wave_res.float
       let t1 = 360f * x1 / wave_len.float / wave_res.float
 
-      let z0 = 1f/16f
-      let z1 = 15f/16f
+      let z0 = 1f/256f
+      let z1 = 255f/256f
 
-      let y0 = max(0, sin(radians t0+180))
-      let y1 = max(0, sin(radians t1+180))
+      #let y0 = max(0, sin(radians t0+180))
+      #let y1 = max(0, sin(radians t1+180))
+      let a = 1f
+      let b = 2f
+      let c = 1f/3f
+      let y0 = a*exp -pow(t0.radians-b,2f) / (2f*c*c)
+      let y1 = a*exp -pow(t1.radians-b,2f) / (2f*c*c)
 
       result.add vec3f(x0,  0, z0)
       result.add vec3f(x1,  0, z0)
-      result.add vec3f(x0, y0, z0)
-      result.add vec3f(x1, y1, z0)
-      result.add vec3f(x0, y0, z1)
-      result.add vec3f(x1, y1, z1)
+      result.add vec3f(x0, y0,  0)
+      result.add vec3f(x1, y1,  0)
+      result.add vec3f(x0, y0,  1)
+      result.add vec3f(x1, y1,  1)
       result.add vec3f(x0,  0, z1)
       result.add vec3f(x1,  0, z1)
 
