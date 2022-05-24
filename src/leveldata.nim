@@ -233,7 +233,7 @@ proc find_zones*(level: Level, masks: set[CliffMask]): ZoneSet =
     result = vec2i(0,0)
 
   proc search_forward(sx,sz: int): Vec2i =
-    for point in by_area(24,10):
+    for point in by_area(24,24):
       result = vec2i( int32 sx + 1 + point.x, int32 sz + 1 + point.y )
       # singular mask detection to identify points within source data
       let mask = level.mask_at( result.x.float, result.y.float )

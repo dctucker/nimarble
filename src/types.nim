@@ -216,10 +216,17 @@ proc newGame*: Game =
     level_number: 1,
     player: Player(),
     light: newLight(
+      #[
       pos            = vec3f( 0, 200, 200 ),
       color          = vec3f(1,1,1),
       specular       = vec3f(1.0, 0.825, 0.75) * 0.375,
       ambient        = 0.875f,
+      power          = 20000f,
+      ]#
+      pos            = vec3f( -25, 116, 126 ),
+      color          = vec3f(1,1,1),
+      specular       = vec3f(1.0, 0.825, 0.75) * 0.375,
+      ambient        = 0.75f,
       power          = 20000f,
     ),
     camera: Camera(
