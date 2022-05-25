@@ -562,19 +562,15 @@ proc point_color(level: Level, i,j: int): Vec4f =
   let y = level.data[k]
   if y == EE: return
 
-  if   level.around(IC, j.float - level.origin.x.float, i.float - level.origin.z.float):
-    return vec4f( 0.0, 1.0, 1.0, 1.0)
-  elif level.around(CU, j.float - level.origin.x.float, i.float - level.origin.z.float):
-    return vec4f( 0.8, 0.6, 0.3, 0.9)
-  elif level.around(OI, j.float - level.origin.x.float, i.float - level.origin.z.float):
-    return vec4f( 0.9, 0.7, 0.5, 1.0 )
-  elif level.around(SD, j.float - level.origin.x.float, i.float - level.origin.z.float):
-    return vec4f( 0.5, 0.3, 0.0, 1.0 )
-  elif level.around(BI, j.float - level.origin.x.float, i.float - level.origin.z.float) or
-       level.around(BH, j.float - level.origin.x.float, i.float - level.origin.z.float):
+  let masks = level.map[i,j].masks
+  if IC in masks: return vec4f( 0.0, 1.0, 1.0, 1.0 )
+  if CU in masks: return vec4f( 0.8, 0.6, 0.3, 0.9 )
+  if OI in masks: return vec4f( 0.9, 0.7, 0.5, 1.0 )
+  if SD in masks: return vec4f( 0.5, 0.3, 0.0, 1.0 )
+  if {BI,BH} * masks != {}:
     return vec4f( 0.4, 0.4, 0.4, 1.0 )
   else:
-    return level.mask_color(level.map[i,j].masks)
+    return level.mask_color(masks)
 
 proc add_normal(normals: var seq[cfloat], n: Vec3f) =
   let nn = n.normalize()
@@ -611,7 +607,7 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   let x = (j - level.origin.x).float + vert.x.float * margin
   let z = (i - level.origin.z).float + vert.z.float * margin
   var y = level.data[level.offset(i+vert.z, j+vert.x)]
-  var c = level.point_color(i+vert.z, j+vert.x)
+  var c = level.point_color(i, j)
   var m = level.mask[level.offset(i+vert.z, j+vert.x)]
 
   let surface_normals = @[

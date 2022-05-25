@@ -487,7 +487,8 @@ proc main =
     var oily = level.around(OI, x,z)
     var copper = level.around(CU, x,z)
     var traction: float
-    if bh - fh > 0.25:
+    var air = bh - fh
+    if air > 0.25:
       traction = 0f
     else:
       if sandy:
@@ -566,7 +567,8 @@ proc main =
 
     if god(): return # a god neither dies nor achieves goals
 
-    if level.around(IN,x,z):
+    echo air
+    if level.around(IN,x,z) and air < 0.0625f:
       let dest = level.find_closest(OU, x, z)
       if dest.length != 0:
         game.player.teleport_dest = dest
