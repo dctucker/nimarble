@@ -552,7 +552,7 @@ proc main =
         if last_acc.y.abs >= gravity.abs:
           echo "impact ", mesh.vel.y
           if mesh.vel.y.abs > 20f:
-            game.player.animate Stunned, t + 1f
+            game.player.animate Stunned, t + 1.5f
           last_acc.y *= 0
           last_air = 0f
       mesh.vel.y *= clamp( air / min_air, 0.0, air_brake )
@@ -575,7 +575,10 @@ proc main =
     if (mesh.vel * vec3f(1,0,1)).length > 0:
       var dir = -mesh.vel.normalize()
       var axis = mesh.normal.cross(dir).normalize()
-      let angle = mesh.vel.xz.length * dt / 0.5f / Pi / player_radius
+      var angle = mesh.vel.xz.length * dt / 0.5f / Pi / player_radius
+      if game.player.animation == Stunned:
+        angle *= 0.25f
+
       let quat = quatf(axis, angle)
       if quat.length > 0:
         mesh.rot = normalize(quat * mesh.rot)

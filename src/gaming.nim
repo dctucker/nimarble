@@ -420,6 +420,15 @@ proc animate*(player: var Player, t: float): bool =
     player.mesh.acc *= 0
     player.mesh.pos = player.respawn_pos
   of Stunned:
+    const peak = 1.375
+    let left = player.animation_time - t
+    var spin: float32
+    if left > peak:
+      spin = 1f - ((left - peak) / (1.5 - peak))
+    else:
+      spin = left / peak
+    echo spin
+    player.mesh.rot = player.mesh.rot.rotate(20f.radians * spin, vec3f(0,1,0))
     return false
   else:
     discard
