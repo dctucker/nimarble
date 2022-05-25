@@ -3,6 +3,7 @@ import std/tables
 
 from nimgl/glfw import GLFWKey, GLFWModShift, GLFWModControl, GLFWModSuper, getClipboardString, setClipboardString
 import nimgl/imgui
+import math
 import glm
 import strutils
 
@@ -781,21 +782,30 @@ proc draw*(editor: Editor) =
       color.value = ImVec4(x: 0.0, y: 0.0, z: 0.0, w: 0.0)
     igTextColored(color.value, text)
 
-  proc draw_mask_cell(m: CliffMask, enabled: bool = true) =
+  proc draw_mask_cell(m: CliffMask, masks: set[CliffMask], enabled: bool = true) =
     var txt = if m.cliff():
       mask_chars[m] #mask_chars[($m)[0]] & mask_chars[($m)[1]]
     else: $m
     if txt.len < 2: txt = " " & txt
     var text = txt.cstring
 
-    #const period = 10
-    #let hmod = 0.6 + 0.1 * sin( 2 * 3.14159265 * (h mod period).float / period.float )
-    #color.value = ImVec4(x: 0.8, y: 0.8, z: 0.8, w: 1.0)
-    color.value = ImVec4(x: 1.0, y: 1.0, z: 1.0, w: 1.0)
-    if m == XX: color.value = dark_color
+    var c = editor.level.mask_color(masks) * 2
+    if c.x > 1f: c.x = 1f
+    if c.y > 1f: c.y = 1f
+    if c.z > 1f: c.z = 1f
+    if c.length < 0.4: c = vec4f(0.6,0.6,0.6, 1.0)
+    if m == XX:
+      if masks == {}:
+        c *= dark_color.x
+      else:
+        c = c * 0.25 + 0.25
     if not enabled:
-      color.value = ImVec4(x: 0.0, y: 0.0, z: 0.0, w: 0.0)
+      c = vec4f(0,0,0,0)
+    color.value = ImVec4(x: c.x, y: c.y, z: c.z, w: 1.0)
     igTextColored(color.value, text)
+
+  proc draw_mask_cell(m: CliffMask, enabled: bool = true) =
+    draw_mask_cell(m, {m}, enabled)
 
   proc draw_hbar =
     igSameLine()
@@ -858,7 +868,7 @@ proc draw*(editor: Editor) =
         draw_selected(editor.cursor_mask)
 
       let m = level.mask[level.offset(i,j)]
-      draw_mask_cell(m, editor.level.has_coord(i,j))
+      draw_mask_cell(m, editor.level.map[i,j].masks, editor.level.has_coord(i,j))
 
     if i < last_row:
       igNewLine()
