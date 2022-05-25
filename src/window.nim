@@ -84,7 +84,8 @@ proc setup_fonts =
   var atlas = igGetIO().fonts
 
   const ascii = @[ 0x1.ImWchar, 0x7f.ImWchar ]
-  const blocks = @[ # TODO generate this using nim-compatible GlyphRangesBuilder
+  const blocks = @[
+    0x2264.ImWchar, 0x2265.ImWchar,
     0x2580.ImWchar, 0x2580.ImWchar,
     0x2584.ImWchar, 0x2584.ImWchar,
     0x2588.ImWchar, 0x2588.ImWchar,
@@ -137,41 +138,88 @@ proc draw_goal* =
     igPopFont()
   igEnd()
 
-const frame_times_len = 256
-var frame_times = newSeq[float](frame_times_len)
-var frame_times_phase: int32 = 0
-proc get_frame_time(data: pointer, index: int32): float32 {.cdecl, varargs.} =
-  return frame_times[index]
+type
+  Loggable[T] = ref object
+    name: cstring
+    values: seq[T]
+    size: int32
+    phase: int32
+    low, high: T
 
-proc log_frame_time*(frame_time: float) =
-  frame_times[frame_times_phase] = frame_time
-  frame_times_phase.inc
-  if frame_times_phase >= frame_times_len:
-    frame_times_phase = 0
+proc current*[T](l: Loggable[T]): T =
+  return l.values[l.phase]
+
+proc log*[T](l: var Loggable[T], value: T) =
+  l.phase.inc
+  if l.phase >= l.values.len:
+    l.phase = 0
+
+  l.values[l.phase] = value
+
+proc get_loggable_value*[T](data: pointer, index: int32): T {.cdecl, varargs.} =
+  return cast[ptr Loggable[T]](data).values[index]
+
+proc plot*[T](l: var Loggable[T]) =
+  let clk =
+    l.values.min().formatFloat(ffDecimal, 3) & " ≤ " &
+    l.current().formatFloat(ffDecimal, 3) & " ≤ " &
+    l.values.max().formatFloat(ffDecimal, 3)
+  var cclk = clk.cstring
+
+  igPlotEx(
+    ImGuiPlotType.Lines,
+    l.name,
+    get_loggable_value[T],
+    l.addr,
+    l.size,
+    l.phase,
+    cclk,
+    l.low,
+    l.high,
+    ImVec2(x: 256, y: 100),
+  )
+
+proc newLoggable*[T](name: cstring, low, high: T): Loggable[T] =
+  const size = 256
+  result = Loggable[T](
+    size: size,
+    low: low,
+    high: high,
+    values: newSeq[T](size),
+    name: name,
+  )
+
+
+type
+  Logs = ref object
+    frame_time*   : Loggable[float32]
+    player_vel_y* : Loggable[float32]
+    player_acc_y* : Loggable[float32]
+    air*          : Loggable[float32]
+
+var logs* = Logs(
+  frame_time   : newLoggable[float32]("frame time"  ,  4f,  64f),
+  player_vel_y : newLoggable[float32]("player vel.y", -64f, 64f),
+  player_acc_y : newLoggable[float32]("player acc.y", -100f, 100f),
+  air          : newLoggable[float32]("air"         ,  -1f, 10f),
+)
+
+iterator items*(logs: Logs): var Loggable[float32] =
+  yield logs.frame_time
+  yield logs.player_vel_y
+  yield logs.player_acc_y
+  yield logs.air
+
+proc log_frame_time*(frame_time: float32) =
+  logs.frame_time.log frame_time
 
 proc draw_stats*[T](value: T) =
   #igSetNextWindowPos(ImVec2(x: (width - 112).float32, y: 0))
   #igSetNextWindowSize(ImVec2(x:112, y:48))
 
-  if igBegin("stats", nil, ImGuiWindowFlags(171)):
-    #igPushFont( large_font )
-    let clk = frame_times.max().formatFloat(ffDecimal, 3) & " ms"
-    var cclk = clk.cstring
-    #igTextColored ImVec4(x:0.5,y:0.1,z:0.1, w:1.0), cclk
-
-    igPlotEx(
-      ImGuiPlotType.Lines,
-      "frame time",
-      get_frame_time,
-      frame_times.addr,
-      frame_times_len,
-      frame_times_phase,
-      cclk,
-      4f,
-      64f,
-      ImVec2(x: 256, y: 100),
-    )
-    #igPopFont()
+  if igBegin("stats"):#, nil, ImGuiWindowFlags(171)):
+    for loggable in logs:
+      loggable.plot()
   igEnd()
 
 proc draw_clock*[T](clock: T) =

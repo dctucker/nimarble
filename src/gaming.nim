@@ -16,7 +16,7 @@ from editing import focus, leave
 from keymapper import action
 
 const level_squash* = 0.5f
-const start_level* = 1
+var start_level*: int32 = 1
 
 var app* = Application() # ugh, this needs to be moved out
 var editor*: Editor
@@ -233,11 +233,14 @@ proc set_level*(game: var Game) =
   game.init_floor_plane()
   game.init_actors()
   game.init_fixtures()
+
   game.reset_player()
+  game.player.respawn_pos = game.player.mesh.pos
   game.follow_player()
   game.pan.pos = game.pan.target
   game.reset_view()
   game.following = f
+
   editor.level = game.level
   editor.name = editor.level.name
 

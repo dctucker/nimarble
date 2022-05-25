@@ -34,7 +34,7 @@ proc fps_count =
   frame_time = (dt / fps_frames.float) * 1000
   fps_frames = 0
   fps_start = t
-  log_frame_time frame_time
+  logs.frame_time.log frame_time
 
 let game_keymap = {
   GLFWKey.Up           : pan_up            ,
@@ -409,6 +409,7 @@ proc render[T: Piece](piece: var T) =
   mesh.render        GL_TRIANGLE_STRIP
 
 var beats = 0
+var last_acc: Vec3f
 
 proc main =
   editor = Editor(cursor_data: true, cursor_mask: true, stamp: Stamp(width:0, height: 0))
@@ -521,6 +522,8 @@ proc main =
       if joystick.left_thumb.length > 0.05:
         m += vec3f(joystick.left_thumb.x, -joystick.left_thumb.y, 0).rotate_mouse * 40
 
+    if mesh.acc.y != 0:
+      last_acc = mesh.acc
     mesh.acc *= 0
     mesh.acc += mass * vec3f(m.x, 0, -m.y) * traction  # mouse motion
     if not sandy and not oily:
@@ -531,11 +534,24 @@ proc main =
 
     let lateral_dir = mesh.vel.xz.normalize()
     let lateral_vel = mesh.vel.xz.length()
-    let vertical_vel = mesh.vel.y
 
     mesh.vel.x = clamp(mesh.vel.x + dt * mesh.acc.x, -max_vel.x, max_vel.x)
-    mesh.vel.y = clamp(mesh.vel.y + dt * mesh.acc.y, -max_vel.y * 1.5f, max_vel.y)
     mesh.vel.z = clamp(mesh.vel.z + dt * mesh.acc.z, -max_vel.z, max_vel.z)
+
+    const air_brake = 255/256f
+    const min_air = 1/32f
+    if air > min_air:
+      mesh.vel.y = clamp(mesh.vel.y + dt * mesh.acc.y, -max_vel.y * 1.5f, max_vel.y)
+    else:
+      #@if air.abs > 0.5f:
+      if last_acc.y.abs >= gravity.abs:
+        echo "impact ", mesh.vel.y
+        last_acc.y *= 0
+      mesh.vel.y *= clamp( air / min_air, 0.0, air_brake )
+
+    logs.player_vel_y.log mesh.vel.y
+    logs.player_acc_y.log mesh.acc.y
+    logs.air.log air
 
     if icy:
       if mesh.vel.length * lateral_vel > 0f:
@@ -603,8 +619,6 @@ proc main =
     dt = time - t
     t = time
 
-    fps_count()
-
     if game.paused and game.frame_step:
       game.physics(game.player.mesh)
       game.frame_step = false
@@ -646,9 +660,11 @@ proc main =
 
     w.swapBuffers()
     fps_count()
+
     game.poll_joystick()
     glfwPollEvents()
 
   w.cleanup()
 
+start_level = 5.int32
 main()

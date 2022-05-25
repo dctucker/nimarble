@@ -208,7 +208,7 @@ iterator by_area(w,h: int): Vec2i =
   var points = newSeqOfCap[Vec3i](w*h)
   for i in 0 ..< h:
     for j in 0 ..< w:
-      var area = (i+1)+(j+1)
+      var area = vec2f(1f+i.float, 1f+j.float).length
       points.add vec3i( j.int32, area.int32, i.int32 )
   points.sort(cmp)
   for point in points:
@@ -534,21 +534,20 @@ proc mask_color*(level: Level, masks: set[CliffMask]): Vec4f =
     #of S1: return vec4f( 0.0, 0.0, 0.5, 0.8 )
     #of EM: return vec4f( 0.1, 0.1, 0.1, 1.0 )
     #of EY, EA: return vec4f( 0.4, 9.0, 0.0, 1.0 )
-    of P1: return vec4f( 0.1, 0.2, 0.3, 0.7 )
-    of P2: return vec4f( 0.3, 0.1, 0.2, 0.7 )
-    of P3: return vec4f( 0.2, 0.3, 0.1, 0.7 )
-    of P4: return vec4f( 0.3, 0.2, 0.1, 0.7 )
-    of IC: return vec4f( 0.0, 1.0, 1.0, 1.0 )
-    of CU: return vec4f( 0.8, 0.6, 0.3, 0.9 )
-    of OI: return vec4f( 0.9, 0.7, 0.5, 1.0 )
-    of SD: return vec4f( 0.5, 0.3, 0.0, 1.0 )
-    of SW: return vec4f( 0.1, 0.6, 0.6, 1.0 )
-    of MI: return vec4f( 0.25, 0.25, 0.25, 1.0 )
-    of EP: return vec4f( 0.5, 0.5, 0.5, 1.0 )
-    of RI, RH:
-      return vec4f( 0.2, 0.7, 0.7, 0.9 )
-    else:
-      return vec4f( 0.6, 0.6, 0.6, 1.0 )
+    of P1    : return vec4f( 0.1, 0.2, 0.3, 0.7 )
+    of P2    : return vec4f( 0.3, 0.1, 0.2, 0.7 )
+    of P3    : return vec4f( 0.2, 0.3, 0.1, 0.7 )
+    of P4    : return vec4f( 0.3, 0.2, 0.1, 0.7 )
+    of IC    : return vec4f( 0.0, 1.0, 1.0, 1.0 )
+    of CU    : return vec4f( 0.8, 0.6, 0.3, 0.9 )
+    of SW    : return vec4f( 0.1, 0.6, 0.6, 1.0 )
+    of MI    : return vec4f( 0.25, 0.25, 0.25, 1.0 )
+    of EP    : return vec4f( 0.5, 0.5, 0.5, 1.0 )
+    of RI, RH: return vec4f( 0.2, 0.7, 0.7, 0.9 )
+    of BI, BH: return vec4f( 0.4, 0.4, 0.4, 1.0 )
+    of OI    : return vec4f( 0.9, 0.7, 0.5, 1.0 )
+    of SD    : return vec4f( 0.5, 0.3, 0.0, 1.0 )
+    else     : return vec4f( 0.6, 0.6, 0.6, 1.0 )
       #return vec4f(((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), 0.9)
   return vec4f( 0.6, 0.6, 0.6, 1.0 )
 
