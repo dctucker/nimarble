@@ -686,6 +686,7 @@ let editor_keymap* = {
   GLFWKey.A          : input_mask        ,
   GLFWKey.B          : input_mask        ,
   GLFWKey.C          : input_mask        ,
+  GLFWKey.D          : input_mask        ,
   GLFWKey.F          : input_mask        ,
   GLFWKey.G          : input_mask        ,
   GLFWKey.H          : input_mask        ,

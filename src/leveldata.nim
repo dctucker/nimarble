@@ -208,7 +208,7 @@ iterator by_area(w,h: int): Vec2i =
   var points = newSeqOfCap[Vec3i](w*h)
   for i in 0 ..< h:
     for j in 0 ..< w:
-      var area = (i+1)*(j+1)
+      var area = (i+1)+(j+1)
       points.add vec3i( j.int32, area.int32, i.int32 )
   points.sort(cmp)
   for point in points:
