@@ -263,7 +263,7 @@ type
     cursor_mask*: bool
     cursor_data*: bool
     brush*: bool
-    dirty*: bool
+    dirty*: seq[(int,int)]
     stamp*: Stamp
     recent_input*: GLFWKey
 

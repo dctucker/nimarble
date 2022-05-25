@@ -6,6 +6,7 @@ import nimgl/imgui
 import math
 import glm
 import strutils
+import std/sets
 
 import leveldata
 import types
@@ -58,6 +59,9 @@ iterator selection_offsets(editor: Editor): int =
 iterator cut_offsets(editor: Editor): int =
   for o in editor.offsets(editor.cut): yield o
 
+proc invalidate[T:Ordinal](editor: var Editor, i,j: T) =
+  add(editor.dirty, (i.int,j.int))
+
 proc all_ints(editor: Editor): bool =
   result = true
   for o in editor.selection_offsets:
@@ -87,7 +91,12 @@ proc get_data(editor: Editor): float =
 
 proc set_data(editor: var Editor, value: float) =
   editor.level[editor.row, editor.col] = value
-  editor.dirty = true
+  editor.dirty.add (editor.row, editor.col)
+
+proc update_dirty_vbos(editor: var Editor) =
+  for i,j in editor.dirty.items:
+    editor.level.calculate_vbos(i, j)
+  editor.dirty = @[]
 
 proc update_selection_vbos(editor: var Editor) =
   for i in editor.selection.x - 1.. editor.selection.z + 1:
@@ -95,7 +104,6 @@ proc update_selection_vbos(editor: var Editor) =
       editor.level.calculate_vbos(i, j)
 
 proc inc_dec(editor: var Editor, d: float) =
-  editor.dirty = true
   if editor.cursor_in_selection():
     for i,j in editor.selection_coords():
       let h = editor.level.map[i,j].height
@@ -104,6 +112,7 @@ proc inc_dec(editor: var Editor, d: float) =
       if d == 1:
         value = value.int.float
       editor.level[i,j] = value
+      editor.dirty.add (i,j)
     editor.update_selection_vbos()
   else:
     let h = editor.get_data()
@@ -113,6 +122,7 @@ proc inc_dec(editor: var Editor, d: float) =
     if d == 1:
       value = value.int.float
     editor.set_data (h + d).int.float
+    editor.dirty.add (editor.row, editor.col)
 
 action:
   proc do_inc*(editor: var Editor) =
@@ -177,19 +187,34 @@ proc set_mask(editor: var Editor, mask: CliffMask) =
     if   mask == RH: m = GR
   elif cur == S1:
     if   mask == S1: m = S2
-  elif mask.cliff():
+  elif cur.cliff():
     if cur == II and mask == NS:
-        m = IN
-    elif cur.cliff():
+      m = IN
+    elif mask.cliff():
       m = CliffMask(cur.ord xor mask.ord)
     else:
       m = mask
 
   editor.level[editor.row, editor.col] = m
-  editor.dirty = true
+  editor.dirty.add (editor.row, editor.col)
 
-  if m.phase or cur.phase:
-    editor.level.queue_update LevelUpdate(kind: Zones, zones: editor.level.find_zones())
+  if m.zone or cur.zone:
+    var current_zones = editor.level.zones
+    var new_zones = editor.level.find_zones()
+    editor.level.queue_update LevelUpdate(kind: Zones, zones: new_zones)
+
+    for zone in current_zones:
+      for i,j in editor.level.coords(zone):
+        editor.dirty.add (i,j)
+    for zone in new_zones:
+      for i,j in editor.level.coords(zone):
+        editor.dirty.add (i,j)
+
+    for (i,j) in editor.dirty:
+      editor.level.load_masks(new_zones, i,j)
+  else:
+    editor.level.load_masks(editor.level.zones, editor.row, editor.col)
+
   #if m.hazard:
   #  editor.level.queue_update LevelUpdate(kind: Actors, actors: editor.level.find_actors())
 
@@ -259,6 +284,7 @@ proc put_selection_stamp(editor: var Editor, stamp: Stamp, drow, dcol: int) =
           editor.level[i+drow, j+dcol] = stamp.mask[k]
         if editor.cursor_data:
           editor.level[i+drow, j+dcol] = stamp.data[k]
+        editor.invalidate i+drow, j+dcol
       k.inc
       if k >= max_k: return
 
@@ -303,7 +329,7 @@ proc cursor(editor: var Editor, drow, dcol: int) =
           editor.level[editor.row + drow, editor.col + dcol] = editor.data[ cur_o ]
         if editor.cursor_mask:
           editor.level[editor.row + drow, editor.col + dcol] = editor.mask[ cur_o ]
-        editor.dirty = true
+        editor.dirty.add (editor.row + drow, editor.col + dcol)
 
   editor.row += drow
   editor.col += dcol
@@ -386,10 +412,12 @@ action:
 proc delete_selection(editor: var Editor, data: var seq[float]) =
   for i,j in editor.selection_coords:
     editor.level[i,j] = 0
+    editor.dirty.add (i,j)
 
 proc delete_selection(editor: var Editor, mask: var seq[CliffMask]) =
   for i,j in editor.selection_coords:
     editor.level[i,j] = XX
+    editor.dirty.add (i,j)
 
 proc all_zero(editor: Editor, data: var seq[float]): bool =
   result = true
@@ -405,7 +433,6 @@ proc all_zero(editor: Editor, mask: var seq[CliffMask]): bool =
 
 action:
   proc do_delete(editor: var Editor) =
-    editor.dirty = true
     editor.input = ""
 
     if editor.cursor_in_selection():
@@ -429,6 +456,7 @@ action:
       editor.mask[o] = XX
       return
     editor.level[editor.row, editor.col] = 0
+    editor.dirty.add (editor.row, editor.col)
 
   proc do_save(editor: var Editor) =
     editor.level.save()
@@ -461,13 +489,13 @@ proc cut_clipboard(editor: var Editor) =
   editor.cut = editor.selection
 
 proc execute_cut(editor: var Editor) =
-  editor.dirty = true
   if editor.cut != vec4i(0,0,0,0):
     for i,j in editor.cut_coords:
       if editor.cursor_mask:
         editor.level[i,j] = XX
       if editor.cursor_data:
         editor.level[i,j] = 0f
+      editor.dirty.add (i,j)
     editor.cut = vec4i(0,0,0,0)
 
 proc paste_clipboard(editor: var Editor) =
@@ -500,7 +528,6 @@ proc paste_both(editor: var Editor) =
   editor.execute_cut()
   editor.selection = vec4i( editor.row.int32, editor.col.int32, editor.row.int32 + editor.stamp.height.int32 - 1, editor.col.int32 + editor.stamp.width.int32 - 1)
   editor.put_selection_stamp(editor.stamp, 0, 0)
-  editor.dirty = true
 
 action:
   proc do_copy(editor: var Editor) =
@@ -706,14 +733,14 @@ proc handle_key*(editor: var Editor, key: int32, mods: int32): bool =
     editor.recent_input = key
     handler(editor_keymap)
 
-  if editor.dirty:
+  if editor.dirty.len > 0:
     for i in -1 .. 1:
       for j in -1 .. 1:
-        editor.level.calculate_vbos(editor.row + i, editor.col + j)
+        editor.dirty.add (editor.row + i, editor.col + j)
     if editor.has_selection():
       editor.update_selection_vbos()
+    editor.update_dirty_vbos()
     editor.level.update_vbos()
-    editor.dirty = false
 
 proc cell_name(editor: Editor): string =
   return cell_name(editor.row, editor.col)

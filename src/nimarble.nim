@@ -567,7 +567,6 @@ proc main =
 
     if god(): return # a god neither dies nor achieves goals
 
-    echo air
     if level.around(IN,x,z) and air < 0.0625f:
       let dest = level.find_closest(OU, x, z)
       if dest.length != 0:

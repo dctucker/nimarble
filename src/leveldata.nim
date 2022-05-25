@@ -362,6 +362,18 @@ proc find_last*(level: Level): (int,int) =
   echo "last = ", ii, ",", jj
   return (ii,jj)
 
+proc load_masks*(level: var Level, zones: ZoneSet, i,j: int) =
+  level.map[i,j].masks = {}
+  let o = i*level.width + j
+  let mask = level.mask[o]
+  if mask != XX:
+    if not mask.zone():
+      level.map[i,j].add mask
+  for zone in zones:
+    for ii,jj in level.coords(zone):
+      if i == ii and j == jj:
+        level.map[i,j].masks.incl zone.kind
+
 proc init_map(level: var Level) =
   for i in 0 ..< level.height:
     for j in 0 ..< level.width:
@@ -398,8 +410,7 @@ proc init_level(name, data_src, mask_src: string, color: Vec3f): Level =
   result.init_map()
   result.actors   = result.find_actors()
   result.fixtures = result.find_fixtures()
-  echo "Level ", result.width, "x", result.height, " span ", result.span
-  echo result.actors.len, " actors"
+  echo "Level ", result.width, "x", result.height, " span=", result.span, ", ", result.actors.len, " actors"
 
 proc `[]=`*[T:Ordinal](level: Level, i,j: T, mask: CliffMask) =
   let o = level.offset(i,j)
@@ -962,7 +973,7 @@ proc apply_update*(level: var Level, update: LevelUpdate) =
   case update.kind
   of Actors   : level.actors.update   update.actors
   of Fixtures : level.fixtures.update update.fixtures
-  of Zones    : level.zones.update    update.zones
+  of Zones    : level.zones.update update.zones
 
 proc process_updates*(level: var Level) =
   if level.updates.len > 0:
