@@ -643,7 +643,8 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
 
   var base: float = -1
 
-  if FL in {m0, m1, m2, m3}: base = y0 - 1.5
+  if FL in level.map[i,j].masks and y0 != 0 and y3 != 0:
+    base = y0 - 1.5
 
   if vert.y == 1:
 

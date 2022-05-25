@@ -427,7 +427,7 @@ proc animate*(player: var Player, t: float): bool =
       spin = 1f - ((left - peak) / (1.5 - peak))
     else:
       spin = left / peak
-    echo spin
+    #echo spin
     player.mesh.rot = player.mesh.rot.rotate(20f.radians * spin, vec3f(0,1,0))
     return false
   else:
