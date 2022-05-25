@@ -419,6 +419,8 @@ proc animate*(player: var Player, t: float): bool =
     player.mesh.vel *= 0
     player.mesh.acc *= 0
     player.mesh.pos = player.respawn_pos
+  of Stunned:
+    return false
   else:
     discard
 

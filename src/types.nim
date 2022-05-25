@@ -159,10 +159,11 @@ type
     None
     Respawn
     Teleport
-    Break
-    Dissolve
-    Consume
+    Stunned
     Shove
+    Break
+    Consume
+    Dissolve
     Launch
     Explode
 

@@ -410,6 +410,7 @@ proc render[T: Piece](piece: var T) =
 
 var beats = 0
 var last_acc: Vec3f
+var last_air: float32
 
 proc main =
   editor = Editor(cursor_data: true, cursor_mask: true, stamp: Stamp(width:0, height: 0))
@@ -487,11 +488,14 @@ proc main =
     var sandy = level.around(SD, x,z)
     var oily = level.around(OI, x,z)
     var copper = level.around(CU, x,z)
+    var stunned = game.player.animation == Stunned
     var traction: float
     var air = bh - fh
     if air > 0.25:
       traction = 0f
     else:
+      if stunned:
+        traction = 0.125f
       if sandy:
         traction = 0.5
       elif oily:
@@ -542,11 +546,15 @@ proc main =
     const min_air = 1/32f
     if air > min_air:
       mesh.vel.y = clamp(mesh.vel.y + dt * mesh.acc.y, -max_vel.y * 1.5f, max_vel.y)
+      last_air = max(last_air, air)
     else:
-      #@if air.abs > 0.5f:
-      if last_acc.y.abs >= gravity.abs:
-        echo "impact ", mesh.vel.y
-        last_acc.y *= 0
+      if last_air > 1f:
+        if last_acc.y.abs >= gravity.abs:
+          echo "impact ", mesh.vel.y
+          if mesh.vel.y.abs > 20f:
+            game.player.animate Stunned, t + 1f
+          last_acc.y *= 0
+          last_air = 0f
       mesh.vel.y *= clamp( air / min_air, 0.0, air_brake )
 
     logs.player_vel_y.log mesh.vel.y
