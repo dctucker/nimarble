@@ -545,8 +545,8 @@ proc mask_color*(level: Level, masks: set[CliffMask]): Vec4f =
     of EP    : return vec4f( 0.5, 0.5, 0.5, 1.0 )
     of RI, RH: return vec4f( 0.2, 0.7, 0.7, 0.9 )
     of BI, BH: return vec4f( 0.4, 0.4, 0.4, 1.0 )
-    of OI    : return vec4f( 0.9, 0.7, 0.5, 1.0 )
     of SD    : return vec4f( 0.5, 0.3, 0.0, 1.0 )
+    of OI    : return vec4f( 0.9, 0.7, 0.5, 1.0 )
     else     : return vec4f( 0.6, 0.6, 0.6, 1.0 )
       #return vec4f(((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), 0.9)
   return vec4f( 0.6, 0.6, 0.6, 1.0 )
@@ -578,10 +578,10 @@ proc point_color(level: Level, i,j: int): Vec4f =
   let masks = level.map[i,j].masks
   if IC in masks: return vec4f( 0.0, 1.0, 1.0, 1.0 )
   if CU in masks: return vec4f( 0.8, 0.6, 0.3, 0.9 )
-  if OI in masks: return vec4f( 0.9, 0.7, 0.5, 1.0 )
   if SD in masks: return vec4f( 0.5, 0.3, 0.0, 1.0 )
   if {BI,BH} * masks != {}:
     return vec4f( 0.4, 0.4, 0.4, 1.0 )
+  if OI in masks: return vec4f( 0.9, 0.7, 0.5, 1.0 )
   else:
     return level.mask_color(masks)
 
