@@ -220,6 +220,9 @@ proc setup_opengl() =
   glBlendFunc GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
   #glShadeModel GL_FLAT
 
+  glEnable GL_LINE_SMOOTH
+  glLineWidth 2f
+
 proc info_player =
   let coord = game.player.mesh.pos.rotate_coord
   if app.show_player:
@@ -683,5 +686,5 @@ proc main =
 
   w.cleanup()
 
-start_level = 5.int32
+#start_level = 5.int32
 main()

@@ -3,12 +3,13 @@
 import std/tables
 import strutils
 import glm
+import math
 import nimgl/glfw
 import nimgl/imgui
 import nimgl/imgui/[impl_opengl, impl_glfw]
 #import zippy
 from scene import Camera, Light, pos, vel, acc
-from types import Application, Joystick, JoyButtons, Actor, ActorSet, Fixture
+from types import Application, Joystick, JoyButtons, Actor, ActorSet, Fixture, Piece
 from leveldata import sky
 import masks
 import assets
@@ -263,27 +264,8 @@ proc info_window*(light: var Light): bool =
   igEnd()
   result = dirty
 
-proc info_window*(actors: ActorSet) =
-  #igSetNextWindowPos(ImVec2(x:500, y:5))
-  igBegin("actors")
-  if actors.len > 0:
-    for a in actors.low .. actors.high:
-      var actor = actors[a]
-      var name: cstring
-
-      var kind = cstring $actor.kind
-      igText kind
-
-      name = cstring("actor " & $a & " pos")
-      igDragFloat3 name, actors[a].mesh.pos.arr, 0.125, -sky, sky
-
-      name = cstring("actor " & $a & " scale")
-      igDragFloat3 name, actors[a].mesh.scale.arr, 0.125, -sky, sky
-      igSeparator()
-  igEnd()
-
-iterator fixtures_by_kind(s: seq[Fixture]): (CliffMask, var seq[Fixture]) =
-  var tbl = newTable[CliffMask, seq[Fixture]]()
+iterator pieces_by_kind[T: Piece](s: seq[T]): (CliffMask, var seq[T]) =
+  var tbl = newTable[CliffMask, seq[T]]()
   for f in s:
     if not tbl.hasKey f.kind:
       tbl[f.kind] = @[]
@@ -291,11 +273,41 @@ iterator fixtures_by_kind(s: seq[Fixture]): (CliffMask, var seq[Fixture]) =
   for k,v in tbl.mpairs:
     yield (k,v)
 
+proc info_window*(actors: ActorSet) =
+  #igSetNextWindowPos(ImVec2(x:500, y:5))
+  igBegin("actors")
+
+  for kind, s in actors.pieces_by_kind:
+    var k = cstring $kind
+    if igCollapsingHeader(k, DefaultOpen):
+      for a, actor in s.mpairs:
+        var name: cstring
+
+        name = cstring("pos##" & $a)
+        igDragFloat3 name, actor.mesh.pos.arr, 0.125, -sky, sky
+
+        name = cstring("vel##" & $a)
+        igDragFloat3 name, actor.mesh.vel.arr, 0.125, -96f, 96f
+
+        name = cstring("acc##" & $a)
+        igDragFloat3 name, actor.mesh.acc.arr, 0.125, -96f, 96f
+
+        name = cstring("scale##" & $a)
+        igDragFloat3 name, actor.mesh.scale.arr, 0.125, 0f, 2f
+
+        name = cstring("facing##" & $a)
+        var dir = arctan2( actor.facing.z , actor.facing.x ).degrees
+        if dir < 0: dir += 360f
+        igDragFloat name, dir.addr
+
+        igSeparator()
+  igEnd()
+
 import models
 proc info_window*(fixtures: seq[Fixture]) =
   #igSetNextWindowPos(ImVec2(x:500, y:5))
   igBegin("fixtures")
-  for kind, s in fixtures.fixtures_by_kind:
+  for kind, s in fixtures.pieces_by_kind:
     var k = cstring $kind
     if igCollapsingHeader(k, DefaultOpen):
       for f, fixture in s.mpairs:
