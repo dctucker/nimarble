@@ -3,6 +3,7 @@ randomize()
 
 from nimgl/glfw import setInputMode, setCursorPos, GLFW_CURSOR_SPECIAL, GLFW_CURSOR_NORMAL, GLFWCursorDisabled, setWindowShouldClose
 import glm
+import nimgl/opengl
 
 import masks
 import types
@@ -89,6 +90,7 @@ proc toggle_pause*(game: var Game) =
 proc init_player*(game: var Game) =
   if game.player.mesh == nil:
     game.player.mesh = Mesh(
+      primitive : GL_TRIANGLE_STRIP,
       vao: newVAO(),
       vert_vbo: newVBO(3, sphere),
       color_vbo: newVBO(4, sphere_colors),
@@ -110,6 +112,7 @@ proc init_floor_plane*(game: var Game) =
     return
   load_level game.level_number
   game.level.floor_plane = Mesh(
+    primitive : GL_TRIANGLE_STRIP,
     vao: newVAO(),
     vert_vbo  : newVBO(3, game.level.floor_verts),
     color_vbo : newVBO(4, game.level.floor_colors),
@@ -125,6 +128,7 @@ proc init_floor_plane*(game: var Game) =
 proc newMesh(game: var Game, verts, colors, norms: var seq[cfloat], elems: var seq[Ind]): Mesh =
   var modelmat = mat4f(1)
   result = Mesh(
+    primitive : GL_TRIANGLE_STRIP,
     vao       : newVAO(),
     vert_vbo  : newVBO(3, verts),
     color_vbo : newVBO(4, colors),
@@ -158,6 +162,7 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
     var index   = single_rail_index
     var modelmat = mat4f(1)
     result = Mesh(
+      primitive : GL_TRIANGLE_STRIP,
       vao       : newVAO(),
       vert_vbo  : newVBO(3, verts),
       color_vbo : newVBO(4, colors),
@@ -179,6 +184,7 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
       shared_wave_norms  = newVBO(3, wave_normals)
     var modelmat = mat4f(1)
     result = Mesh(
+      primitive : GL_TRIANGLE_STRIP,
       vao       : newVAO(),
       vert_vbo  : shared_wave_verts,
       color_vbo : shared_wave_colors,

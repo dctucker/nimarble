@@ -1,3 +1,4 @@
+from nimgl/opengl import GLenum
 import glm
 import wrapper
 
@@ -57,6 +58,7 @@ type
 
   Mesh* = ref object
     wireframe*: bool
+    primitive*: GLenum
     motion*: Motion   # relative to level
     translate*: Vec3f # relative to current pos, useful for offsets
     scale*: Vec3f

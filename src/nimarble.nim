@@ -412,7 +412,7 @@ proc render[T: Piece](piece: var T) =
     .translate(mesh.translate)
     .scale(mesh.scale) * mesh.rot.mat4f
 
-  mesh.render        GL_TRIANGLE_STRIP
+  mesh.render        mesh.primitive
 
 var beats = 0
 var last_acc: Vec3f
