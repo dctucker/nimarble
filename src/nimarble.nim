@@ -451,7 +451,8 @@ proc main =
 
     mesh.model.mat = mat4(1.0f)
       .translate(vec3f(0, player_radius,0))
-      .translate(mesh.pos * vec3f(1,level_squash,1)) * mesh.rot.mat4f
+      .translate(mesh.pos * vec3f(1,level_squash,1))
+      .scale(mesh.scale) * mesh.rot.mat4f
 
     if game.player.animate(t): return
 
@@ -488,7 +489,7 @@ proc main =
     var sandy = level.around(SD, x,z)
     var oily = level.around(OI, x,z)
     var copper = level.around(CU, x,z)
-    var stunned = game.player.animation == Stunned
+    var stunned = game.player.animation == Stun
     var traction: float
     var air = bh - fh
     if air > 0.25:
@@ -550,9 +551,11 @@ proc main =
     else:
       if last_air > 1f:
         if last_acc.y.abs >= gravity.abs:
-          echo "impact ", mesh.vel.y
-          if mesh.vel.y.abs > 20f:
-            game.player.animate Stunned, t + 1.5f
+          echo "impact ", mesh.vel.y, " last air ", last_air
+          if mesh.vel.y.abs > 13f:
+            game.player.animate Stun, t + 1.5f
+          if mesh.vel.y.abs > 26f:
+            game.player.animate Break, t + 2f
           last_acc.y *= 0
           last_air = 0f
       mesh.vel.y *= clamp( air / min_air, 0.0, air_brake )
@@ -576,7 +579,7 @@ proc main =
       var dir = -mesh.vel.normalize()
       var axis = mesh.normal.cross(dir).normalize()
       var angle = mesh.vel.xz.length * dt / 0.5f / Pi / player_radius
-      if game.player.animation == Stunned:
+      if game.player.animation == Stun:
         angle *= 0.25f
 
       let quat = quatf(axis, angle)

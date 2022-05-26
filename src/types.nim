@@ -159,7 +159,7 @@ type
     None
     Respawn
     Teleport
-    Stunned
+    Stun
     Shove
     Break
     Consume

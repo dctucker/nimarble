@@ -53,6 +53,7 @@ proc reset_view*(game: var Game) =
 proc reset_player*(game: var Game) =
   let player_top = game.level.origin.y.float
   game.player.mesh.reset()
+  game.player.mesh.scale = vec3f(1,1,1)
   game.player.mesh.pos += vec3f(0.5, 0.5, 0.5)
   game.player.mesh.pos.y = player_top
 
@@ -260,6 +261,7 @@ proc init*(game: var Game) =
 
 proc respawn*(game: var Game) =
     game.player.dead = false
+    game.player.mesh.elem_vbo.offset = 0
     game.reset_player()
     game.reset_view()
     inc game.respawns
@@ -418,8 +420,15 @@ proc animate*(player: var Player, t: float): bool =
   of Respawn:
     player.mesh.vel *= 0
     player.mesh.acc *= 0
+    player.mesh.scale = vec3f(1,1,1)
     player.mesh.pos = player.respawn_pos
-  of Stunned:
+  of Break:
+    if player.mesh.scale.y < 0.5f:
+      player.mesh.scale *= 255/256f
+    else:
+      player.mesh.scale *= vec3f(513/512f, 127/128f, 513/512f)
+      player.mesh.scale = clamp( player.mesh.scale, 0.1, 1.5 )
+  of Stun:
     const peak = 1.375
     let left = player.animation_time - t
     var spin: float32
