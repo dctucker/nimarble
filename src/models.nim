@@ -118,7 +118,7 @@ proc uvSphereElements*(segments, rings: int): seq[Ind] =
 proc uvSphereColors*(segments, rings: int): seq[cfloat] =
   result = newSeqOfCap[cfloat](4 * (segments+1) * rings)
 
-  const opacity = 0.7
+  const opacity = 0.875
   for j in 0 .. segments:
     let beta = (j / segments).float32
 
@@ -173,6 +173,12 @@ proc uvSphereColors*(segments, rings: int): seq[cfloat] =
           result.add 1.0
           result.add opacity
 
+  for i, v in result.mpairs:
+    if i mod 4 == 3: continue
+    v *= 0.5
+
+
+
 proc uvSphereColors(nseg, nrings: int, color: Vec4f): seq[cfloat] =
   for a in 0..nseg:
     for b in 0..nrings:
@@ -188,6 +194,7 @@ var sphere_index* = uvSphereElements(nseg,nrings)
 var sphere_normals* = uvSphereNormals(nseg,nrings)
 var sphere_colors* = uvSphereColors(nseg,nrings)
 var yum_colors* = uvSphereColors(nseg,nrings, vec4f(0.1, 0.8, 0.1, 1.0))
+var enemy_colors* = uvSphereColors(nseg,nrings, vec4f(0.0, 0.1, 0.0, 0.9))
 
 proc toCfloats(vecs: seq[Vec4f], dim: int = 3): seq[cfloat] =
   result = newSeqOfCap[cfloat](dim * vecs.len)
