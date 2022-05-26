@@ -506,7 +506,7 @@ let levels = @[
   init_level("1", level_data_src(1), level_mask_src(1), vec3f( 1f  , 0.8f, 0f   )),
   init_level("2", level_data_src(2), level_mask_src(2), vec3f( 0f  , 0.4f, 0.8f )),
   init_level("3", level_data_src(3), level_mask_src(3), vec3f( 0.4f, 0.4f, 0.4f )),
-  init_level("4", level_data_src(4), level_mask_src(4), vec3f( 1f  , 0.4f, 0.1f )),
+  init_level("4", level_data_src(4), level_mask_src(4), vec3f( 1f  , 0.267f, 0f )),
   init_level("5", level_data_src(5), level_mask_src(5), vec3f( 1f  , 1.0f, 0.0f )),
   init_level("6", level_data_src(6), level_mask_src(6), vec3f( 1.0f, 0.0f, 0.0f )),
 ]
@@ -725,6 +725,9 @@ proc update_vbos*(level: Level) =
   level.floor_plane.color_vbo.update level.floor_colors
   level.floor_plane.norm_vbo.update  level.floor_normals
 
+proc update_color_vbo*(level: Level) = 
+  level.floor_plane.color_vbo.update level.floor_colors
+
 proc update_index_vbo*(level: Level) = 
   level.floor_plane.elem_vbo.update level.floor_index
 
@@ -744,6 +747,23 @@ proc phase_in_index*(level: Level, zone: Zone) =
     for n in cube_index.low .. cube_index.high:
       let o = level.index_offset(i,j) * cube_index.len + n
       level.floor_index[o] = o.Ind
+
+proc calculate_color_vbo*(level: Level, i,j: int) =
+  let color_span  = 4 * cube_index.len
+  if not level.has_coord(i,j): return
+
+  let o = level.index_offset(i,j) # (i-1) * floor_span + (j-7)
+  if o <= 0: return
+  for n in cube_index.low .. cube_index.high:
+    let p = level.cube_point(i, j, n)
+    if p.empty: continue
+
+    let color_offset = o *  color_span + 4*n
+    if 0 < color_offset and color_offset < level.floor_colors.len:
+      level.floor_colors[  color_offset + 0 ] = p.color.x
+      level.floor_colors[  color_offset + 1 ] = p.color.y
+      level.floor_colors[  color_offset + 2 ] = p.color.z
+      level.floor_colors[  color_offset + 3 ] = p.color.w
 
 proc calculate_vbos*(level: Level, i,j: int) =
   let color_span  = 4 * cube_index.len
@@ -774,6 +794,11 @@ proc calculate_vbos*(level: Level, i,j: int) =
       level.floor_normals[ normal_offset + 0 ] = p.normal.x
       level.floor_normals[ normal_offset + 1 ] = p.normal.y
       level.floor_normals[ normal_offset + 2 ] = p.normal.z
+
+proc reload_colors*(level: var Level) =
+  for i,j in level.coords:
+    level.calculate_color_vbo(i,j)
+  level.update_color_vbo()
 
 proc setup_floor(level: Level) =
   let dim = level.height * level.width
