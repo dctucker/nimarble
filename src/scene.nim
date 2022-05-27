@@ -104,7 +104,7 @@ proc physics*(camera: var Camera, dt: float) {.inline.} =
       camera.pan.vel.y = clamp(camera.pan.vel.y, -camera.maxvel, +camera.maxvel)
       camera.pan.vel.z = clamp(camera.pan.vel.z, -camera.maxvel, +camera.maxvel)
 
-proc render*(mesh: var Mesh) {.inline.} =
+proc render*(mesh: var Mesh) =
   mesh.mvp.update
   mesh.model.update
   mesh.program.use()

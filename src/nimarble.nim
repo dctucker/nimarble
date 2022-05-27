@@ -394,11 +394,11 @@ proc cleanup(w: GLFWWindow) {.inline.} =
 
 proc god: bool = return game.god or editor.focused
 
-proc render*(game: var Game, mesh: var Mesh) {.inline.} =
+proc render*(game: var Game, mesh: var Mesh) =
   mesh.mvp.mat = game.proj * game.view.mat.translate(-game.camera.pan.pos) * mesh.model.mat
   mesh.render()
 
-proc render[T: Piece](piece: var T) {.inline.} =
+proc render[T: Piece](piece: var T) =
   var mesh = piece.mesh
   mesh.model.mat = mat4(1.0f)
     .translate(mesh.pos * vec3f(1,level_squash,1))

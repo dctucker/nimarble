@@ -33,17 +33,17 @@ proc get_uniform_location(program: Program, name: string): GLint =
 proc get_location*(uni: var Uniform, program: Program, name: string) =
   uni.id = program.get_uniform_location(name)
 
-proc update*[T: float32](uni: Uniform[T]) {.inline.} =
+proc update*[T: float32](uni: Uniform[T]) =
   glUniform1f uni.id, uni.data
 
-proc update*[T: Vec3f](uni: Uniform[T]) {.inline.} =
+proc update*[T: Vec3f](uni: Uniform[T]) =
   glUniform3f uni.id, uni.data.x, uni.data.y, uni.data.z
 
-proc update*(matrix: var Matrix) {.inline.} =
+proc update*(matrix: var Matrix) =
   var mat = matrix.mat
   glUniformMatrix4fv matrix.id, 1, false, mat.caddr
 
-proc update*(matrix: var Matrix, value: Mat4f) {.inline.} =
+proc update*(matrix: var Matrix, value: Mat4f) =
   matrix.mat = value
   matrix.update()
 
@@ -64,7 +64,7 @@ proc newVBO*[T](n: cint, data: ptr seq[T]): VBO[T] =
   glBindBuffer    GL_ARRAY_BUFFER, result.id
   glBufferData    GL_ARRAY_BUFFER, cint(T.sizeof * result.data[].len), result.data[][0].addr, GL_DYNAMIC_DRAW
 
-proc update*[T](vbo: var VBO[T]) {.inline.} =
+proc update*[T](vbo: var VBO[T]) =
   glBindBuffer    GL_ARRAY_BUFFER, vbo.id
   glBufferData    GL_ARRAY_BUFFER, cint(T.sizeof * vbo.data[].len), vbo.data[][0].addr, GL_DYNAMIC_DRAW
   #glBufferSubData GL_ARRAY_BUFFER, 0, cint(T.sizeof * vbo.data[].len), vbo.data[][0].addr
@@ -131,7 +131,7 @@ proc newProgram*(frag_code, vert_code, geom_code: var cstring): Program =
   if geometry.id != 0:
     result.id.glDetachShader geometry.id
 
-proc apply*(vbo: VBO, n: GLuint) {.inline.} =
+proc apply*(vbo: VBO, n: GLuint) =
   glEnableVertexAttribArray n
   glBindBuffer GL_ARRAY_BUFFER, vbo.id
   glVertexAttribPointer n, vbo.dimensions, EGL_FLOAT, false, 0, nil
