@@ -19,7 +19,7 @@ from keymapper import action
 const level_squash* = 0.5f
 var start_level*: int32 = 1
 
-var app* = Application() # ugh, this needs to be moved out
+var app* = Application(selected_level: -1) # ugh, this needs to be moved out
 var editor*: Editor
 
 action:

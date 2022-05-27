@@ -1,4 +1,4 @@
-from nimgl/opengl import GLenum
+import nimgl/opengl
 import glm
 import wrapper
 
@@ -103,4 +103,27 @@ proc physics*(camera: var Camera, dt: float) {.inline.} =
       camera.pan.vel.x = clamp(camera.pan.vel.x, -camera.maxvel, +camera.maxvel)
       camera.pan.vel.y = clamp(camera.pan.vel.y, -camera.maxvel, +camera.maxvel)
       camera.pan.vel.z = clamp(camera.pan.vel.z, -camera.maxvel, +camera.maxvel)
+
+proc render*(mesh: var Mesh) {.inline.} =
+  mesh.mvp.update
+  mesh.model.update
+  mesh.program.use()
+  mesh.vert_vbo.apply 0
+  mesh.color_vbo.apply 1
+  mesh.norm_vbo.apply 2
+
+  if mesh.wireframe:
+    glDisable          GL_POLYGON_OFFSET_FILL
+    glPolygonMode      GL_FRONT_AND_BACK, GL_LINE
+  else:
+    glEnable           GL_POLYGON_OFFSET_FILL
+    glPolygonOffset 1f, 1f
+    glPolygonMode GL_FRONT_AND_BACK, GL_FILL
+
+  if mesh.elem_vbo.n_verts > 0:
+    mesh.elem_vbo.draw_elem mesh.primitive
+  else:
+    mesh.vert_vbo.draw mesh.primitive
+  glDisableVertexAttribArray 0
+  glDisableVertexAttribArray 1
 

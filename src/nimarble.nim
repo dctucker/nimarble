@@ -382,28 +382,9 @@ proc cleanup(w: GLFWWindow) {.inline.} =
 
 proc god: bool = return game.god or editor.focused
 
-proc render(mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
-  mesh.mvp.update game.proj * game.view.mat.translate(-game.pan.pos) * mesh.model.mat
-  mesh.model.update
-  mesh.program.use()
-  mesh.vert_vbo.apply 0
-  mesh.color_vbo.apply 1
-  mesh.norm_vbo.apply 2
-
-  if mesh.wireframe:
-    glDisable          GL_POLYGON_OFFSET_FILL
-    glPolygonMode      GL_FRONT_AND_BACK, GL_LINE
-  else:
-    glEnable           GL_POLYGON_OFFSET_FILL
-    glPolygonOffset 1f, 1f
-    glPolygonMode GL_FRONT_AND_BACK, GL_FILL
-
-  if mesh.elem_vbo.n_verts > 0:
-    mesh.elem_vbo.draw_elem kind
-  else:
-    mesh.vert_vbo.draw kind
-  glDisableVertexAttribArray 0
-  glDisableVertexAttribArray 1
+proc render*(game: var Game, mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
+  mesh.mvp.mat = game.proj * game.view.mat.translate(-game.camera.pan.pos) * mesh.model.mat
+  mesh.render()
 
 proc render[T: Piece](piece: var T) =
   var mesh = piece.mesh
@@ -412,7 +393,7 @@ proc render[T: Piece](piece: var T) =
     .translate(mesh.translate)
     .scale(mesh.scale) * mesh.rot.mat4f
 
-  mesh.render        mesh.primitive
+  game.render(mesh)
 
 var beats = 0
 var last_acc: Vec3f
@@ -660,13 +641,13 @@ proc main =
     glClear            GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
 
     floor_plane.wireframe = game.wireframe
-    floor_plane.render GL_TRIANGLE_STRIP
+    game.render floor_plane
     floor_plane.wireframe = true
-    floor_plane.render   GL_TRIANGLE_STRIP
+    game.render floor_plane
 
     if game.player.visible:
       game.player.mesh.wireframe = game.wireframe
-      game.player.mesh.render
+      game.render game.player.mesh
 
     for actor in actors.mitems:
       actor.mesh.wireframe = game.wireframe
