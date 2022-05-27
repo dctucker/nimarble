@@ -141,6 +141,7 @@ proc newMesh(game: var Game, verts, colors, norms: var seq[cfloat], elems: var s
 var shared_wave_verts: VBO[cfloat]
 var shared_wave_colors: VBO[cfloat]
 var shared_wave_norms: VBO[cfloat]
+var shared_wave_index: VBO[Ind]
 
 proc newMesh(game: var Game, piece: Piece): Mesh =
   case piece.kind
@@ -180,6 +181,7 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
       shared_wave_verts  = newVBO(3, addr wave_verts)
       shared_wave_colors = newVBO(4, addr wave_colors)
       shared_wave_norms  = newVBO(3, addr wave_normals)
+      shared_wave_index  = newElemVBO(addr wave_index)
     var modelmat = mat4f(1)
     result = Mesh(
       primitive : GL_TRIANGLE_STRIP,
@@ -187,7 +189,7 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
       vert_vbo  : shared_wave_verts,
       color_vbo : shared_wave_colors,
       norm_vbo  : shared_wave_norms,
-      elem_vbo  : newElemVBO(addr wave_index),
+      elem_vbo  : shared_wave_index,
       program   : game.player.mesh.program,
       model     : game.player.mesh.program.newMatrix(modelmat, "M"),
       scale     : vec3f(1f/wave_res,3,1),
