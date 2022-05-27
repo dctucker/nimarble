@@ -15,7 +15,7 @@ type
     dimensions: cint
     n_verts*: cint
     offset*: cint
-    data: seq[T]
+    data: ptr seq[T]
   Shader* = object
     id: uint32
     code: cstring
@@ -56,28 +56,26 @@ proc newVAO*(): VAO =
   glGenVertexArrays(1, result.id.addr)
   glBindVertexArray(result.id)
 
-proc newVBO*[T](n: cint, data: var seq[T]): VBO[T] =
+proc newVBO*[T](n: cint, data: ptr seq[T]): VBO[T] =
   result.data = data
   result.dimensions = n
-  result.n_verts = data.len.cint div n
+  result.n_verts = data[].len.cint div n
   glGenBuffers 1, result.id.addr
   glBindBuffer    GL_ARRAY_BUFFER, result.id
-  glBufferData    GL_ARRAY_BUFFER, cint(T.sizeof * result.data.len), result.data[0].addr, GL_DYNAMIC_DRAW
+  glBufferData    GL_ARRAY_BUFFER, cint(T.sizeof * result.data[].len), result.data[][0].addr, GL_DYNAMIC_DRAW
 
-proc update*[T](vbo: var VBO[T], data: var seq[T]) {.inline.} =
-  # TODO make sure this assigns by reference
-  vbo.data = data
+proc update*[T](vbo: var VBO[T]) {.inline.} =
   glBindBuffer    GL_ARRAY_BUFFER, vbo.id
-  glBufferData    GL_ARRAY_BUFFER, cint(T.sizeof * vbo.data.len), vbo.data[0].addr, GL_DYNAMIC_DRAW
-  #glBufferSubData GL_ARRAY_BUFFER, 0, cint(T.sizeof * vbo.data.len), vbo.data[0].addr
+  glBufferData    GL_ARRAY_BUFFER, cint(T.sizeof * vbo.data[].len), vbo.data[][0].addr, GL_DYNAMIC_DRAW
+  #glBufferSubData GL_ARRAY_BUFFER, 0, cint(T.sizeof * vbo.data[].len), vbo.data[][0].addr
 
-proc newElemVBO*[T](data: var seq[T]): VBO[T] =
+proc newElemVBO*[T](data: ptr seq[T]): VBO[T] =
   result.data = data
   result.dimensions = 1
-  result.n_verts = data.len.cint
+  result.n_verts = data[].len.cint
   glGenBuffers 1, result.id.addr
   glBindBuffer GL_ELEMENT_ARRAY_BUFFER, result.id
-  glBufferData GL_ELEMENT_ARRAY_BUFFER, cint(T.sizeof * result.data.len), result.data[0].addr, GL_STATIC_DRAW
+  glBufferData GL_ELEMENT_ARRAY_BUFFER, cint(T.sizeof * result.data[].len), result.data[0].addr, GL_STATIC_DRAW
 
 proc check*(shader: Shader) =
   var status: int32

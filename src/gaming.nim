@@ -90,10 +90,10 @@ proc init_player*(game: var Game) =
     game.player.mesh = Mesh(
       primitive : GL_TRIANGLE_STRIP,
       vao: newVAO(),
-      vert_vbo: newVBO(3, sphere),
-      color_vbo: newVBO(4, sphere_colors),
-      norm_vbo: newVBO(3, sphere_normals),
-      elem_vbo: newElemVBO(sphere_index),
+      vert_vbo : newVBO(3, addr sphere),
+      color_vbo: newVBO(4, addr sphere_colors),
+      norm_vbo : newVBO(3, addr sphere_normals),
+      elem_vbo : newElemVBO( addr sphere_index),
       program: newProgram(player_frags, player_verts, player_geoms),
     )
   if game.level != nil:
@@ -112,10 +112,10 @@ proc init_floor_plane*(game: var Game) =
   game.level.floor_plane = Mesh(
     primitive : GL_TRIANGLE_STRIP,
     vao: newVAO(),
-    vert_vbo  : newVBO(3, game.level.floor_verts),
-    color_vbo : newVBO(4, game.level.floor_colors),
-    norm_vbo  : newVBO(3, game.level.floor_normals),
-    elem_vbo  : newElemVBO(game.level.floor_index),
+    vert_vbo  : newVBO(3, addr game.level.floor_verts),
+    color_vbo : newVBO(4, addr game.level.floor_colors),
+    norm_vbo  : newVBO(3, addr game.level.floor_normals),
+    elem_vbo  : newElemVBO(addr game.level.floor_index),
     program   : game.player.mesh.program,
   )
   var modelmat = mat4(1.0f).scale(1f, level_squash, 1f)
@@ -128,10 +128,10 @@ proc newMesh(game: var Game, verts, colors, norms: var seq[cfloat], elems: var s
   result = Mesh(
     primitive : GL_TRIANGLE_STRIP,
     vao       : newVAO(),
-    vert_vbo  : newVBO(3, verts),
-    color_vbo : newVBO(4, colors),
-    norm_vbo  : newVBO(3, norms),
-    elem_vbo  : newElemVBO(elems),
+    vert_vbo  : newVBO(3, addr verts),
+    color_vbo : newVBO(4, addr colors),
+    norm_vbo  : newVBO(3, addr norms),
+    elem_vbo  : newElemVBO(addr elems),
     program   : game.player.mesh.program,
     model     : game.player.mesh.program.newMatrix(modelmat, "M"),
     scale     : vec3f(1,1,1)
@@ -162,10 +162,10 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
     result = Mesh(
       primitive : GL_TRIANGLE_STRIP,
       vao       : newVAO(),
-      vert_vbo  : newVBO(3, verts),
-      color_vbo : newVBO(4, colors),
-      norm_vbo  : newVBO(3, normals),
-      elem_vbo  : newElemVBO(index),
+      vert_vbo  : newVBO(3, addr verts),
+      color_vbo : newVBO(4, addr colors),
+      norm_vbo  : newVBO(3, addr normals),
+      elem_vbo  : newElemVBO(addr index),
       program   : game.player.mesh.program,
       model     : game.player.mesh.program.newMatrix(modelmat, "M"),
       rot       : quatf(vec3f(1, 0, 0).normalize, 90f.radians),
@@ -177,9 +177,9 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
     # wavelength is 12 units of 16 pixels each
     if shared_wave_verts.n_verts == 0:
       echo "init shared wave vbos"
-      shared_wave_verts  = newVBO(3, wave_verts)
-      shared_wave_colors = newVBO(4, wave_colors)
-      shared_wave_norms  = newVBO(3, wave_normals)
+      shared_wave_verts  = newVBO(3, addr wave_verts)
+      shared_wave_colors = newVBO(4, addr wave_colors)
+      shared_wave_norms  = newVBO(3, addr wave_normals)
     var modelmat = mat4f(1)
     result = Mesh(
       primitive : GL_TRIANGLE_STRIP,
@@ -187,7 +187,7 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
       vert_vbo  : shared_wave_verts,
       color_vbo : shared_wave_colors,
       norm_vbo  : shared_wave_norms,
-      elem_vbo  : newElemVBO(wave_index),
+      elem_vbo  : newElemVBO(addr wave_index),
       program   : game.player.mesh.program,
       model     : game.player.mesh.program.newMatrix(modelmat, "M"),
       scale     : vec3f(1f/wave_res,3,1),
