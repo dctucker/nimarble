@@ -719,16 +719,16 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
     normal : normal,
   )
 
-proc update_vbos*(level: Level) =
+proc update_vbos*(level: Level) {.inline.} =
   # TODO update subset only for performance
   level.floor_plane.vert_vbo.update  level.floor_verts
   level.floor_plane.color_vbo.update level.floor_colors
   level.floor_plane.norm_vbo.update  level.floor_normals
 
-proc update_color_vbo*(level: Level) = 
+proc update_color_vbo*(level: Level) {.inline.} =
   level.floor_plane.color_vbo.update level.floor_colors
 
-proc update_index_vbo*(level: Level) = 
+proc update_index_vbo*(level: Level) {.inline.} =
   level.floor_plane.elem_vbo.update level.floor_index
 
 const floor_span = 48

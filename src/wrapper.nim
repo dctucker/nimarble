@@ -65,6 +65,7 @@ proc newVBO*[T](n: cint, data: var seq[T]): VBO[T] =
   glBufferData    GL_ARRAY_BUFFER, cint(T.sizeof * result.data.len), result.data[0].addr, GL_DYNAMIC_DRAW
 
 proc update*[T](vbo: var VBO[T], data: var seq[T]) {.inline.} =
+  # TODO make sure this assigns by reference
   vbo.data = data
   glBindBuffer    GL_ARRAY_BUFFER, vbo.id
   glBufferData    GL_ARRAY_BUFFER, cint(T.sizeof * vbo.data.len), vbo.data[0].addr, GL_DYNAMIC_DRAW

@@ -104,10 +104,7 @@ proc `[]`*[T:Ordinal](map: var LevelMap, i,j: T): var LevelPoint =
     return map.points[0]
   return map.points[o]
 
-proc has*(masks: set[CliffMask], mask: CliffMask): bool =
-  return mask in masks
-
-proc empty*(p: CubePoint): bool =
+proc empty*(p: CubePoint): bool {.inline.} =
   return p.pos.length == 0 and p.color.length == 0 and p.normal.length == 0
 
 proc offset*[T:Ordinal](level: Level, i,j: T): T =
@@ -260,7 +257,7 @@ type
     show_camera*       : bool
     show_actors*       : bool
     show_fixtures*     : bool
-    show_cube_points*  : bool
+    show_level*        : bool
     show_editor*       : bool
     show_masks*        : bool
     show_keymap*       : bool
@@ -277,12 +274,18 @@ proc toggle*(app: var Application): bool =
   app.show_camera       = not app.show_camera
   app.show_actors       = not app.show_actors
   app.show_fixtures     = not app.show_fixtures
-  app.show_cube_points  = not app.show_cube_points
+  app.show_level        = not app.show_level
   #app.show_editor       = not app.show_editor
   app.show_masks        = not app.show_masks
   app.show_keymap       = not app.show_keymap
   app.show_joystick     = not app.show_joystick
-  return app.show_player or app.show_light or app.show_camera or app.show_actors or app.show_fixtures or app.show_cube_points
+  return
+    app.show_player    or
+    app.show_light     or
+    app.show_camera    or
+    app.show_actors    or
+    app.show_fixtures  or
+    app.show_level
 
 type
   Action*[T] = ref object

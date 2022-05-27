@@ -27,7 +27,7 @@ var mouse*: Vec3f
 var joystick* = Joystick()
 
 
-proc middle*(): Vec2f = vec2f(width.float * 0.5f, height.float * 0.5f)
+proc middle*(): Vec2f {.inline.} = vec2f(width.float * 0.5f, height.float * 0.5f)
 
 var ig_context*: ptr ImGuiContext
 var small_font*: ptr ImFont
@@ -150,15 +150,17 @@ type
 proc current*[T](l: Loggable[T]): T =
   return l.values[l.phase]
 
-proc log*[T](l: var Loggable[T], value: T) =
+proc log*[T](l: var Loggable[T], value: T) {.inline.} =
   l.phase.inc
   if l.phase >= l.values.len:
     l.phase = 0
 
   l.values[l.phase] = value
 
+#[# for posterity:
 proc get_loggable_value*[T](data: pointer, index: int32): T {.cdecl, varargs.} =
   return cast[ptr Loggable[T]](data).values[index]
+#]#
 
 proc plot*[T](l: var Loggable[T]) =
   let clk =
@@ -167,18 +169,9 @@ proc plot*[T](l: var Loggable[T]) =
     l.values.max().formatFloat(ffDecimal, 3)
   var cclk = clk.cstring
 
-  igPlotEx(
-    ImGuiPlotType.Lines,
-    l.name,
-    get_loggable_value[T],
-    l.addr,
-    l.size,
-    l.phase,
-    cclk,
-    l.low,
-    l.high,
-    ImVec2(x: 256, y: 100),
-  )
+  const graph_size = ImVec2(x: 128, y: 50)
+  igPlotLines(l.name, l.values[0].addr, l.size, l.phase, cclk, l.low, l.high, graph_size) #, stride: int32 = sizeof(float32).int32): void {.importc: "igPlotLines_FloatPtr".}
+  #igPlotEx ImGuiPlotType.Lines, l.name, get_loggable_value[T], l.addr, l.size, l.phase, cclk, l.low, l.high
 
 proc newLoggable*[T](name: cstring, low, high: T): Loggable[T] =
   const size = 256
@@ -388,17 +381,17 @@ proc main_menu*(app: Application) =
       if igMenuItem("6"): app.selected_level = 7
       igEndMenu()
     if igBeginMenu("Windows"):
-      igMenuItem "Player"      , nil, app.show_player.addr
-      igMenuItem "Light"       , nil, app.show_light.addr
-      igMenuItem "Camera"      , nil, app.show_camera.addr
-      igMenuItem "Actors"      , nil, app.show_actors.addr
-      igMenuItem "Fixtures"    , nil, app.show_fixtures.addr
-      igMenuItem "Cube Points" , nil, app.show_cube_points.addr
-      igMenuItem "Editor"      , "E", app.show_editor.addr
-      igMenuItem "Keymap"      , "?", app.show_keymap.addr
-      igMenuItem "Joystick"    , "J", app.show_joystick.addr
-      igMenuItem "Metrics"     , nil, app.show_metrics.addr
-      igMenuItem "Masks"       , nil, app.show_masks.addr
+      igMenuItem "Player"      , nil, addr app.show_player
+      igMenuItem "Light"       , nil, addr app.show_light
+      igMenuItem "Camera"      , nil, addr app.show_camera
+      igMenuItem "Actors"      , nil, addr app.show_actors
+      igMenuItem "Fixtures"    , nil, addr app.show_fixtures
+      igMenuItem "Level"       , nil, addr app.show_level
+      igMenuItem "Editor"      , "E", addr app.show_editor
+      igMenuItem "Keymap"      , "?", addr app.show_keymap
+      igMenuItem "Joystick"    , "J", addr app.show_joystick
+      igMenuItem "Metrics"     , nil, addr app.show_metrics
+      igMenuItem "Masks"       , nil, addr app.show_masks
       igEndMenu()
     discard
   igEndMainMenuBar()

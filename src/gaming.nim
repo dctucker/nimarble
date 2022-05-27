@@ -26,9 +26,7 @@ action:
   proc animate_step*(game: var Game, press: bool) =
     if press: game.animate_next_step = true
 
-# TODO this method is way too popular
-proc rotate_coord*(v: Vec3f): Vec3f {.inline.} =
-  return mat4f(1f).translate(v).rotateY(radians(45f))[3].xyz
+proc coord*(player: Player): var Vec3f {.inline.} = return player.mesh.pos
 
 proc update_camera*(game: Game) =
   let distance = game.camera.distance
@@ -59,7 +57,7 @@ proc reset_player*(game: var Game) =
   game.player.mesh.pos.y = player_top
 
 proc follow_player*(game: var Game) =
-  let coord = game.player.mesh.pos.rotate_coord
+  let coord = game.player.coord
   let target = game.player.mesh.pos# * 0.5f
 
   let y = (game.player.mesh.pos.y - game.level.origin.y.float) * 0.5

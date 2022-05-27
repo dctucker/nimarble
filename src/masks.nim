@@ -128,7 +128,10 @@ proc name*(mask: CliffMask): string =
 proc cliff*(a: CliffMask): bool =
   return XX.ord < a.ord and a.ord <= IH.ord
 
-proc has*(a,b: CliffMask): bool =
+proc has*(masks: set[CliffMask], mask: CliffMask): bool {.inline.} =
+  return mask in masks
+
+proc has*(a,b: CliffMask): bool {.inline.} =
   result = a == b
   if a.cliff and b.cliff:
     return (a.ord and b.ord) != 0
@@ -148,7 +151,7 @@ proc rotate*(mask: CliffMask): CliffMask =
   else:
     result = mask
 
-proc hazard*(kind: CliffMask): bool =
+proc hazard*(kind: CliffMask): bool {.inline.} =
   return kind in {EA, EP, EH}
 
 proc phase*(kind: CliffMask): bool =

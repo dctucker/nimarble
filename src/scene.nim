@@ -34,12 +34,12 @@ type
   Motion* = tuple[pos: Vec3f, vel: Vec3f, acc: Vec3f]
 
 template liftMotion(cls, attr) =
-  proc `pos=`*(obj: var cls, pos: Vec3f) = obj.attr.pos = pos
-  proc `vel=`*(obj: var cls, vel: Vec3f) = obj.attr.vel = vel
-  proc `acc=`*(obj: var cls, acc: Vec3f) = obj.attr.acc = acc
-  proc pos*(obj: var cls): var Vec3f = return obj.attr.pos
-  proc vel*(obj: var cls): var Vec3f = return obj.attr.vel
-  proc acc*(obj: var cls): var Vec3f = return obj.attr.acc
+  proc `pos=`*(obj: var cls, pos: Vec3f) {.inline.} = obj.attr.pos = pos
+  proc `vel=`*(obj: var cls, vel: Vec3f) {.inline.} = obj.attr.vel = vel
+  proc `acc=`*(obj: var cls, acc: Vec3f) {.inline.} = obj.attr.acc = acc
+  proc pos*(obj: var cls): var Vec3f {.inline.} = return obj.attr.pos
+  proc vel*(obj: var cls): var Vec3f {.inline.} = return obj.attr.vel
+  proc acc*(obj: var cls): var Vec3f {.inline.} = return obj.attr.acc
 
 type
   Pan* = object
