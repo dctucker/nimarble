@@ -175,18 +175,6 @@ type
     teleport_dest*: Vec3f
     respawn_pos*: Vec3f
 
-proc next*(ani: Animation): Animation =
-  result = case ani
-    of Dissolve,
-       Explode,
-       Break,
-       Consume   : Respawn
-    else: Animation.None
-
-proc visible*(p: Player): bool =
-  return p.animation != Teleport
-
-
 type
   Game* = ref object
     state*: GameState
@@ -241,8 +229,6 @@ proc newGame*: Game =
     goal : false,
     wireframe : false,
   )
-
-proc pan*(game: var Game): var Pan = return game.camera.pan
 
 type
   Stamp* = object

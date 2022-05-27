@@ -1,5 +1,6 @@
 {. warning[HoleEnumConv]:off .}
 
+#import nimprof
 import std/tables
 import nimgl/[glfw,opengl]
 import nimgl/imgui
@@ -125,9 +126,9 @@ proc scrollProc(window: GLFWWindow, xoffset, yoffset: cdouble): void {.cdecl.} =
       pan_ccw.callback(game, true)
 
   #var dir = vec3f(0,0,1)
-  #var axis = game.player.mesh.normal.cross(dir).normalize()
+  #var axis = player.mesh.normal.cross(dir).normalize()
   #let angle = mouse.z
-  #game.player.mesh.rot = normalize(quatf(axis, angle) * game.player.mesh.rot)
+  #player.mesh.rot = normalize(quatf(axis, angle) * player.mesh.rot)
 
   #game.camera.fov -= mouse.z
   #game.update_camera()
@@ -224,41 +225,43 @@ proc setup_opengl() =
   glLineWidth 2f
 
 proc info_player =
-  let coord = game.player.mesh.pos.rotate_coord
+  var player = game.player
+  var level = game.level
+  let coord = player.mesh.pos.rotate_coord
   if app.show_player:
     igSetNextWindowSize(ImVec2(x:300f, y:400f))
     if igBegin("player"):
       #var lateral = player.pos.xz.length()
       #igSliderFloat "lateral_d", lateral.addr     , -sky, sky
-      igDragFloat3 "pos"     , game.player.mesh.pos.arr   , 0.125, -sky, sky
-      igDragFloat3 "vel"     , game.player.mesh.vel.arr   , 0.125, -sky, sky
-      igDragFloat3 "acc"     , game.player.mesh.acc.arr   , 0.125, -sky, sky
-      igDragFloat4 "rot"     , game.player.mesh.rot.arr   , 0.125, -sky, sky
-      #igSliderFloat3 "normal" , game.player.mesh.normal.arr, -1.0, 1.0
-      igSliderFloat3 "respawn_pos" , game.player.respawn_pos.arr  , -sky, sky
+      igDragFloat3 "pos"     , player.mesh.pos.arr   , 0.125, -sky, sky
+      igDragFloat3 "vel"     , player.mesh.vel.arr   , 0.125, -sky, sky
+      igDragFloat3 "acc"     , player.mesh.acc.arr   , 0.125, -sky, sky
+      igDragFloat4 "rot"     , player.mesh.rot.arr   , 0.125, -sky, sky
+      #igSliderFloat3 "normal" , player.mesh.normal.arr, -1.0, 1.0
+      igSliderFloat3 "respawn_pos" , player.respawn_pos.arr  , -sky, sky
 
       var respawns = game.respawns.int32
       igSliderInt    "respawns"     , respawns.addr, 0.int32, 10.int32
 
-      var anim_time = game.player.animation_time.float32
+      var anim_time = player.animation_time.float32
       igSliderFloat    "player clock" , anim_time.addr, 0f, 1f
-      var anim = "player animation" & $game.player.animation
+      var anim = "player animation" & $player.animation
       igText    anim.cstring
 
       igSpacing()
       igSeparator()
       igSpacing()
 
-      var m0 = ($game.level.masks_at(coord.x, coord.z)).cstring
-      var m1 = ($game.level.masks_at(coord.x+1, coord.z)).cstring
-      var m2 = ($game.level.masks_at(coord.x, coord.z+1)).cstring
+      var m0 = ($level.masks_at(coord.x, coord.z)).cstring
+      var m1 = ($level.masks_at(coord.x+1, coord.z)).cstring
+      var m2 = ($level.masks_at(coord.x, coord.z+1)).cstring
       igText(m0, 2)
       igSameLine()
       igText(m1)
       igSameLine()
       igText(m2)
 
-      var sl = game.level.slope(coord.x, coord.z)
+      var sl = level.slope(coord.x, coord.z)
       igDragFloat3 "slope"     , sl.arr         , -sky, sky
 
       igCheckBox     "following"    , game.following.addr
@@ -266,27 +269,27 @@ proc info_player =
       igCheckBox     "god"          , game.god.addr
       igSliderInt    "level #"      , game.level_number.addr, 1.int32, n_levels.int32 - 1
 
-      var clock = game.level.clock.float32
+      var clock = level.clock.float32
       igSliderFloat  "clock"        , clock.addr, 0f, 1f
 
-      var phase = game.level.phase.int32
+      var phase = level.phase.int32
       igSliderInt    "phase"        , phase.addr, P1.int32, P4.int32
 
-      if igColorEdit3( "level color", game.level.color.arr ):
-        game.level.reload_colors()
+      if igColorEdit3( "level color", level.color.arr ):
+        level.reload_colors()
 
       #igText("average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
     igEnd()
 
   if app.show_cube_points:
     if igBegin("cube point"):
-      let (i,j) = game.level.xlat_coord(coord.x.floor, coord.z.floor)
-      if not game.level.has_coord( i,j ): igEnd() ; return
+      let (i,j) = level.xlat_coord(coord.x.floor, coord.z.floor)
+      if not level.has_coord( i,j ): igEnd() ; return
 
-      var p0 = game.level.cube_point(i, j, 23)
-      var p1 = game.level.cube_point(i, j, 24)
-      var p2 = game.level.cube_point(i, j, 25)
-      var p3 = game.level.cube_point(i, j, 26)
+      var p0 = level.cube_point(i, j, 23)
+      var p1 = level.cube_point(i, j, 24)
+      var p2 = level.cube_point(i, j, 25)
+      var p3 = level.cube_point(i, j, 26)
 
       igDragFloat3 "pos0", p0.pos.arr
       igDragFloat3 "pos1", p1.pos.arr
@@ -305,13 +308,14 @@ proc info_player =
     igEnd()
 
 proc sync_editor =
-  let coord = game.player.mesh.pos.rotate_coord
+  var mesh = game.player.mesh
+  let coord = mesh.pos.rotate_coord
   if not editor.focused:
     editor.col = editor.level.origin.x + coord.x.floor.int
     editor.row = editor.level.origin.z + coord.z.floor.int
   else:
-    game.player.mesh.pos.x = editor.col.float - editor.level.origin.x.float
-    game.player.mesh.pos.z = editor.row.float - editor.level.origin.z.float
+    mesh.pos.x = editor.col.float - editor.level.origin.x.float
+    mesh.pos.z = editor.row.float - editor.level.origin.z.float
   if app.show_editor: editor.draw()
 
 proc `or`*(f1, f2: ImGuiWindowFlags): ImGuiWindowFlags =
@@ -326,8 +330,9 @@ proc draw_imgui =
 
   app.main_menu()
   info_player()
-  if app.show_actors: game.level.actors.info_window()
-  if app.show_fixtures: game.level.fixtures.info_window()
+  var level = game.level
+  if app.show_actors: level.actors.info_window()
+  if app.show_fixtures: level.fixtures.info_window()
 
   if app.show_camera:
     if game.camera.info_window():
@@ -382,11 +387,11 @@ proc cleanup(w: GLFWWindow) {.inline.} =
 
 proc god: bool = return game.god or editor.focused
 
-proc render*(game: var Game, mesh: var Mesh, kind: GLEnum = GL_TRIANGLES) {.inline.} =
+proc render*(game: var Game, mesh: var Mesh) {.inline.} =
   mesh.mvp.mat = game.proj * game.view.mat.translate(-game.camera.pan.pos) * mesh.model.mat
   mesh.render()
 
-proc render[T: Piece](piece: var T) =
+proc render[T: Piece](piece: var T) {.inline.} =
   var mesh = piece.mesh
   mesh.model.mat = mat4(1.0f)
     .translate(mesh.pos * vec3f(1,level_squash,1))
@@ -399,6 +404,210 @@ var beats = 0
 var last_acc: Vec3f
 var last_air: float32
 
+proc physics(game: var Game, mesh: var Mesh) =
+  const mass = player_radius
+  #let gravity = if game.level == 5: -98f else: 98f
+  const gravity = -98f
+  const max_vel = vec3f( 15f, -gravity * 0.5f, 15f )
+  var level = game.level
+  if not game.goal:
+    level.tick(t)
+  let coord = mesh.pos.rotate_coord
+  let x = coord.x
+  let z = coord.z
+  let bh = mesh.pos.y
+  let fh = level.point_height(x, z)
+  let cur_masks = level.masks_at(x,z)
+  #stdout.write "\27[K"
+
+  for actor in level.actors.mitems:
+    game.physics(actor, dt)
+
+  beats.inc
+  #if true or game.animate_next_step:
+  if beats mod 2 == 0:
+    for fixture in level.fixtures.mitems:
+      game.physics(fixture, dt)
+  #game.animate_next_step = false
+
+  mesh.model.mat = mat4(1.0f)
+    .translate(vec3f(0, player_radius,0))
+    .translate(mesh.pos * vec3f(1,level_squash,1))
+    .scale(mesh.scale) * mesh.rot.mat4f
+
+  var player = game.player
+  if player.animate(t): return
+
+  if not god():
+    # figure out if we're in mortal danger
+    if mesh.pos.y < 10f:
+      player.die "fell off"
+    if mesh.acc.xz.length == 0f and mesh.vel.y <= -max_vel.y:
+      player.die "terminal velocity"
+
+    for actor in level.actors.mitems:
+      if (actor.mesh.pos - player.mesh.pos).length < 1f:
+        if actor.mesh.scale.length < 1f:
+          actor.mesh.scale.y = 0.1f
+          continue
+        if actor.kind == EA:
+            actor.mesh.pos = player.mesh.pos
+            player.animate Dissolve, t + 1f
+            return
+
+  let ramp = level.slope(x,z) * level_squash * level_squash
+  let thx = arctan(ramp.x)
+  let thz = arctan(ramp.z)
+  let cosx = cos(thx)
+  let cosz = cos(thz)
+  let sinx = sin(thx)
+  let sinz = sin(thz)
+  var ramp_a = vec3f( -ramp.x, sinx + sinz, -ramp.z ) * gravity
+  if game.level_number == 6: # works for ramps but not walls
+    ramp_a = vec3f( ramp.x, sinx + sinz, ramp.z ) * gravity
+
+  var icy = level.around(IC, x,z)
+  var sandy = level.around(SD, x,z)
+  var oily = level.around(OI, x,z)
+  var copper = level.around(CU, x,z)
+  var stunned = player.animation == Stun
+  var traction: float
+  var air = bh - fh
+  if air > 0.25:
+    traction = 0f
+  else:
+    if stunned:
+      traction = 0.125f
+    if sandy:
+      traction = 0.5
+    elif oily:
+      traction = 0.75f
+    else:
+      traction = 1f
+
+  if god():
+    ramp_a *= 0
+    traction = 1f
+
+  var safe: bool
+  let flat = ramp.length == 0
+  let nonzero = level.point_height(x.floor, z.floor) > 0f
+
+  safe = flat and nonzero
+  safe = safe and not icy and not copper
+  safe = safe and game.safe
+  if safe:
+    player.respawn_pos = vec3f(mesh.pos.x.floor, mesh.pos.y, mesh.pos.z.floor)
+
+  const max_acc = 50f
+  var m = vec3f(0,0,0)
+  if not game.paused and not game.goal and not icy and not copper:
+    m = rotate_mouse(mouse)
+    if m.length > max_acc:
+      m = m.normalize() * max_acc
+    if joystick.left_thumb.length > 0.05:
+      m += vec3f(joystick.left_thumb.x, -joystick.left_thumb.y, 0).rotate_mouse * 40
+
+  if mesh.acc.y != 0:
+    last_acc = mesh.acc
+  mesh.acc *= 0
+  mesh.acc += mass * vec3f(m.x, 0, -m.y) * traction  # mouse motion
+  if not sandy and not oily:
+    mesh.acc += vec3f(0, (1f-traction) * gravity, 0)   # free fall
+  mesh.acc += ramp_a * traction
+
+  if god(): mesh.acc.y = gravity * 0.125
+
+  let lateral_dir = mesh.vel.xz.normalize()
+  let lateral_vel = mesh.vel.xz.length()
+
+  mesh.vel.x = clamp(mesh.vel.x + dt * mesh.acc.x, -max_vel.x, max_vel.x)
+  mesh.vel.z = clamp(mesh.vel.z + dt * mesh.acc.z, -max_vel.z, max_vel.z)
+
+  const air_brake = 255/256f
+  const min_air = 1/32f
+  if air > min_air:
+    mesh.vel.y = clamp(mesh.vel.y + dt * mesh.acc.y, -max_vel.y * 1.5f, max_vel.y)
+    last_air = max(last_air, air)
+  else:
+    if last_air > 1f:
+      if last_acc.y.abs >= gravity.abs:
+        echo "impact ", mesh.vel.y, " last air ", last_air
+        if mesh.vel.y.abs > 13f:
+          player.animate Stun, t + 1.5f
+        if mesh.vel.y.abs > 26f:
+          player.animate Break, t + 2f
+        last_acc.y *= 0
+        last_air = 0f
+    mesh.vel.y *= clamp( air / min_air, 0.0, air_brake )
+
+  logs.player_vel_y.log mesh.vel.y
+  logs.player_acc_y.log mesh.acc.y
+  logs.air.log air
+
+  if icy:
+    if mesh.vel.length * lateral_vel > 0f:
+      let dir = normalize(mesh.vel.xz.normalize() + lateral_dir)
+      mesh.vel = vec3f(dir.x, 0, dir.y) * lateral_vel
+      mesh.vel.y = max_vel.y * -0.5
+
+
+  mesh.pos += mesh.vel * dt
+  mesh.pos.y = clamp(mesh.pos.y, fh, sky)
+
+  # rotation animation
+  if (mesh.vel * vec3f(1,0,1)).length > 0:
+    var dir = -mesh.vel.normalize()
+    var axis = mesh.normal.cross(dir).normalize()
+    var angle = mesh.vel.xz.length * dt / 0.5f / Pi / player_radius
+    if player.animation == Stun:
+      angle *= 0.25f
+
+    let quat = quatf(axis, angle)
+    if quat.length > 0:
+      mesh.rot = normalize(quat * mesh.rot)
+
+  const brake = 0.986
+  if not icy and not copper and not oily:
+    mesh.vel *= brake
+
+  mouse *= 0
+
+  if level.around(TU,x,z):
+    mesh.vel.y = clamp(mesh.vel.y, -max_vel.y, max_vel.y)
+
+  if god(): return # a god neither dies nor achieves goals
+
+  if level.around(IN,x,z) and air < 0.0625f:
+    let dest = level.find_closest(OU, x, z)
+    if dest.length != 0:
+      player.teleport_dest = dest
+      player.animate(Teleport, t + 1.2f)
+      player.mesh.vel *= 0
+      player.mesh.acc *= 0
+      player.mesh.pos = player.teleport_dest
+      player.respawn_pos = player.teleport_dest
+
+  if player.dead:
+    echo "ur ded"
+    player.dead = false
+    player.animate(Respawn, t + 1f)
+    game.respawns += 1
+
+  if game.goal:
+    mesh.vel *= 0.97f
+    if event_time == 0:
+      event_time = time
+    if time - event_time > 3.0f:
+      game.goal = false
+      event_time = 0
+      next_level.callback(game, true)
+  else:
+    game.goal = game.goal or cur_masks.has GG
+
+proc visible*(p: Player): bool =
+  return p.animation != Teleport
+
 proc main =
   editor = Editor(cursor_data: true, cursor_mask: true, stamp: Stamp(width:0, height: 0))
   game = newGame()
@@ -410,221 +619,23 @@ proc main =
   game.init()
   game.light.update()
 
-  proc physics(game: var Game, mesh: var Mesh) {.inline.} =
-    const mass = player_radius
-    #let gravity = if game.level == 5: -98f else: 98f
-    const gravity = -98f
-    const max_vel = vec3f( 15f, -gravity * 0.5f, 15f )
-    let level = game.level
-    if not game.goal:
-      game.level.tick(t)
-    let coord = mesh.pos.rotate_coord
-    let x = coord.x
-    let z = coord.z
-    let bh = mesh.pos.y
-    let fh = level.point_height(x, z)
-    let cur_masks = level.masks_at(x,z)
-    #stdout.write "\27[K"
-
-    for actor in level.actors.mitems:
-      game.physics(actor, dt)
-
-    beats.inc
-    #if true or game.animate_next_step:
-    if beats mod 2 == 0:
-      for fixture in level.fixtures.mitems:
-        game.physics(fixture, dt)
-    #game.animate_next_step = false
-
-    mesh.model.mat = mat4(1.0f)
-      .translate(vec3f(0, player_radius,0))
-      .translate(mesh.pos * vec3f(1,level_squash,1))
-      .scale(mesh.scale) * mesh.rot.mat4f
-
-    if game.player.animate(t): return
-
-
-    if not god():
-      # figure out if we're in mortal danger
-      if mesh.pos.y < 10f:
-        game.player.die "fell off"
-      if mesh.acc.xz.length == 0f and mesh.vel.y <= -max_vel.y:
-        game.player.die "terminal velocity"
-
-      for actor in level.actors.mitems:
-        if (actor.mesh.pos - game.player.mesh.pos).length < 1f:
-          if actor.mesh.scale.length < 1f:
-            actor.mesh.scale.y = 0.1f
-            continue
-          if actor.kind == EA:
-              actor.mesh.pos = game.player.mesh.pos
-              game.player.animate Dissolve, t + 1f
-              return
-
-    let ramp = level.slope(x,z) * level_squash * level_squash
-    let thx = arctan(ramp.x)
-    let thz = arctan(ramp.z)
-    let cosx = cos(thx)
-    let cosz = cos(thz)
-    let sinx = sin(thx)
-    let sinz = sin(thz)
-    var ramp_a = vec3f( -ramp.x, sinx + sinz, -ramp.z ) * gravity
-    if game.level_number == 6: # works for ramps but not walls
-      ramp_a = vec3f( ramp.x, sinx + sinz, ramp.z ) * gravity
-
-    var icy = level.around(IC, x,z)
-    var sandy = level.around(SD, x,z)
-    var oily = level.around(OI, x,z)
-    var copper = level.around(CU, x,z)
-    var stunned = game.player.animation == Stun
-    var traction: float
-    var air = bh - fh
-    if air > 0.25:
-      traction = 0f
-    else:
-      if stunned:
-        traction = 0.125f
-      if sandy:
-        traction = 0.5
-      elif oily:
-        traction = 0.75f
-      else:
-        traction = 1f
-
-    if god():
-      ramp_a *= 0
-      traction = 1f
-
-    var safe: bool
-    let flat = ramp.length == 0
-    let nonzero = level.point_height(x.floor, z.floor) > 0f
-
-    safe = flat and nonzero
-    safe = safe and not icy and not copper
-    safe = safe and game.safe
-    if safe:
-      game.player.respawn_pos = vec3f(mesh.pos.x.floor, mesh.pos.y, mesh.pos.z.floor)
-
-    const max_acc = 50f
-    var m = vec3f(0,0,0)
-    if not game.paused and not game.goal and not icy and not copper:
-      m = rotate_mouse(mouse)
-      if m.length > max_acc:
-        m = m.normalize() * max_acc
-      if joystick.left_thumb.length > 0.05:
-        m += vec3f(joystick.left_thumb.x, -joystick.left_thumb.y, 0).rotate_mouse * 40
-
-    if mesh.acc.y != 0:
-      last_acc = mesh.acc
-    mesh.acc *= 0
-    mesh.acc += mass * vec3f(m.x, 0, -m.y) * traction  # mouse motion
-    if not sandy and not oily:
-      mesh.acc += vec3f(0, (1f-traction) * gravity, 0)   # free fall
-    mesh.acc += ramp_a * traction
-
-    if god(): mesh.acc.y = gravity * 0.125
-
-    let lateral_dir = mesh.vel.xz.normalize()
-    let lateral_vel = mesh.vel.xz.length()
-
-    mesh.vel.x = clamp(mesh.vel.x + dt * mesh.acc.x, -max_vel.x, max_vel.x)
-    mesh.vel.z = clamp(mesh.vel.z + dt * mesh.acc.z, -max_vel.z, max_vel.z)
-
-    const air_brake = 255/256f
-    const min_air = 1/32f
-    if air > min_air:
-      mesh.vel.y = clamp(mesh.vel.y + dt * mesh.acc.y, -max_vel.y * 1.5f, max_vel.y)
-      last_air = max(last_air, air)
-    else:
-      if last_air > 1f:
-        if last_acc.y.abs >= gravity.abs:
-          echo "impact ", mesh.vel.y, " last air ", last_air
-          if mesh.vel.y.abs > 13f:
-            game.player.animate Stun, t + 1.5f
-          if mesh.vel.y.abs > 26f:
-            game.player.animate Break, t + 2f
-          last_acc.y *= 0
-          last_air = 0f
-      mesh.vel.y *= clamp( air / min_air, 0.0, air_brake )
-
-    logs.player_vel_y.log mesh.vel.y
-    logs.player_acc_y.log mesh.acc.y
-    logs.air.log air
-
-    if icy:
-      if mesh.vel.length * lateral_vel > 0f:
-        let dir = normalize(mesh.vel.xz.normalize() + lateral_dir)
-        mesh.vel = vec3f(dir.x, 0, dir.y) * lateral_vel
-        mesh.vel.y = max_vel.y * -0.5
-
-
-    mesh.pos += mesh.vel * dt
-    mesh.pos.y = clamp(mesh.pos.y, fh, sky)
-
-    # rotation animation
-    if (mesh.vel * vec3f(1,0,1)).length > 0:
-      var dir = -mesh.vel.normalize()
-      var axis = mesh.normal.cross(dir).normalize()
-      var angle = mesh.vel.xz.length * dt / 0.5f / Pi / player_radius
-      if game.player.animation == Stun:
-        angle *= 0.25f
-
-      let quat = quatf(axis, angle)
-      if quat.length > 0:
-        mesh.rot = normalize(quat * mesh.rot)
-
-    const brake = 0.986
-    if not icy and not copper and not oily:
-      mesh.vel *= brake
-
-    mouse *= 0
-
-    if level.around(TU,x,z):
-      mesh.vel.y = clamp(mesh.vel.y, -max_vel.y, max_vel.y)
-
-    if god(): return # a god neither dies nor achieves goals
-
-    if level.around(IN,x,z) and air < 0.0625f:
-      let dest = level.find_closest(OU, x, z)
-      if dest.length != 0:
-        game.player.teleport_dest = dest
-        game.player.animate(Teleport, t + 1.2f)
-        game.player.mesh.vel *= 0
-        game.player.mesh.acc *= 0
-        game.player.mesh.pos = game.player.teleport_dest
-        game.player.respawn_pos = game.player.teleport_dest
-
-    if game.player.dead:
-      echo "ur ded"
-      game.player.dead = false
-      game.player.animate(Respawn, t + 1f)
-      game.respawns += 1
-
-    if game.goal:
-      mesh.vel *= 0.97f
-      if event_time == 0:
-        event_time = time
-      if time - event_time > 3.0f:
-        game.goal = false
-        event_time = 0
-        next_level.callback(game, true)
-    else:
-      game.goal = game.goal or cur_masks.has GG
 
   # main loop
   while not w.windowShouldClose():
-    var floor_plane = game.level.floor_plane
-    var actors = game.level.actors
-    var fixtures = game.level.fixtures
+    var level = game.level
+    var player = game.player
+    var floor_plane = level.floor_plane
+    var actors = level.actors
+    var fixtures = level.fixtures
     time = glfwGetTime()
     dt = time - t
     t = time
 
     if game.paused and game.frame_step:
-      game.physics(game.player.mesh)
+      game.physics(player.mesh)
       game.frame_step = false
     elif not game.paused:
-      game.physics(game.player.mesh)
+      game.physics(player.mesh)
 
     if not game.paused:
       if game.following:
@@ -645,9 +656,9 @@ proc main =
     floor_plane.wireframe = true
     game.render floor_plane
 
-    if game.player.visible:
-      game.player.mesh.wireframe = game.wireframe
-      game.render game.player.mesh
+    if player.visible:
+      player.mesh.wireframe = game.wireframe
+      game.render player.mesh
 
     for actor in actors.mitems:
       actor.mesh.wireframe = game.wireframe

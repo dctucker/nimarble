@@ -33,16 +33,17 @@ proc get_uniform_location(program: Program, name: string): GLint =
 proc get_location*(uni: var Uniform, program: Program, name: string) =
   uni.id = program.get_uniform_location(name)
 
-proc update*[T: float32](uni: Uniform[T]) =
+proc update*[T: float32](uni: Uniform[T]) {.inline.} =
   glUniform1f uni.id, uni.data
-proc update*[T: Vec3f](uni: Uniform[T]) =
+
+proc update*[T: Vec3f](uni: Uniform[T]) {.inline.} =
   glUniform3f uni.id, uni.data.x, uni.data.y, uni.data.z
 
-proc update*(matrix: var Matrix) =
+proc update*(matrix: var Matrix) {.inline.} =
   var mat = matrix.mat
   glUniformMatrix4fv matrix.id, 1, false, mat.caddr
 
-proc update*(matrix: var Matrix, value: Mat4f) =
+proc update*(matrix: var Matrix, value: Mat4f) {.inline.} =
   matrix.mat = value
   matrix.update()
 
@@ -63,7 +64,7 @@ proc newVBO*[T](n: cint, data: var seq[T]): VBO[T] =
   glBindBuffer    GL_ARRAY_BUFFER, result.id
   glBufferData    GL_ARRAY_BUFFER, cint(T.sizeof * result.data.len), result.data[0].addr, GL_DYNAMIC_DRAW
 
-proc update*[T](vbo: var VBO[T], data: var seq[T]) =
+proc update*[T](vbo: var VBO[T], data: var seq[T]) {.inline.} =
   vbo.data = data
   glBindBuffer    GL_ARRAY_BUFFER, vbo.id
   glBufferData    GL_ARRAY_BUFFER, cint(T.sizeof * vbo.data.len), vbo.data[0].addr, GL_DYNAMIC_DRAW
@@ -143,7 +144,6 @@ proc draw_elem*(vbo: VBO, kind: GLEnum = GL_TRIANGLES) {.inline.} =
   glBindBuffer GL_ELEMENT_ARRAY_BUFFER, vbo.id
   glDrawElements kind, vbo.n_verts, GL_UNSIGNED_INT, cast[pointer](vbo.offset * sizeof(cfloat))
 
-proc use*(program: Program) =
+proc use*(program: Program) {.inline.} =
   glUseProgram program.id
-
 

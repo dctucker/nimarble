@@ -26,9 +26,9 @@ action:
   proc animate_step*(game: var Game, press: bool) =
     if press: game.animate_next_step = true
 
-proc rotate_coord*(v: Vec3f): Vec3f =
-  let v4 = mat4f(1f).translate(v).rotateY(radians(45f))[3]
-  result = vec3f(v4.x, v4.y, v4.z)
+# TODO this method is way too popular
+proc rotate_coord*(v: Vec3f): Vec3f {.inline.} =
+  return mat4f(1f).translate(v).rotateY(radians(45f))[3].xyz
 
 proc update_camera*(game: Game) =
   let distance = game.camera.distance
@@ -49,7 +49,7 @@ proc update_fov*(game: Game) =
 proc reset_view*(game: var Game) =
   game.update_fov()
   game.update_camera()
-  game.pan.vel = vec3f(0,0,0)
+  game.camera.pan.vel = vec3f(0,0,0)
 
 proc reset_player*(game: var Game) =
   let player_top = game.level.origin.y.float
@@ -63,7 +63,7 @@ proc follow_player*(game: var Game) =
   let target = game.player.mesh.pos# * 0.5f
 
   let y = (game.player.mesh.pos.y - game.level.origin.y.float) * 0.5
-  game.pan.target = vec3f( coord.x, y, coord.z )
+  game.camera.pan.target = vec3f( coord.x, y, coord.z )
 
   let ly = target.y
   if game.goal:
@@ -103,7 +103,7 @@ proc init_player*(game: var Game) =
 
   var modelmat = mat4(1.0f)
   game.player.mesh.model = game.player.mesh.program.newMatrix(modelmat, "M")
-  var mvp = game.proj * game.view.mat.translate(-game.pan.pos) * game.player.mesh.model.mat
+  var mvp = game.proj * game.view.mat.translate(-game.camera.pan.pos) * game.player.mesh.model.mat
   game.player.mesh.mvp = game.player.mesh.program.newMatrix(mvp, "MVP")
 
 
@@ -122,7 +122,7 @@ proc init_floor_plane*(game: var Game) =
   )
   var modelmat = mat4(1.0f).scale(1f, level_squash, 1f)
   game.level.floor_plane.model = game.player.mesh.program.newMatrix(modelmat, "M")
-  var mvp = game.proj * game.view.mat.translate(-game.pan.pos) * game.level.floor_plane.model.mat
+  var mvp = game.proj * game.view.mat.translate(-game.camera.pan.pos) * game.level.floor_plane.model.mat
   game.level.floor_plane.mvp = game.level.floor_plane.program.newMatrix(mvp, "MVP")
 
 proc newMesh(game: var Game, verts, colors, norms: var seq[cfloat], elems: var seq[Ind]): Mesh =
@@ -214,7 +214,7 @@ proc init_piece*[T](game: var Game, piece: var T) =
   if MI in game.level.map[ piece.origin.z, piece.origin.x ].masks:
     piece.mesh.scale *= 0.5
   piece.mesh.pos    += vec3f(x, y, z)
-  var mvp = game.proj * game.view.mat.translate(-game.pan.pos) * piece.mesh.model.mat
+  var mvp = game.proj * game.view.mat.translate(-game.camera.pan.pos) * piece.mesh.model.mat
   piece.mesh.mvp = game.player.mesh.program.newMatrix(mvp, "MVP")
 
 proc init_fixtures*(game: var Game) =
@@ -247,7 +247,7 @@ proc set_level*(game: var Game) =
   game.reset_player()
   game.player.respawn_pos = game.player.mesh.pos
   game.follow_player()
-  game.pan.pos = game.pan.target
+  game.camera.pan.pos = game.camera.pan.target
   game.reset_view()
   game.following = f
 
@@ -276,7 +276,7 @@ proc respawn*(game: var Game) =
     inc game.respawns
 
 proc pan_stop(game: var Game) =
-  game.pan.acc = vec3f(0f,0f,0f)
+  game.camera.pan.acc = vec3f(0f,0f,0f)
 
 action:
   proc choose_level*(game: var Game, press: bool) =
@@ -313,22 +313,22 @@ action:
     game.update_mouse_mode()
 
   proc pan_up*(game: var Game, press: bool) =
-    if press: game.pan.acc.xz = vec2f(-0.125f, -0.125)
+    if press: game.camera.pan.acc.xz = vec2f(-0.125f, -0.125)
     else: game.pan_stop()
   proc pan_down*(game: var Game, press: bool) =
-    if press: game.pan.acc.xz = vec2f(+0.125, +0.125)
+    if press: game.camera.pan.acc.xz = vec2f(+0.125, +0.125)
     else: game.pan_stop()
   proc pan_left*(game: var Game, press: bool) =
-    if press: game.pan.acc.xz = vec2f(-0.125, +0.125)
+    if press: game.camera.pan.acc.xz = vec2f(-0.125, +0.125)
     else: game.pan_stop()
   proc pan_right*(game: var Game, press: bool) =
-    if press: game.pan.acc.xz = vec2f(+0.125, -0.125)
+    if press: game.camera.pan.acc.xz = vec2f(+0.125, -0.125)
     else: game.pan_stop()
   proc pan_in*(game: var Game, press: bool) =
-    if press: game.pan.acc.y = +0.125
+    if press: game.camera.pan.acc.y = +0.125
     else: game.pan_stop()
   proc pan_out*(game: var Game, press: bool) =
-    if press: game.pan.acc.y = -0.125
+    if press: game.camera.pan.acc.y = -0.125
     else: game.pan_stop()
 
   proc pan_cw*(game: var Game, press: bool) =
@@ -365,8 +365,8 @@ action:
     if press:
       game.following = not game.following
     if not game.following:
-      game.pan.target = game.pan.pos
-      game.pan.vel *= 0
+      game.camera.pan.target = game.camera.pan.pos
+      game.camera.pan.vel *= 0
   proc do_goal*(game: var Game, press: bool) =
     if press: game.goal = not game.goal
   proc toggle_wireframe*(game: var Game, press: bool) =
@@ -408,6 +408,14 @@ proc safe*(game: Game): bool =
 proc die*(player: var Player, why: string) =
   echo why
   player.dead = true
+
+proc next*(ani: Animation): Animation =
+  result = case ani
+    of Dissolve,
+       Explode,
+       Break,
+       Consume   : Respawn
+    else: Animation.None
 
 proc animate*(player: var Player, ani: Animation, t: float) =
   player.animation_time = t
