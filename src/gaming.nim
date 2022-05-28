@@ -95,6 +95,7 @@ proc init_player*(game: var Game) =
       norm_vbo : newVBO(3, addr sphere_normals),
       elem_vbo : newElemVBO( addr sphere_index),
       program: newProgram(player_frags, player_verts, player_geoms),
+      translate: vec3f(0,player_radius,0)
     )
   if game.level != nil:
     game.reset_player()
@@ -147,6 +148,7 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
   case piece.kind
   of EM:
     result = newMesh( game, sphere      , enemy_colors       , sphere_normals      , sphere_index )
+    result.translate.y = player_radius
   of EY: result = newMesh( game, yum         , yum_colors         , sphere_normals      , sphere_index )
   of EA: result = newMesh( game, acid_verts  , acid_colors        , acid_normals        , acid_index   )
   of EP:
@@ -406,7 +408,8 @@ proc safe*(game: Game): bool =
   return true
 
 proc die*(player: var Player, why: string) =
-  echo why
+  if not player.dead:
+    echo why
   player.dead = true
 
 proc next*(ani: Animation): Animation =
@@ -420,6 +423,7 @@ proc next*(ani: Animation): Animation =
 proc animate*(player: var Player, ani: Animation, t: float) =
   player.animation_time = t
   player.animation = ani
+  echo player.animation
 
 proc animate*(player: var Player, t: float): bool =
   if player.animation == Animation.None:

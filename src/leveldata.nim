@@ -996,9 +996,9 @@ proc update*[T: Piece](a: var seq[T], b: seq[T]) =
 
 proc apply_update*(level: var Level, update: LevelUpdate) =
   case update.kind
-  of Actors   : level.actors.update   update.actors
-  of Fixtures : level.fixtures.update update.fixtures
-  of Zones    : level.zones.update update.zones
+  of Actors   : update level.actors   , update.actors
+  of Fixtures : update level.fixtures , update.fixtures
+  of Zones    : update level.zones    , update.zones
 
 proc process_updates*(level: var Level) =
   if level.updates.len > 0:

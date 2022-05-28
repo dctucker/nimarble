@@ -212,17 +212,21 @@ proc setup_glfw(): GLFWWindow =
 proc setup_opengl() =
   doAssert glInit()
 
-  glClearColor(0f,0f,0.1f, 1f)
-  glClear(GL_COLOR_BUFFER_BIT)
-  glEnable GL_DEPTH_TEST # Enable depth test
-  glDepthFunc GL_LESS    # Accept fragment if it closer to the camera than the former one
+  glClearColor 0f, 0f, 0.1f, 1f
+  glClear      GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
+  glEnable     GL_DEPTH_TEST
+  glDepthFunc  GL_LESS       # Accept fragment if it closer to the camera than the former one
 
-  glEnable GL_BLEND
-  glBlendFunc GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
+  glEnable     GL_BLEND
+  glBlendFunc  GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
   #glShadeModel GL_FLAT
 
-  glEnable GL_LINE_SMOOTH
-  glLineWidth 2f
+  glEnable     GL_LINE_SMOOTH
+  glLineWidth  2f
+
+  #glEnable    GL_CULL_FACE
+  #glCullFace  GL_BACK
+  #glFrontFace GL_CW
 
 proc info_player =
   igSetNextWindowSize(ImVec2(x:300f, y:400f))
@@ -394,53 +398,48 @@ proc cleanup(w: GLFWWindow) {.inline.} =
 
 proc god: bool = return game.god or editor.focused
 
+proc compute_model(mesh: var Mesh) =
+  mesh.model.mat = mat4(1.0f)
+    .translate(mesh.pos * vec3f(1,level_squash,1))
+    .translate(mesh.translate)
+    .scale(mesh.scale) * mesh.rot.mat4f
+
 proc render*(game: var Game, mesh: var Mesh) =
   mesh.mvp.mat = game.proj * game.view.mat.translate(-game.camera.pan.pos) * mesh.model.mat
   mesh.render()
 
 proc render[T: Piece](piece: var T) =
   var mesh = piece.mesh
-  mesh.model.mat = mat4(1.0f)
-    .translate(mesh.pos * vec3f(1,level_squash,1))
-    .translate(mesh.translate)
-    .scale(mesh.scale) * mesh.rot.mat4f
+  mesh.compute_model()
 
   game.render(mesh)
+
+proc physics[T](game: var Game, pieces: var T, dt: float) =
+  for actor in pieces.mitems:
+    game.physics(actor, dt)
 
 var beats = 0
 var last_acc: Vec3f
 var last_air: float32
 
 proc physics(game: var Game, mesh: var Mesh) =
-  var player = game.player
   const mass = player_radius
-  #let gravity = if game.level == 5: -98f else: 98f
   const gravity = -98f
   const max_vel = vec3f( 15f, -gravity * 0.5f, 15f )
+
+  var player = game.player
   var level = game.level
+
   if not game.goal:
     level.tick(t)
-  let x = player.coord.x
-  let z = player.coord.z
-  let bh = mesh.pos.y
-  let fh = level.point_height(x, z)
-  let cur_masks = level.masks_at(x,z)
-  #stdout.write "\27[K"
 
-  for actor in level.actors.mitems:
-    game.physics(actor, dt)
+  game.physics(level.actors, dt)
 
   beats.inc
-  #if true or game.animate_next_step:
   if beats mod 2 == 0:
-    for fixture in level.fixtures.mitems:
-      game.physics(fixture, dt)
-  #game.animate_next_step = false
+    game.physics(level.fixtures, dt)
 
-  mesh.model.mat = mat4(1.0f)
-    .translate(vec3f(0, player_radius,0))
-    .translate(mesh.pos * vec3f(1,level_squash,1))
-    .scale(mesh.scale) * mesh.rot.mat4f
+  mesh.compute_model()
 
   if player.animate(t): return
 
@@ -461,6 +460,9 @@ proc physics(game: var Game, mesh: var Mesh) =
             player.animate Dissolve, t + 1f
             return
 
+  let x  = player.coord.x
+  let z  = player.coord.z
+
   let ramp = level.slope(x,z) * level_squash * level_squash
   let thx = arctan(ramp.x)
   let thz = arctan(ramp.z)
@@ -472,91 +474,98 @@ proc physics(game: var Game, mesh: var Mesh) =
   if game.level_number == 6: # works for ramps but not walls
     ramp_a = vec3f( ramp.x, sinx + sinz, ramp.z ) * gravity
 
-  var icy = level.around(IC, x,z)
-  var sandy = level.around(SD, x,z)
-  var oily = level.around(OI, x,z)
-  var copper = level.around(CU, x,z)
+  var icy     = level.around(IC, x,z)
+  var sandy   = level.around(SD, x,z)
+  var oily    = level.around(OI, x,z)
+  var copper  = level.around(CU, x,z)
   var stunned = player.animation == Stun
-  var traction: float
+
+  let bh = mesh.pos.y
+  let fh = level.point_height(x, z)
+  let cur_masks = level.masks_at(x,z)
   var air = bh - fh
-  if air > 0.25:
-    traction = 0f
+
+  var traction: float = 1.0
+  if air > 0.25: traction *= 0f
   else:
-    if stunned:
-      traction = 0.125f
-    if sandy:
-      traction = 0.5
-    elif oily:
-      traction = 0.75f
-    else:
-      traction = 1f
-
+    if sandy   : traction *= 0.5
+    if oily    : traction *= 0.75f
+    if stunned : traction *= 0.125f
   if god():
-    ramp_a *= 0
     traction = 1f
+    ramp_a *= 0
 
-  var safe: bool
   let flat = ramp.length == 0
   let nonzero = level.point_height(x.floor, z.floor) > 0f
 
-  safe = flat and nonzero
-  safe = safe and not icy and not copper
-  safe = safe and game.safe
+  let safe = game.safe and
+    flat       and
+    nonzero    and
+    not icy    and
+    not copper
   if safe:
     player.respawn_pos = vec3f(mesh.pos.x.floor, mesh.pos.y, mesh.pos.z.floor)
 
   const max_acc = 50f
-  var m = vec3f(0,0,0)
-  if not game.paused and not game.goal and not icy and not copper:
-    m = rotate_mouse(mouse)
-    if m.length > max_acc:
-      m = m.normalize() * max_acc
-    if joystick.left_thumb.length > 0.05:
-      m += vec3f(joystick.left_thumb.x, -joystick.left_thumb.y, 0).rotate_mouse * 40
 
-  if mesh.acc.y != 0:
-    last_acc = mesh.acc
-  mesh.acc *= 0
-  mesh.acc += mass * vec3f(m.x, 0, -m.y) * traction  # mouse motion
-  if not sandy and not oily:
-    mesh.acc += vec3f(0, (1f-traction) * gravity, 0)   # free fall
-  mesh.acc += ramp_a * traction
+  proc get_input_vector(game: Game): Vec3f =
+    result = vec3f(0,0,0)
+    if not game.paused and not game.goal and not icy and not copper:
+      result = rotate_mouse(mouse)
+      if result.length > max_acc:
+        result = result.normalize() * max_acc
+      if joystick.left_thumb.length > 0.05:
+        result += vec3f(joystick.left_thumb.x, -joystick.left_thumb.y, 0).rotate_mouse * 40
+    mouse *= 0
+  var m = game.get_input_vector()
 
-  if god(): mesh.acc.y = gravity * 0.125
+  proc apply_input_motion(mesh: var Mesh) =
+    if mesh.acc.y != 0:
+      last_acc = mesh.acc
+    mesh.acc *= 0
+    mesh.acc += mass * vec3f(m.x, 0, -m.y) * traction  # mouse motion
+    if not sandy and not oily:
+      mesh.acc += vec3f(0, (1f-traction) * gravity, 0)   # free fall
+    mesh.acc += ramp_a * traction
+
+    if god(): mesh.acc.y = gravity * 0.125
+
+  mesh.apply_input_motion()
 
   let lateral_dir = mesh.vel.xz.normalize()
   let lateral_vel = mesh.vel.xz.length()
 
-  mesh.vel.x = clamp(mesh.vel.x + dt * mesh.acc.x, -max_vel.x, max_vel.x)
-  mesh.vel.z = clamp(mesh.vel.z + dt * mesh.acc.z, -max_vel.z, max_vel.z)
+  mesh.vel.xz = clamp(mesh.vel.xz + dt * mesh.acc.xz, -max_vel.xz, max_vel.xz)
 
-  const air_brake = 255/256f
-  const min_air = 1/32f
-  if air > min_air:
-    mesh.vel.y = clamp(mesh.vel.y + dt * mesh.acc.y, -max_vel.y * 1.5f, max_vel.y)
-    last_air = max(last_air, air)
-  else:
-    if last_air > 1f:
-      if last_acc.y.abs >= gravity.abs:
-        echo "impact ", mesh.vel.y, " last air ", last_air
-        if mesh.vel.y.abs > 13f:
-          player.animate Stun, t + 1.5f
-        if mesh.vel.y.abs > 26f:
-          player.animate Break, t + 2f
-        last_acc.y *= 0
-        last_air = 0f
-    mesh.vel.y *= clamp( air / min_air, 0.0, air_brake )
+  proc apply_air(mesh: var Mesh) =
+    const air_brake = 255/256f
+    const min_air = 1/32f
+    if air > min_air:
+      mesh.vel.y = clamp(mesh.vel.y + dt * mesh.acc.y, -max_vel.y * 1.5f, max_vel.y)
+      last_air = max(last_air, air)
+    else:
+      if last_air > 1f:
+        if last_acc.y.abs >= gravity.abs:
+          echo "impact ", mesh.vel.y, " last air ", last_air
+          if mesh.vel.y.abs > 13f:
+            player.animate Stun, t + 1.5f
+          if mesh.vel.y.abs > 26f:
+            player.animate Break, t + 2f
+          last_acc.y *= 0
+          last_air = 0f
+      mesh.vel.y *= clamp( air / min_air, 0.0, air_brake )
+  mesh.apply_air()
 
   logs.player_vel_y.log mesh.vel.y
   logs.player_acc_y.log mesh.acc.y
   logs.air.log air
+
 
   if icy:
     if mesh.vel.length * lateral_vel > 0f:
       let dir = normalize(mesh.vel.xz.normalize() + lateral_dir)
       mesh.vel = vec3f(dir.x, 0, dir.y) * lateral_vel
       mesh.vel.y = max_vel.y * -0.5
-
 
   mesh.pos += mesh.vel * dt
   mesh.pos.y = clamp(mesh.pos.y, fh, sky)
@@ -576,8 +585,6 @@ proc physics(game: var Game, mesh: var Mesh) =
   const brake = 0.986
   if not icy and not copper and not oily:
     mesh.vel *= brake
-
-  mouse *= 0
 
   if level.around(TU,x,z):
     mesh.vel.y = clamp(mesh.vel.y, -max_vel.y, max_vel.y)

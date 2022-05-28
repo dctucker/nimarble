@@ -258,6 +258,7 @@ proc info_window*(light: var Light): bool =
   result = dirty
 
 iterator pieces_by_kind[T: Piece](s: seq[T]): (CliffMask, var seq[T]) =
+  # TODO this is inefficient
   var tbl = newTable[CliffMask, seq[T]]()
   for f in s:
     if not tbl.hasKey f.kind:
