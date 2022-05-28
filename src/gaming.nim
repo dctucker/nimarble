@@ -435,6 +435,11 @@ proc animate*(player: var Player, t: float): bool =
     player.animation = player.animation.next
 
   case player.animation
+  of Teleport:
+    player.mesh.vel *= 0
+    player.mesh.acc *= 0
+    player.mesh.pos = player.teleport_dest
+    player.respawn_pos = player.teleport_dest
   of Dissolve:
     player.die("dissolving")
     player.mesh.pos.y -= 0.03125f

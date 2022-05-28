@@ -418,15 +418,70 @@ proc physics[T](game: var Game, pieces: var T, dt: float) =
   for actor in pieces.mitems:
     game.physics(actor, dt)
 
-var beats = 0
-var last_acc: Vec3f
+proc apply_roll_rotation(player: var Player) =
+  var mesh = player.mesh
+  if (mesh.vel * vec3f(1,0,1)).length > 0:
+    var dir = -mesh.vel.normalize()
+    var axis = mesh.normal.cross(dir).normalize()
+    var angle = mesh.vel.xz.length * dt / 0.5f / Pi / player_radius
+    if player.animation == Stun:
+      angle *= 0.25f
+
+    let quat = quatf(axis, angle)
+    if quat.length > 0:
+      mesh.rot = normalize(quat * mesh.rot)
+
+const mass = player_radius
+const gravity = -98f
+const max_vel = vec3f( 15f, -gravity * 0.5f, 15f )
+const air_brake = 255/256f
+const min_air = 1/32f
+
 var last_air: float32
+var last_acc: Vec3f
+proc apply_air(player: var Player, air: float) =
+  var mesh = player.mesh
+  if air > min_air:
+    mesh.vel.y = clamp(mesh.vel.y + dt * mesh.acc.y, -max_vel.y * 1.5f, max_vel.y)
+    last_air = max(last_air, air)
+  else:
+    mesh.vel.y *= clamp( air / min_air, 0.0, air_brake )
+
+proc detect_impact_damage(player: var Player, air: float) =
+  var mesh = player.mesh
+  if air > min_air: return
+  if last_air < 1f: return
+  if last_acc.y.abs < gravity.abs: return
+
+  echo "impact ", mesh.vel.y, " last air ", last_air
+  if mesh.vel.y.abs > 13f:
+    player.animate Stun, t + 1.5f
+  if mesh.vel.y.abs > 26f:
+    player.animate Break, t + 2f
+  last_acc.y *= 0
+  last_air = 0f
+
+proc detect_actor_collision(player: var Player, actors: var ActorSet): bool =
+  for actor in actors.mitems:
+    if (actor.mesh.pos - player.mesh.pos).length < 1f:
+      if actor.mesh.scale.length < 1f:
+        actor.mesh.scale.y = 0.1f
+        continue
+      if actor.kind == EA:
+        actor.mesh.pos = player.mesh.pos
+        player.animate Dissolve, t + 1f
+        return true
+
+proc detect_fall_damage(player: var Player) =
+  var mesh = player.mesh
+  if mesh.pos.y < 10f:
+    player.die "fell off"
+  if mesh.acc.xz.length == 0f and mesh.vel.y <= -max_vel.y:
+    player.die "terminal velocity"
+
+var beats = 0
 
 proc physics(game: var Game, mesh: var Mesh) =
-  const mass = player_radius
-  const gravity = -98f
-  const max_vel = vec3f( 15f, -gravity * 0.5f, 15f )
-
   var player = game.player
   var level = game.level
 
@@ -444,21 +499,8 @@ proc physics(game: var Game, mesh: var Mesh) =
   if player.animate(t): return
 
   if not god():
-    # figure out if we're in mortal danger
-    if mesh.pos.y < 10f:
-      player.die "fell off"
-    if mesh.acc.xz.length == 0f and mesh.vel.y <= -max_vel.y:
-      player.die "terminal velocity"
-
-    for actor in level.actors.mitems:
-      if (actor.mesh.pos - player.mesh.pos).length < 1f:
-        if actor.mesh.scale.length < 1f:
-          actor.mesh.scale.y = 0.1f
-          continue
-        if actor.kind == EA:
-            actor.mesh.pos = player.mesh.pos
-            player.animate Dissolve, t + 1f
-            return
+    if player.detect_actor_collision(level.actors): return
+    player.detect_fall_damage()
 
   let x  = player.coord.x
   let z  = player.coord.z
@@ -466,8 +508,8 @@ proc physics(game: var Game, mesh: var Mesh) =
   let ramp = level.slope(x,z) * level_squash * level_squash
   let thx = arctan(ramp.x)
   let thz = arctan(ramp.z)
-  let cosx = cos(thx)
-  let cosz = cos(thz)
+  #let cosx = cos(thx)
+  #let cosz = cos(thz)
   let sinx = sin(thx)
   let sinz = sin(thz)
   var ramp_a = vec3f( -ramp.x, sinx + sinz, -ramp.z ) * gravity
@@ -509,13 +551,13 @@ proc physics(game: var Game, mesh: var Mesh) =
   const max_acc = 50f
 
   proc get_input_vector(game: Game): Vec3f =
-    result = vec3f(0,0,0)
-    if not game.paused and not game.goal and not icy and not copper:
-      result = rotate_mouse(mouse)
-      if result.length > max_acc:
-        result = result.normalize() * max_acc
-      if joystick.left_thumb.length > 0.05:
-        result += vec3f(joystick.left_thumb.x, -joystick.left_thumb.y, 0).rotate_mouse * 40
+    if game.paused or game.goal or icy or copper:
+      return vec3f(0,0,0)
+    result = rotate_mouse(mouse)
+    if result.length > max_acc:
+      result = result.normalize() * max_acc
+    if joystick.left_thumb.length > 0.05:
+      result += vec3f(joystick.left_thumb.x, -joystick.left_thumb.y, 0).rotate_mouse * 40
     mouse *= 0
   var m = game.get_input_vector()
 
@@ -529,7 +571,6 @@ proc physics(game: var Game, mesh: var Mesh) =
     mesh.acc += ramp_a * traction
 
     if god(): mesh.acc.y = gravity * 0.125
-
   mesh.apply_input_motion()
 
   let lateral_dir = mesh.vel.xz.normalize()
@@ -537,29 +578,13 @@ proc physics(game: var Game, mesh: var Mesh) =
 
   mesh.vel.xz = clamp(mesh.vel.xz + dt * mesh.acc.xz, -max_vel.xz, max_vel.xz)
 
-  proc apply_air(mesh: var Mesh) =
-    const air_brake = 255/256f
-    const min_air = 1/32f
-    if air > min_air:
-      mesh.vel.y = clamp(mesh.vel.y + dt * mesh.acc.y, -max_vel.y * 1.5f, max_vel.y)
-      last_air = max(last_air, air)
-    else:
-      if last_air > 1f:
-        if last_acc.y.abs >= gravity.abs:
-          echo "impact ", mesh.vel.y, " last air ", last_air
-          if mesh.vel.y.abs > 13f:
-            player.animate Stun, t + 1.5f
-          if mesh.vel.y.abs > 26f:
-            player.animate Break, t + 2f
-          last_acc.y *= 0
-          last_air = 0f
-      mesh.vel.y *= clamp( air / min_air, 0.0, air_brake )
-  mesh.apply_air()
+  player.apply_air(air)
+  if cur_masks * {TU,IN,OU} == {}:
+    player.detect_impact_damage(air)
 
   logs.player_vel_y.log mesh.vel.y
   logs.player_acc_y.log mesh.acc.y
   logs.air.log air
-
 
   if icy:
     if mesh.vel.length * lateral_vel > 0f:
@@ -570,20 +595,10 @@ proc physics(game: var Game, mesh: var Mesh) =
   mesh.pos += mesh.vel * dt
   mesh.pos.y = clamp(mesh.pos.y, fh, sky)
 
-  # rotation animation
-  if (mesh.vel * vec3f(1,0,1)).length > 0:
-    var dir = -mesh.vel.normalize()
-    var axis = mesh.normal.cross(dir).normalize()
-    var angle = mesh.vel.xz.length * dt / 0.5f / Pi / player_radius
-    if player.animation == Stun:
-      angle *= 0.25f
-
-    let quat = quatf(axis, angle)
-    if quat.length > 0:
-      mesh.rot = normalize(quat * mesh.rot)
+  player.apply_roll_rotation()
 
   const brake = 0.986
-  if not icy and not copper and not oily:
+  if not ( icy or copper or oily ):
     mesh.vel *= brake
 
   if level.around(TU,x,z):
@@ -591,21 +606,21 @@ proc physics(game: var Game, mesh: var Mesh) =
 
   if god(): return # a god neither dies nor achieves goals
 
-  if level.around(IN,x,z) and air < 0.0625f:
+  if cur_masks.has(IN) and air < 0.0625f:
     let dest = level.find_closest(OU, x, z)
     if dest.length != 0:
       player.teleport_dest = dest
       player.animate(Teleport, t + 1.2f)
-      player.mesh.vel *= 0
-      player.mesh.acc *= 0
-      player.mesh.pos = player.teleport_dest
-      player.respawn_pos = player.teleport_dest
+      last_air = 0
+      air = 0
 
   if player.dead:
     echo "ur ded"
     player.dead = false
     player.animate(Respawn, t + 1f)
     game.respawns += 1
+    last_air = 0
+    air = 0
 
   if game.goal:
     mesh.vel *= 0.97f
