@@ -438,6 +438,7 @@ const max_vel = vec3f( 15f, -gravity * 0.5f, 15f )
 const air_brake = 255/256f
 const min_air = 1/32f
 
+var cur_masks: set[CliffMask]
 var air, last_air: float32
 var last_acc: Vec3f
 
@@ -487,7 +488,7 @@ proc detect_fall_damage(player: var Player) =
 
 var beats = 0
 var traction: float
-var ramp_a: Vec3f
+var ramp, ramp_a: Vec3f
 var icy, sandy, oily, copper, stunned, portal: bool
 
 proc get_input_vector(game: Game): Vec3f =
@@ -510,6 +511,61 @@ proc calculate_acceleration(mesh: var Mesh, input_vector: Vec3f) =
 
   mesh.acc += ramp_a * traction
   if god(): mesh.acc.y = gravity * 0.125
+
+proc find_closest(game: Game, mask: CliffMask): Vec3f =
+  var coord = game.player.coord
+  return game.level.find_closest(mask, coord.x, coord.z)
+
+proc maybe_teleport(game: var Game) =
+  var player = game.player
+  if cur_masks.has(IN) and air < 0.0625f:
+    let dest = game.find_closest OU
+    if dest.length != 0:
+      player.teleport_dest = dest
+      player.animate Teleport, t + 1.2f
+      no_air()
+
+proc maybe_respawn(game: var Game) =
+  var player = game.player
+  if player.dead:
+    echo "ur ded"
+    player.dead = false
+    player.animate Respawn, t + 1f
+    game.respawns += 1
+    no_air()
+
+proc maybe_complete(game: var Game) =
+  var mesh = game.player.mesh
+  if game.goal:
+    mesh.vel *= 0.97f
+    if event_time == 0:
+      event_time = time
+    if time - event_time > 3.0f:
+      game.goal = false
+      event_time = 0
+      next_level.callback(game, true)
+  else:
+    game.goal = game.goal or cur_masks.has GG
+
+proc update_state(game: var Game) =
+  icy     = cur_masks.has IC
+  sandy   = cur_masks.has SD
+  oily    = cur_masks.has OI
+  copper  = cur_masks.has CU
+  portal  = (cur_masks * {TU,IN,OU}).card > 0
+  stunned = game.player.animation == Stun
+
+  traction = 1.0
+  if god():
+    air = 0
+    last_air = 0
+    ramp_a *= 0
+  elif air > 0.25: traction *= 0f
+  else:
+    if sandy   : traction *= 0.5
+    if oily    : traction *= 0.75f
+    if stunned : traction *= 0.125f
+
 
 proc physics(game: var Game, mesh: var Mesh) =
   var player = game.player
@@ -535,7 +591,7 @@ proc physics(game: var Game, mesh: var Mesh) =
   let x  = player.coord.x
   let z  = player.coord.z
 
-  let ramp = level.slope(x,z) * level_squash * level_squash
+  ramp = level.slope(x,z) * level_squash * level_squash
   let thx = arctan(ramp.x)
   let thz = arctan(ramp.z)
   #let cosx = cos(thx)
@@ -547,28 +603,12 @@ proc physics(game: var Game, mesh: var Mesh) =
   if game.level_number == 6: # works for ramps but not walls
     ramp_a = vec3f( ramp.x, sinx + sinz, ramp.z ) * gravity
 
-  let cur_masks = level.masks_at(x,z)
-  icy     = cur_masks.has IC
-  sandy   = cur_masks.has SD
-  oily    = cur_masks.has OI
-  copper  = cur_masks.has CU
-  portal  = (cur_masks * {TU,IN,OU}).card > 0
-  stunned = player.animation == Stun
+  cur_masks = level.masks_at(x,z)
+  game.update_state()
 
   let bh = mesh.pos.y
-  let fh = level.point_height(x, z)
-  air = bh - fh
-
-  traction = 1.0
-  if god():
-    air = 0
-    last_air = 0
-    ramp_a *= 0
-  elif air > 0.25: traction *= 0f
-  else:
-    if sandy   : traction *= 0.5
-    if oily    : traction *= 0.75f
-    if stunned : traction *= 0.125f
+  let floor_height = level.point_height(x, z)
+  air = bh - floor_height
 
   let flat = ramp.length == 0
   let nonzero = level.point_height(x.floor, z.floor) > 0f
@@ -600,7 +640,7 @@ proc physics(game: var Game, mesh: var Mesh) =
       mesh.vel.y = max_vel.y * -0.5
 
   mesh.pos += mesh.vel * dt
-  mesh.pos.y = clamp(mesh.pos.y, fh, sky)
+  mesh.pos.y = clamp(mesh.pos.y, floor_height, sky)
 
   player.apply_roll_rotation()
 
@@ -617,30 +657,9 @@ proc physics(game: var Game, mesh: var Mesh) =
 
   if god(): return # a god neither dies nor achieves goals
 
-  if cur_masks.has(IN) and air < 0.0625f:
-    let dest = level.find_closest(OU, x, z)
-    if dest.length != 0:
-      player.teleport_dest = dest
-      player.animate Teleport, t + 1.2f
-      no_air()
-
-  if player.dead:
-    echo "ur ded"
-    player.dead = false
-    player.animate Respawn, t + 1f
-    game.respawns += 1
-    no_air()
-
-  if game.goal:
-    mesh.vel *= 0.97f
-    if event_time == 0:
-      event_time = time
-    if time - event_time > 3.0f:
-      game.goal = false
-      event_time = 0
-      next_level.callback(game, true)
-  else:
-    game.goal = game.goal or cur_masks.has GG
+  game.maybe_teleport()
+  game.maybe_respawn()
+  game.maybe_complete()
 
 proc visible*(p: Player): bool =
   return p.animation != Teleport
