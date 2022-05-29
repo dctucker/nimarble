@@ -15,7 +15,7 @@ type
     dimensions: cint
     n_verts*: cint
     offset*: cint
-    data: ptr seq[T]
+    data*: ptr seq[T]
   Shader* = object
     id: uint32
     code: cstring

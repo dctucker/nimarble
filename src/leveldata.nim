@@ -10,7 +10,7 @@ import wrapper
 import types
 import masks
 
-from models import cube_vert, cube_verts, cube_colors, cube_index
+from models import cube_vert, cube_verts, cube_colors, cube_index, wave_res, wave_nverts
 import assets
 
 const EE = 0
@@ -173,25 +173,16 @@ proc find_actors*(level: var Level): ActorSet =
           kind: mask,
         )
 
-#proc find_fixtures(data: seq[float], mask: seq[CliffMask], w,h: int): seq[Fixture] =
-#  for i in 0..<h:
-#    for j in 0..<w:
-#      let o = i * w + j
-#      let mask = mask[o]
-#      if mask in {GR}:
-#        result.add Fixture(
-#          origin: vec3i( j.int32, data[o].int32, i.int32 ),
-#          kind: mask,
-#        )
-
 proc find_fixtures*(level: var Level): seq[Fixture] =
   for i,j in level.coords:
     for mask in level.map[i,j].masks:
       if mask.fixture():
-        result.add Fixture(
+        let fix = Fixture(
           origin: vec3i( j.int32, level.map[i,j].height.int32, i.int32 ),
           kind: mask,
         )
+        result.add fix
+        level.map[i,j].fixture = fix
 
 iterator by_axis(d: int): Vec2i =
   proc cmp(v1, v2: Vec3i): int = cmp(v1.y, v2.y)
@@ -871,20 +862,25 @@ proc setup_floor_colors[T](level: Level): seq[cfloat] =
       result[index+2] = c.z
       result[index+3] = c.w
 
+proc wave_height*(fixture: Fixture, x: float): float =
+  let o = fixture.mesh.elem_vbo.offset + int(x * wave_res) * wave_nverts + 2
+  result = fixture.mesh.vert_vbo.data[o * 3 + 1]
+  result *= fixture.mesh.scale.y / 0.5
+
+#[
 proc wave_height*(level: Level, x,z: float): float =
   let phase = 15f * -x + (level.clock mod 30).float
   const max_height = 3f
   result = max_height * sin(phase.radians)
   result = clamp( result, 0, max_height )
+]#
 
 proc floor_height*(level: Level, x,z: float): float =
   let masks = level.masks_at(x,z)
   result = level.data_at(x,z)
   if masks.has SW:
-    result += level.wave_height(x,z)
-    #let (i,j) = level.xlat_coord(x,z)
-    #if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return
-    #level.floor_verts[4 * (i * level.width + j)] = result
+    let (i,j) = level.xlat_coord(x,z)
+    result += level.map[i,j].fixture.wave_height(0)
   elif (masks * {P1,P2,P3,P4}).has level.phase:
     result = 0f
 

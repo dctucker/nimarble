@@ -567,8 +567,9 @@ proc update_state(game: var Game) =
     if stunned : traction *= 0.125f
 
 
-proc physics(game: var Game, mesh: var Mesh) =
+proc physics(game: var Game) =
   var player = game.player
+  var mesh = player.mesh
   var level = game.level
 
   if not game.goal:
@@ -579,8 +580,6 @@ proc physics(game: var Game, mesh: var Mesh) =
   beats.inc
   if beats mod 2 == 0:
     game.physics(level.fixtures, dt)
-
-  mesh.compute_model()
 
   if player.animate(t): return
 
@@ -688,10 +687,10 @@ proc main =
     t = time
 
     if game.paused and game.frame_step:
-      game.physics(player.mesh)
+      game.physics()
       game.frame_step = false
     elif not game.paused:
-      game.physics(player.mesh)
+      game.physics()
 
     if not game.paused:
       if game.following:
@@ -712,6 +711,7 @@ proc main =
     floor_plane.wireframe = true
     game.render floor_plane
 
+    player.mesh.compute_model()
     if player.visible:
       player.mesh.wireframe = game.wireframe
       game.render player.mesh

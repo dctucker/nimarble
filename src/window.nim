@@ -10,7 +10,7 @@ import nimgl/imgui/[impl_opengl, impl_glfw]
 #import zippy
 from scene import Camera, Light, pos, vel, acc
 from types import Application, Joystick, JoyButtons, Actor, ActorSet, Fixture, Piece
-from leveldata import sky
+from leveldata import sky, wave_height
 import masks
 import assets
 
@@ -317,6 +317,11 @@ proc info_window*(fixtures: seq[Fixture]) =
 
         let offname = cstring "offset##" & $f
         igDragInt  offname, fixture.mesh.elem_vbo.offset.addr, wave_ninds, 0, wave_ninds * wave_res * wave_len
+
+        if kind == SW:
+          let hname = cstring "height##" & $f
+          var height: float32 = fixture.wave_height(0.0)
+          igDragFloat hname, height.addr, 0.125, -sky, sky
 
         igSeparator()
       igSpacing()

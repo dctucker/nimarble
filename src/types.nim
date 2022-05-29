@@ -35,6 +35,7 @@ type
   LevelPoint* = object
     height*: float
     masks*: set[CliffMask]
+    fixture*: Fixture
 
   LevelMap* = ref object
     points*: seq[LevelPoint]
@@ -297,3 +298,4 @@ type
 #{.experimental: "callOperator".}
 #proc `()`*[T](action: Action[T], args: varargs[untyped]) =
 #  action.action(args)
+
