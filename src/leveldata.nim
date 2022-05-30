@@ -101,6 +101,11 @@ proc masks_at*(level: Level, x,z: float): set[CliffMask] =
   if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return {}
   return level.map[i,j].masks
 
+proc fixture_at*(level: Level, x,z: float): Fixture =
+  let (i,j) = level.xlat_coord(x,z)
+  if i < 0 or j < 0 or i >= level.height-1 or j >= level.width-1: return Fixture()
+  return level.map[i,j].fixture
+
 proc around*(level: Level, m: CliffMask, x,z: float): bool =
   if level.masks_at(x,z).has m:
     return true
@@ -881,6 +886,8 @@ proc floor_height*(level: Level, x,z: float): float =
   if masks.has SW:
     let (i,j) = level.xlat_coord(x,z)
     result += level.map[i,j].fixture.wave_height(0)
+  elif masks.has GR:
+    result += 4f
   elif (masks * {P1,P2,P3,P4}).has level.phase:
     result = 0f
 

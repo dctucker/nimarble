@@ -489,7 +489,7 @@ proc detect_fall_damage(player: var Player) =
 var beats = 0
 var traction: float
 var ramp, ramp_a: Vec3f
-var icy, sandy, oily, copper, stunned, portal: bool
+var rail, icy, sandy, oily, copper, stunned, portal: bool
 
 proc get_input_vector(game: Game): Vec3f =
   if game.paused or game.goal or icy or copper:
@@ -548,6 +548,7 @@ proc maybe_complete(game: var Game) =
     game.goal = game.goal or cur_masks.has GG
 
 proc update_state(game: var Game) =
+  rail    = cur_masks.has GR
   icy     = cur_masks.has IC
   sandy   = cur_masks.has SD
   oily    = cur_masks.has OI
@@ -604,6 +605,11 @@ proc physics(game: var Game) =
 
   cur_masks = level.masks_at(x,z)
   game.update_state()
+
+  if rail:
+    let fixture = level.fixture_at(x,z)
+    let normal = fixture.normal(player)
+    mesh.vel.xz = mesh.vel.reflect(normal).xz
 
   let bh = mesh.pos.y
   let floor_height = level.point_height(x, z)

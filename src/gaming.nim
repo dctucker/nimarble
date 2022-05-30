@@ -174,7 +174,7 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
       rot       : quatf(vec3f(1, 0, 0).normalize, 90f.radians),
       scale     : vec3f(1,1,1),
     )
-    result.pos = vec3f(0.5, 0.0, 0.5)
+    result.translate = vec3f(0.5, 0.0, 0.5)
 
   of SW:
     # wavelength is 12 units of 16 pixels each

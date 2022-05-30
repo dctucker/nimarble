@@ -197,6 +197,16 @@ proc reaction(e: CliffMask): Animation =
   of EY: Consume
   else: None
 
+proc reflect*(v1, normal: Vec3f): Vec3f =
+  result = v1 - 2 * v1.dot(normal) * normal
+
+proc normal*(fixture: Fixture, player: Player): Vec3f =
+  let diff = fixture.mesh.pos - player.mesh.pos
+  if diff.x.abs > diff.z.abs:
+    result.x = diff.x
+  else:
+    result.z = diff.z
+
 proc physics*(game: Game, actor: var Actor, dt: float) =
   case actor.kind
   of EA:
