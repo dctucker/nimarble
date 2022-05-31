@@ -137,7 +137,7 @@ proc scrollProc(window: GLFWWindow, xoffset, yoffset: cdouble): void {.cdecl.} =
 proc poll_joystick*(game: var Game) =
   if joystick.id == -1: return
 
-  const xbox = 2 # TODO
+  const xbox = 2 # TODO select which joystick
   var n_axes: int32
   var ax = glfwGetJoystickAxes(xbox, n_axes.addr)
   if n_axes == 6:

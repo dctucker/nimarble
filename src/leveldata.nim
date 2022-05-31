@@ -496,18 +496,6 @@ proc write_new_level* =
       level.data[i * width + j] = 20
   level.save()
 
-let levels = @[
-  Level(),
-  init_level("0", level_data_src(0), level_mask_src(0), vec3f( 1f  , 0.0f, 1f   )),
-  init_level("1", level_data_src(1), level_mask_src(1), vec3f( 1f  , 0.8f, 0f   )),
-  init_level("2", level_data_src(2), level_mask_src(2), vec3f( 0f  , 0.4f, 0.8f )),
-  init_level("3", level_data_src(3), level_mask_src(3), vec3f( 0.4f, 0.4f, 0.4f )),
-  init_level("4", level_data_src(4), level_mask_src(4), vec3f( 1f  , 0.267f, 0f )),
-  init_level("5", level_data_src(5), level_mask_src(5), vec3f( 1f  , 1.0f, 0.0f )),
-  init_level("6", level_data_src(6), level_mask_src(6), vec3f( 1.0f, 0.0f, 0.0f )),
-]
-let n_levels* = levels.len()
-
 
 proc cliff_color(level: Level, mask: CliffMask): Vec4f =
   case mask:
@@ -727,7 +715,7 @@ proc update_color_vbo*(level: Level) {.inline.} =
 proc update_index_vbo*(level: Level) {.inline.} =
   level.floor_plane.elem_vbo.update
 
-const floor_span = 48
+const floor_span = 50
 proc index_offset(level: Level, i,j: int): int =
   result = (i-1) * floor_span + (j-7)
   if result < 0: return 0
@@ -968,18 +956,6 @@ proc average_height*(level: Level, x,z: float): float =
       accum level.floor_height(x+ii, z-jj)
   return sum / n.float
 
-proc load_level*(n: int) =
-  if 0 < n and n < levels.len:
-    if levels[n].floor_index.len == 0:
-      setup_floor levels[n]
-
-proc get_level*(n: var int32): Level =
-  while n > levels.high:
-    dec n
-  while n < 1:
-    inc n
-  return levels[n]
-
 
 proc apply_phase*(level: Level, i,j: int) =
   level.calculate_vbos(i,j)
@@ -1008,4 +984,29 @@ proc process_updates*(level: var Level) =
     for update in level.updates:
       level.apply_update(update)
     level.updates = @[]
+
+let levels = @[
+  Level(),
+  init_level("0", level_data_src(0), level_mask_src(0), vec3f( 1f  , 0.0f, 1f   )),
+  init_level("1", level_data_src(1), level_mask_src(1), vec3f( 1f  , 0.8f, 0f   )),
+  init_level("2", level_data_src(2), level_mask_src(2), vec3f( 0f  , 0.4f, 0.8f )),
+  init_level("3", level_data_src(3), level_mask_src(3), vec3f( 0.4f, 0.4f, 0.4f )),
+  init_level("4", level_data_src(4), level_mask_src(4), vec3f( 1f  , 0.267f, 0f )),
+  init_level("5", level_data_src(5), level_mask_src(5), vec3f( 1f  , 1.0f, 0.0f )),
+  init_level("6", level_data_src(6), level_mask_src(6), vec3f( 1.0f, 0.0f, 0.0f )),
+  init_level("7", level_data_src(7), level_mask_src(7), vec3f( 1.0f, 1.0f, 0.0f )),
+]
+let n_levels* = levels.len()
+
+proc load_level*(n: int) =
+  if 0 < n and n < levels.len:
+    if levels[n].floor_index.len == 0:
+      setup_floor levels[n]
+
+proc get_level*(n: var int32): Level =
+  while n > levels.high:
+    dec n
+  while n < 1:
+    inc n
+  return levels[n]
 

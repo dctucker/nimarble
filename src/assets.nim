@@ -8,6 +8,7 @@ const level_data_sources = @[
   staticRead("../" & level_dir & "/4.tsv"),
   staticRead("../" & level_dir & "/5.tsv"),
   staticRead("../" & level_dir & "/6.tsv"),
+  staticRead("../" & level_dir & "/7.tsv"),
 ]
 
 const level_mask_sources = @[
@@ -18,6 +19,7 @@ const level_mask_sources = @[
   staticRead("../" & level_dir & "/4mask.tsv"),
   staticRead("../" & level_dir & "/5mask.tsv"),
   staticRead("../" & level_dir & "/6mask.tsv"),
+  staticRead("../" & level_dir & "/7mask.tsv"),
 ]
 
 proc level_data_src*(l: int): string =
