@@ -191,6 +191,19 @@ proc find_fixtures*(level: var Level): seq[Fixture] =
         )
         result.add fix
         level.map[i,j].fixture = fix
+  for zone in level.zones:
+    let (i0,j0) = level.xlat_coord(zone.rect.x, zone.rect.y)
+    var edge_height: float
+    case zone.kind
+    of RH: edge_height = level.map[i0, j0 - 1].height
+    of RI: edge_height = level.map[i0 - 1, j0].height
+    else: continue
+    for n,i,j in level.indexed_coords(zone):
+      let height = level.map[i,j].height
+      var fix = level.map[i,j].fixture
+      if fix.kind notin {RH, RI}: continue
+      fix.boost = edge_height / height
+      echo edge_height, " / ", height, " = ", fix.boost
 
 iterator by_axis(d: int): Vec2i =
   proc cmp(v1, v2: Vec3i): int = cmp(v1.y, v2.y)
@@ -604,7 +617,9 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   var y2 = level.map[i+1, j+0].height
   var y3 = level.map[i+1, j+1].height
 
-  if level.map[i,j].masks.has level.phase:
+  let masks = level.map[i,j].masks
+
+  if masks.has level.phase:
     y0 = 0
     y1 = 0
     y2 = 0
@@ -636,8 +651,6 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   )
 
   var base: float = -1
-
-  let masks = level.map[i,j].masks
 
   if RH in masks:
     y = 0 ; y0 = 0 ; y1 = 0 ; y2 = 0 ; y3 = 0
@@ -691,6 +704,10 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
     elif (y3 - y2) >= too_high: y3 = y2
     if   (y1 - y3) >= too_high: y1 = y3
     elif (y3 - y1) >= too_high: y3 = y1
+
+    if not level.map[i+0,j].masks.has(RH) and level.map[i+0,j+1].masks.has RH:
+      y1 = y0
+      y3 = y2
 
     if   vert.z == 0 and vert.x == 0: y = y0
     elif vert.z == 0 and vert.x == 1: y = y1

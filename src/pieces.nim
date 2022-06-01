@@ -46,14 +46,20 @@ proc tick_phase_zones*(level: var Level) =
   level.update_index_vbo() # TODO update subset only for performance
 
 proc tick_ramp(level: Level, zone: Zone, t: float) =
-  zone.clock = fract(t * 0.25)
+  zone.clock = fract(t * 0.25) # [0..1]
   for n,i,j in level.indexed_coords(zone):
     let point = level.map[i,j]
-    if point.fixture.mesh == nil: continue # TODO for editing
+    var fixture = point.fixture
+    if fixture.mesh == nil: continue # TODO for editing
+    var mesh = fixture.mesh
+    var height = point.height
+    var phase: float
     if zone.clock < 0.5:
-      point.fixture.mesh.pos.y = point.height + (zone.clock) * 3
+      phase = zone.clock / 0.5
     else:
-      point.fixture.mesh.pos.y = point.height + (3 - (zone.clock * 3))
+      phase = 2.0 - (zone.clock * 2.0)
+    height *= 1 + (fixture.boost - 1) * phase
+    mesh.pos.y = height
 
 proc tick*(level: var Level, t: float) =
   level.clock = t

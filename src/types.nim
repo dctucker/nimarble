@@ -10,7 +10,10 @@ from scene import Mesh, Light, newLight, Camera, Pan
 type
   Piece* = ref object of RootObj
     case kind*: CliffMask
-    of EP: firing*: bool
+    of EP:
+      firing*: bool
+    of RH, RI:
+      boost*: float
     else: discard
     origin*: Vec3i
     mesh*: Mesh
@@ -29,7 +32,7 @@ type
     of EP:
       piston_timing*: seq[int]
     of RH, RI :
-      floor_heights*: seq[float]
+      base_floor*: seq[float]
     else: discard
     rect*: Vec4i # e.g. vec4i( left, top, right, bottom )
     clock*: float
