@@ -49,6 +49,7 @@ proc tick_ramp(level: Level, zone: Zone, t: float) =
   zone.clock = fract(t * 0.25)
   for n,i,j in level.indexed_coords(zone):
     let point = level.map[i,j]
+    if point.fixture.mesh == nil: continue # TODO for editing
     if zone.clock < 0.5:
       point.fixture.mesh.pos.y = point.height + (zone.clock) * 3
     else:
