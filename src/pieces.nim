@@ -54,12 +54,16 @@ proc tick_ramp(level: Level, zone: Zone, t: float) =
     var mesh = fixture.mesh
     var height = point.height
     var phase: float
-    if zone.clock < 0.5:
-      phase = zone.clock / 0.5
-    else:
-      phase = 2.0 - (zone.clock * 2.0)
+    if   zone.clock < 0.125: phase = 0
+    elif zone.clock < 0.375: phase = (zone.clock - 0.125) / 0.25
+    elif zone.clock < 0.625: phase = 1
+    elif zone.clock < 0.875: phase = 1 - (zone.clock - 0.625) / 0.25
+    else                   : phase = 0
     height *= 1 + (fixture.boost - 1) * phase
     mesh.pos.y = height
+    mesh.rot.z = -0.18 * (1-phase)
+    #mesh.translate.x = (1 - phase) * 0.3
+    #-0.262
 
 proc tick*(level: var Level, t: float) =
   level.clock = t
