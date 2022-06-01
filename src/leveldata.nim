@@ -527,7 +527,7 @@ proc mask_color*(level: Level, masks: set[CliffMask]): Vec4f =
     of SW    : return vec4f( 0.1, 0.6, 0.6, 1.0 )
     of MI    : return vec4f( 0.25, 0.25, 0.25, 1.0 )
     of EP    : return vec4f( 0.5, 0.5, 0.5, 1.0 )
-    of RI, RH: return vec4f( 0.2, 0.7, 0.7, 0.9 )
+    of RI, RH: return vec4f( 0.2, 0.4, 0.5, 1.0 )
     of BI, BH: return vec4f( 0.4, 0.4, 0.4, 1.0 )
     of SD    : return vec4f( 0.5, 0.3, 0.0, 1.0 )
     of OI    : return vec4f( 0.9, 0.7, 0.5, 1.0 )
@@ -627,8 +627,17 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
 
   var base: float = -1
 
-  if FL in level.map[i,j].masks and y0 != 0 and y3 != 0:
-    base = y0 - 1.5
+  let masks = level.map[i,j].masks
+
+  if y0 != 0 and y3 != 0 and (
+    FL in masks or
+    RH in masks or
+    RI in masks
+  ):
+    if y != 0:
+      base = y - 1.5
+    else:
+      base = y0 - 1.5
 
   if vert.y == 1:
 
@@ -686,6 +695,9 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   of 2, 4: level.cliff_color(JJ)
   of 3, 5: level.cliff_color(VV)
   else   : c
+
+  if RH in masks or RI in masks:
+    c = level.mask_color({RI})
 
   #if color_w == 4: c = vec4f(1,0,1,1)
 
