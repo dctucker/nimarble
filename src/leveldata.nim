@@ -11,7 +11,7 @@ import wrapper
 import types
 import masks
 
-from models import cube_vert, cube_verts, cube_colors, cube_index, wave_res, wave_nverts
+from models import cube_normal, cube_verts, cube_colors, cube_index, wave_res, wave_nverts
 from scene import pos
 import assets
 
@@ -613,9 +613,9 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   const margin = 0.98
   let x = (j - level.origin.x).float + vert.x.float * margin
   let z = (i - level.origin.z).float + vert.z.float * margin
-  var y = level.data[level.offset(i+vert.z, j+vert.x)]
+  var y = level.data[level.offset(i+vert.z.int, j+vert.x.int)]
   var c = level.point_color(i, j)
-  var m = level.mask[level.offset(i+vert.z, j+vert.x)]
+  var m = level.mask[level.offset(i+vert.z.int, j+vert.x.int)]
 
   let surface_normals = @[
     vec3f(-1, -1, -1) * -y0,
@@ -714,13 +714,10 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
 
   #if color_w == 4: c = vec4f(1,0,1,1)
 
-  normal = case color_w
-  of 3: vec3f(  0,  0, -1 )
-  of 4: vec3f( +1,  0,  0 )
-  of 5: vec3f(  0,  0, +1 )
-  of 2: vec3f( -1,  0,  0 )
-  of 1: surface_normal
-  else: vec3f(  0,  0,  0 )
+  if color_w == 1:
+    normal = surface_normal
+  else:
+    normal = cube_normal(color_w)
 
   return CubePoint(
     pos    : vec3f(x, y, z),

@@ -1,6 +1,26 @@
 import glm
 from wrapper import Ind
 
+proc toCfloats(vecs: seq[Vec4f], dim: int = 3): seq[cfloat] =
+  result = newSeqOfCap[cfloat](dim * vecs.len)
+  for vec in vecs:
+    if dim >= 1: result.add vec.x
+    if dim >= 2: result.add vec.y
+    if dim >= 3: result.add vec.z
+    if dim >= 4: result.add vec.w
+
+proc toCfloats(vecs: seq[Vec3f], dim: int = 3): seq[cfloat] =
+  result = newSeqOfCap[cfloat](dim * vecs.len)
+  for vec in vecs:
+    if dim >= 1: result.add vec.x
+    if dim >= 2: result.add vec.y
+    if dim >= 3: result.add vec.z
+
+proc toInds(ints: seq[int]): seq[Ind] =
+  for i in ints:
+    result.add i.Ind
+
+
 #[
 
   0---------4
@@ -15,14 +35,14 @@ from wrapper import Ind
 ]#
 
 let cube_verts* = @[
-  vec3i( 0, 0, 0 ), #0
-  vec3i( 0, 0, 1 ), #1
-  vec3i( 0, 1, 0 ), #2
-  vec3i( 0, 1, 1 ), #3
-  vec3i( 1, 0, 0 ), #4
-  vec3i( 1, 0, 1 ), #5
-  vec3i( 1, 1, 0 ), #6
-  vec3i( 1, 1, 1 ), #7
+  vec3f( 0, 0, 0 ), #0
+  vec3f( 0, 0, 1 ), #1
+  vec3f( 0, 1, 0 ), #2
+  vec3f( 0, 1, 1 ), #3
+  vec3f( 1, 0, 0 ), #4
+  vec3f( 1, 0, 1 ), #5
+  vec3f( 1, 1, 0 ), #6
+  vec3f( 1, 1, 1 ), #7
 ]
 
 let cube_index* = @[
@@ -50,11 +70,6 @@ assert cube_colors.len == cube_index.len
 #for v in cube_verts:
 #  cube_normals.add vec3f(v.x.float - 0.5, v.y.float - 0.5, v.z.float - 0.5).normalize()
 
-iterator cube_vert*(): Vec3i =
-  for i in cube_index:
-    yield cube_verts[i]
-
-
 #const ch = 4
 #var cube_colors* = newSeq[cfloat](cube.len * ch div d)
 #for i in 0..<cube_index.len:
@@ -63,6 +78,43 @@ iterator cube_vert*(): Vec3i =
 #  cube_colors[ch*i+1] = 0.5f * phase
 #  cube_colors[ch*i+2] = 1.0f * (1.0-phase)
 #  cube_colors[ch*i+3] = 0.5f
+
+proc cube_normal*(color_w: int): Vec3f =
+  result = case color_w
+  of 3: vec3f(  0,  0, -1 )
+  of 4: vec3f( +1,  0,  0 )
+  of 5: vec3f(  0,  0, +1 )
+  of 2: vec3f( -1,  0,  0 )
+  of 1: vec3f(  0,  1,  0 )
+  else: vec3f(  0,  0,  0 )
+
+proc genRampVerts: seq[Vec3f] =
+  const margin = 0.98
+  for i in cube_index:
+    var vec = cube_verts[i]
+    result.add vec3f( vec.x * margin, vec.y, vec.z * margin )
+
+proc genRampNormals: seq[Vec3f] =
+  for color_w in cube_colors:
+    result.add cube_normal(color_w)
+
+proc genRampColors: seq[Vec4f] =
+  for color_w in cube_colors:
+    case color_w
+    of 3,4,5,2:
+      result.add vec4f(0, 0.5, 0.5, 1)
+    else:
+      result.add vec4f(0.5, 0.5, 0.5, 1)
+
+proc genRampIndex: seq[Ind] =
+  for i,j in cube_index.pairs:
+    result.add i.Ind
+
+var ramp*         = toCfloats( genRampVerts(), 3 )
+var ramp_colors*  = toCfloats( genRampColors(), 4 )
+var ramp_normals* = toCfloats( genRampNormals(), 3 )
+var ramp_index*   = genRampIndex()
+
 
 const player_radius* = 0.625f
 proc uvSphereVerts*(segments, rings: int): seq[cfloat] =
@@ -195,21 +247,6 @@ var sphere_normals* = uvSphereNormals(nseg,nrings)
 var sphere_colors* = uvSphereColors(nseg,nrings)
 var yum_colors* = uvSphereColors(nseg,nrings, vec4f(0.1, 0.8, 0.1, 1.0))
 var enemy_colors* = uvSphereColors(nseg,nrings, vec4f(0.0, 0.1, 0.0, 0.9))
-
-proc toCfloats(vecs: seq[Vec4f], dim: int = 3): seq[cfloat] =
-  result = newSeqOfCap[cfloat](dim * vecs.len)
-  for vec in vecs:
-    if dim >= 1: result.add vec.x
-    if dim >= 2: result.add vec.y
-    if dim >= 3: result.add vec.z
-    if dim >= 4: result.add vec.w
-
-proc toCfloats(vecs: seq[Vec3f], dim: int = 3): seq[cfloat] =
-  result = newSeqOfCap[cfloat](dim * vecs.len)
-  for vec in vecs:
-    if dim >= 1: result.add vec.x
-    if dim >= 2: result.add vec.y
-    if dim >= 3: result.add vec.z
 
 proc cylinderVertices*(segments: int, radius: float32 = 1, length: float32 = 1): seq[Vec4f] =
   result.newSeq((segments+1) * 4 + 2)
