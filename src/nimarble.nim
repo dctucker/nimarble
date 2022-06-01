@@ -608,8 +608,9 @@ proc physics(game: var Game) =
 
   if rail:
     let fixture = level.fixture_at(x,z)
-    let normal = fixture.normal(player)
-    mesh.vel.xz = mesh.vel.reflect(normal).xz
+    if fixture.mesh != nil:
+      let normal = fixture.normal(player)
+      mesh.vel.xz = mesh.vel.reflect(normal).xz
 
   let bh = mesh.pos.y
   let floor_height = level.point_height(x, z)

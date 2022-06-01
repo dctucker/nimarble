@@ -481,10 +481,12 @@ action:
   proc redo(editor: var Editor) = discard
 
 proc copy_clipboard(editor: var Editor) =
+  editor.stamp = editor.get_selection_stamp()
   setClipboardString nil, editor.serialize_selection().cstring
   editor.cut = vec4i(0,0,0,0)
 
 proc cut_clipboard(editor: var Editor) =
+  editor.stamp = editor.get_selection_stamp()
   editor.copy_clipboard()
   editor.cut = editor.selection
 
@@ -500,6 +502,7 @@ proc execute_cut(editor: var Editor) =
 
 proc paste_clipboard(editor: var Editor) =
   editor.execute_cut()
+  editor.selection = vec4i( editor.row.int32, editor.col.int32, editor.row.int32 + editor.stamp.height.int32 - 1, editor.col.int32 + editor.stamp.width.int32 - 1)
   let clip = $getClipboardString(nil)
   var i = editor.row
   for line in clip.split("\n"):
@@ -509,6 +512,7 @@ proc paste_clipboard(editor: var Editor) =
         editor.level[i,j] = editor.level.parseMask(value)
       if editor.cursor_data:
         editor.level[i,j] = editor.level.parseFloat(value)
+      editor.dirty.add (i,j)
       j.inc
     i.inc
 
@@ -531,22 +535,17 @@ proc paste_both(editor: var Editor) =
 
 action:
   proc do_copy(editor: var Editor) =
-    if editor.cursor_mask == true and editor.cursor_data == true:
-      editor.copy_both()
-    else:
-      editor.copy_clipboard()
+    editor.stamp = editor.get_selection_stamp()
+    editor.cut = vec4i(0,0,0,0)
 
   proc do_cut*(editor: var Editor) =
-    if editor.cursor_mask == true and editor.cursor_data == true:
-      editor.cut_both()
-    else:
-      editor.cut_clipboard()
+    editor.copy_both()
+    editor.cut = editor.selection
 
   proc do_paste*(editor: var Editor) =
-    if editor.cursor_mask == true and editor.cursor_data == true:
-      editor.paste_both()
-    else:
-      editor.paste_clipboard()
+    editor.execute_cut()
+    editor.selection = vec4i( editor.row.int32, editor.col.int32, editor.row.int32 + editor.stamp.height.int32 - 1, editor.col.int32 + editor.stamp.width.int32 - 1)
+    editor.put_selection_stamp(editor.stamp, 0, 0)
 
   proc go_back*(editor: var Editor) =
     if editor.brush:
