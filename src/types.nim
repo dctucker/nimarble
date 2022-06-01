@@ -26,7 +26,10 @@ type
 
   Zone* = ref object
     case kind*: CliffMask
-    of EP: piston_sequence: seq[seq[int]]
+    of EP:
+      piston_timing*: seq[int]
+    of RH, RI :
+      floor_heights*: seq[float]
     else: discard
     rect*: Vec4i # e.g. vec4i( left, top, right, bottom )
     clock*: float

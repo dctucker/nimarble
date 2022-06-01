@@ -224,14 +224,20 @@ proc init_fixtures*(game: var Game) =
     if fixture.mesh != nil:
       continue
     game.init_piece(fixture)
+    case fixture.kind
+    of EP:
+      discard#fixture.timing = level.map[fixture.origin.x, fixture.origin.z]
+    else: discard
 
 proc init_actors*(game: var Game) =
   for actor in game.level.actors.mitems:
     if actor.mesh != nil:
       continue
     game.init_piece(actor)
-    if actor.kind == EM:
+    case actor.kind
+    of EM:
       actor.facing = vec3f(0,0,-1)
+    else: discard
 
 proc set_level*(game: var Game) =
   var num = game.level_number

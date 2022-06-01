@@ -6,11 +6,13 @@ import std/sets
 import std/tables
 import std/algorithm
 
+import piston
 import wrapper
 import types
 import masks
 
 from models import cube_vert, cube_verts, cube_colors, cube_index, wave_res, wave_nverts
+from scene import pos
 import assets
 
 const EE = 0
@@ -181,9 +183,10 @@ proc find_actors*(level: var Level): ActorSet =
 proc find_fixtures*(level: var Level): seq[Fixture] =
   for i,j in level.coords:
     for mask in level.map[i,j].masks:
+      let height = level.map[i,j].height
       if mask.fixture():
         let fix = Fixture(
-          origin: vec3i( j.int32, level.map[i,j].height.int32, i.int32 ),
+          origin: vec3i( j.int32, height.int32, i.int32 ),
           kind: mask,
         )
         result.add fix
@@ -247,13 +250,14 @@ proc find_zones*(level: Level, masks: set[CliffMask]): ZoneSet =
       first = vec2i(x.int32, z.int32)
 
       var last: Vec2i
+      var zone: Zone
 
       if criteria in {GR}: # linear
         last = search_axes(x.int, z.int)
         if last.x == 0 and last.y == 0: continue
 
         # found end point
-        result.incl Zone(
+        zone = Zone(
           rect: vec4i( first.x, first.y, last.x, last.y ),
           kind: criteria,
         )
@@ -263,10 +267,16 @@ proc find_zones*(level: Level, masks: set[CliffMask]): ZoneSet =
         if last.x == 0 and last.y == 0: continue
 
         # found end corner
-        result.incl Zone(
+        zone = Zone(
           rect: vec4i( first.x, first.y, last.x - 1, last.y - 1 ),
           kind: criteria,
         )
+
+      case zone.kind
+      of EP:
+        zone.piston_timing = piston_time_variations[^1]
+      else: discard
+      result.incl zone
 
       consumed.add first
       consumed.add last
@@ -629,6 +639,9 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
 
   let masks = level.map[i,j].masks
 
+  if RH in masks:
+    y = 0 ; y0 = 0 ; y1 = 0 ; y2 = 0 ; y3 = 0
+
   if y0 != 0 and y3 != 0 and (
     FL in masks or
     RH in masks or
@@ -872,6 +885,9 @@ proc wave_height*(fixture: Fixture, x: float): float =
   result = fixture.mesh.vert_vbo.data[o * 3 + 1]
   result *= fixture.mesh.scale.y / 0.5
 
+proc ramp_height*(fixture: Fixture): float =
+  return fixture.mesh.pos.y
+
 #[
 proc wave_height*(level: Level, x,z: float): float =
   let phase = 15f * -x + (level.clock mod 30).float
@@ -886,6 +902,9 @@ proc floor_height*(level: Level, x,z: float): float =
   if masks.has SW:
     let (i,j) = level.xlat_coord(x,z)
     result += level.map[i,j].fixture.wave_height(0)
+  elif masks.has(RI) or masks.has(RH):
+    let (i,j) = level.xlat_coord(x,z)
+    result = level.map[i,j].fixture.ramp_height()
   elif masks.has GR:
     result += 4f
   elif (masks * {P1,P2,P3,P4}).has level.phase:
