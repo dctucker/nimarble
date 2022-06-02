@@ -288,35 +288,6 @@ proc info_player =
     #igText("average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
   igEnd()
 
-proc info_level =
-  if igBegin("cube point"):
-    var level = game.level
-    let coord = game.player.coord
-
-    let (i,j) = level.xlat_coord(coord.x.floor, coord.z.floor)
-    if not level.has_coord( i,j ): igEnd() ; return
-
-    var p0 = level.cube_point(i, j, 23)
-    var p1 = level.cube_point(i, j, 24)
-    var p2 = level.cube_point(i, j, 25)
-    var p3 = level.cube_point(i, j, 26)
-
-    igDragFloat3 "pos0", p0.pos.arr
-    igDragFloat3 "pos1", p1.pos.arr
-    igDragFloat3 "pos2", p2.pos.arr
-    igDragFloat3 "pos3", p3.pos.arr
-
-    igColorEdit4 "color0", p0.color.arr
-    igColorEdit4 "color1", p1.color.arr
-    igColorEdit4 "color2", p2.color.arr
-    igColorEdit4 "color3", p3.color.arr
-
-    igDragFloat3 "normal0", p0.normal.arr
-    igDragFloat3 "normal1", p1.normal.arr
-    igDragFloat3 "normal2", p2.normal.arr
-    igDragFloat3 "normal3", p3.normal.arr
-  igEnd()
-
 proc sync_editor =
   var player = game.player
   var mesh = player.mesh
@@ -342,12 +313,13 @@ proc draw_imgui =
   app.main_menu()
   if app.show_player:
     info_player()
-  if app.show_level:
-    info_level()
 
   var level = game.level
   if app.show_actors: level.actors.info_window()
   if app.show_fixtures: level.fixtures.info_window()
+
+  if app.show_level:
+    level.info_window(game.player.coord)
 
   if app.show_camera:
     if game.camera.info_window():

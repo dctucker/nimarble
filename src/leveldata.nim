@@ -726,8 +726,8 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
 
   const level_squash = 0.5
   let na = vec3f(-1, level_squash * (y0 - y0), -1).normalize()
-  let nb = vec3f(-1, level_squash * (y1 - y0), +1).normalize()
-  let nc = vec3f(+1, level_squash * (y2 - y0), -1).normalize()
+  let nc = vec3f(+1, level_squash * (y1 - y0), -1).normalize()
+  let nb = vec3f(-1, level_squash * (y2 - y0), +1).normalize()
   let nd = vec3f(+1, level_squash * (y3 - y0), +1).normalize()
   surface_normal = normalize(
     (nb - na).cross(nc - nb) +
