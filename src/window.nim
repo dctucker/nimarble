@@ -310,10 +310,11 @@ proc info_window*(fixtures: seq[Fixture]) =
         igDragFloat3 name   , fixture.mesh.pos.arr, 0.125, -sky, sky
 
         let tname = cstring "translate##" & $f
-        igDragFloat3 tname   , fixture.mesh.translate.arr, 0.125, -12f, 12f
+        igDragFloat3 tname   , fixture.mesh.translate.arr, 0.0625, -12f, 12f
 
         let rotname = cstring "rot##" & $f
-        igDragFloat4 rotname, fixture.mesh.rot.arr, 1f.radians, -180f.radians, 180f.radians
+        if igDragFloat4(rotname, fixture.mesh.rot.arr, 1f.radians, -180f.radians, 180f.radians):
+          fixture.mesh.rot = fixture.mesh.rot.normalize()
 
         let offname = cstring "offset##" & $f
         igDragInt  offname, fixture.mesh.elem_vbo.offset.addr, wave_ninds, 0, wave_ninds * wave_res * wave_len

@@ -206,6 +206,7 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
 
   of RI, RH:
     result = newMesh( game, ramp        , ramp_colors        , ramp_normals        , ramp_index   )
+    result.translate = vec3f(0,0,0)
 
   else:
     result = newMesh( game, sphere      , sphere_normals     , sphere_normals      , sphere_index )

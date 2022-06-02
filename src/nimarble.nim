@@ -267,10 +267,9 @@ proc info_player =
     var sl = level.slope(coord.x, coord.z)
     igDragFloat3 "slope"     , sl.arr         , -sky, sky
 
-    igCheckBox     "following"    , game.following.addr
-    igCheckBox     "wireframe"    , game.wireframe.addr
-    igCheckBox     "god"          , game.god.addr
-    igSliderInt    "level #"      , game.level_number.addr, 1.int32, n_levels.int32 - 1
+    igSpacing()
+    igSeparator()
+    igSpacing()
 
     var clock = level.clock.float32
     igSliderFloat  "clock"        , clock.addr, 0f, 1f
@@ -278,8 +277,13 @@ proc info_player =
     var phase = level.phase.int32
     igSliderInt    "phase"        , phase.addr, P1.int32, P4.int32
 
-    if igColorEdit3( "level color", level.color.arr ):
+    if igColorEdit3( "color"      , level.color.arr ):
       level.reload_colors()
+
+    igCheckBox     "following"    , game.following.addr
+    igCheckBox     "wireframe"    , game.wireframe.addr
+    igCheckBox     "god"          , game.god.addr
+    igSliderInt    "level #"      , game.level_number.addr, 1.int32, n_levels.int32 - 1
 
     #igText("average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
   igEnd()
@@ -608,7 +612,7 @@ proc physics(game: var Game) =
 
   if rail:
     let fixture = level.fixture_at(x,z)
-    if fixture.mesh != nil:
+    if fixture != nil and fixture.mesh != nil:
       let normal = fixture.normal(player)
       mesh.vel.xz = mesh.vel.reflect(normal).xz
 

@@ -191,6 +191,7 @@ proc find_fixtures*(level: var Level): seq[Fixture] =
         )
         result.add fix
         level.map[i,j].fixture = fix
+
   for zone in level.zones:
     let (i0,j0) = level.xlat_coord(zone.rect.x, zone.rect.y)
     var edge_height: float
@@ -519,6 +520,7 @@ proc write_new_level* =
       level.data[i * width + j] = 20
   level.save()
 
+const default_color = vec4f(0.5, 0.5, 0.5, 1.0)
 
 proc cliff_color(level: Level, mask: CliffMask): Vec4f =
   case mask:
@@ -529,7 +531,7 @@ proc cliff_color(level: Level, mask: CliffMask): Vec4f =
   of AH, VH, IL, IJ,
      IH, II, HH:     return vec4f(level.color * 0.9, 0.5)
   else:
-    return vec4f( 0.6, 0.6, 0.6, 1.0 )
+    return default_color
 
 proc mask_color*(level: Level, masks: set[CliffMask]): Vec4f =
   for mask in masks:
@@ -556,7 +558,7 @@ proc mask_color*(level: Level, masks: set[CliffMask]): Vec4f =
     of OI    : return vec4f( 0.9, 0.7, 0.5, 1.0 )
     else     : return vec4f( 0.6, 0.6, 0.6, 1.0 )
       #return vec4f(((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), 0.9)
-  return vec4f( 0.6, 0.6, 0.6, 1.0 )
+  return default_color
 
 proc point_cliff_color(level: Level, i,j: int): Vec4f =
   let k = level.width * i + j
@@ -641,15 +643,6 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   var surface_normal: Vec3f # = surface_normals[0] + surface_normals[1] + surface_normals[2] + surface_normals[3]
   var normal: Vec3f         # = surface_normals[0] + surface_normals[1] + surface_normals[2] + surface_normals[3]
 
-  let na = vec3f(-1, y0 - y0, -1).normalize()
-  let nc = vec3f(+1, y1 - y0, -1).normalize()
-  let nb = vec3f(-1, y2 - y0, +1).normalize()
-  let nd = vec3f(+1, y3 - y0, +1).normalize()
-  surface_normal = normalize(
-    (nb - na).cross(nc - nb) +
-    (nc - nb).cross(nd - nc)
-  )
-
   var base: float = -1
 
   if RH in masks:
@@ -731,10 +724,23 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
 
   #if color_w == 4: c = vec4f(1,0,1,1)
 
+  const level_squash = 0.5
+  let na = vec3f(-1, level_squash * (y0 - y0), -1).normalize()
+  let nb = vec3f(-1, level_squash * (y1 - y0), +1).normalize()
+  let nc = vec3f(+1, level_squash * (y2 - y0), -1).normalize()
+  let nd = vec3f(+1, level_squash * (y3 - y0), +1).normalize()
+  surface_normal = normalize(
+    (nb - na).cross(nc - nb) +
+    (nc - nb).cross(nd - nc)
+  )
+
   if color_w == 1:
     normal = surface_normal
   else:
     normal = cube_normal(color_w)
+
+  if normal.y.classify == fcNaN:
+    normal = vec3f(0, 1, 0)
 
   return CubePoint(
     pos    : vec3f(x, y, z),

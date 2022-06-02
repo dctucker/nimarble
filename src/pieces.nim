@@ -45,6 +45,13 @@ proc tick_phase_zones*(level: var Level) =
 
   level.update_index_vbo() # TODO update subset only for performance
 
+proc ramp_phase(clock: float): float =
+  if   clock < 0.125: result = 0
+  elif clock < 0.375: result = (clock - 0.125) / 0.25
+  elif clock < 0.625: result = 1
+  elif clock < 0.875: result = 1 - (clock - 0.625) / 0.25
+  else              : result = 0
+
 proc tick_ramp(level: Level, zone: Zone, t: float) =
   zone.clock = fract(t * 0.25) # [0..1]
   for n,i,j in level.indexed_coords(zone):
@@ -53,17 +60,18 @@ proc tick_ramp(level: Level, zone: Zone, t: float) =
     if fixture.mesh == nil: continue # TODO for editing
     var mesh = fixture.mesh
     var height = point.height
-    var phase: float
-    if   zone.clock < 0.125: phase = 0
-    elif zone.clock < 0.375: phase = (zone.clock - 0.125) / 0.25
-    elif zone.clock < 0.625: phase = 1
-    elif zone.clock < 0.875: phase = 1 - (zone.clock - 0.625) / 0.25
-    else                   : phase = 0
+    let phase = zone.clock.ramp_phase()
+
+    # TODO this calculation is messy an inaccurate
+    let next_height = level.map[i,j+1].height
+    let base_height = point.height * fixture.boost
     height *= 1 + (fixture.boost - 1) * phase
+    let at = arctan(0.5 * (height - base_height))
     mesh.pos.y = height
-    mesh.rot.z = -0.18 * (1-phase)
-    #mesh.translate.x = (1 - phase) * 0.3
-    #-0.262
+
+    let rotz = (1 - phase) * arctan(point.height - next_height)
+    mesh.rot = quatf(0,0,0,1).rotate( rotz * 0.5, vec3f(0,0,-1))
+    #mesh.translate.x = sin(at * 0.5)
 
 proc tick*(level: var Level, t: float) =
   level.clock = t

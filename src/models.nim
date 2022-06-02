@@ -92,7 +92,7 @@ proc genRampVerts: seq[Vec3f] =
   const margin = 0.98
   for i in cube_index:
     var vec = cube_verts[i]
-    result.add vec3f( vec.x * margin, vec.y - 1, vec.z * margin )
+    result.add vec3f( vec.x * margin, vec.y - 1.0, vec.z * margin)
 
 proc genRampNormals: seq[Vec3f] =
   for color_w in cube_colors:
@@ -102,7 +102,7 @@ proc genRampColors: seq[Vec4f] =
   for color_w in cube_colors:
     case color_w
     of 3,4,5,2:
-      result.add vec4f(0, 0.5, 0.5, 1)
+      result.add vec4f(0.0, 0.5, 0.5, 1)
     else:
       result.add vec4f(0.5, 0.5, 0.5, 1)
 
