@@ -346,6 +346,35 @@ proc info_window*(mask: CliffMask) =
     igEndTable()
   igEnd()
 
+proc igNormal(name: string, normal: var Vec3f) =
+  var n0 = normal.θφ
+  var d0 = vec2f( n0.θ.degrees, n0.φ.degrees )
+
+  const radius = 16
+  const knob_radius = 3
+  let color = igGetStyle().colors[ImGuiCol.Text.int32].igGetColorU32
+  let knob_color = ImVec4(x: 0.9, y: 0.8, z: 0.0, w: 1.0).igGetColorU32
+  let dark = ImVec4(x: 0.4, y: 0.5, z: 0.5, w: 1.0 ).igGetColorU32
+  var pos: ImVec2
+  igGetCursorScreenPosNonUDT(pos.addr)
+  var draw_list = igGetWindowDrawList()
+  draw_list.addCircle ImVec2(x: pos.x + radius, y: pos.y + radius), radius, color
+  draw_list.addCircle ImVec2(x: pos.x + radius, y: pos.y + radius), knob_radius, dark
+  let r = radius * (n0.y / 90f.radians)
+  let nx = pos.x + radius + r * cos(n0.x)
+  let ny = pos.y + radius + r * sin(n0.x)
+  draw_list.addLine        ImVec2(x: pos.x + radius, y: pos.y + radius), ImVec2(x: nx, y: ny), knob_color
+  draw_list.addCircleFilled ImVec2(x: nx, y: ny), knob_radius, knob_color
+  igDummy ImVec2(x: radius * 2, y: radius * 2)
+
+  igSameLine()
+  igBeginGroup()
+  let degname = cstring name & "##deg"
+  let radname = cstring name & "##rad"
+  igDragFloat3 degname, normal.arr
+  igDragFloat2 radname, d0.arr
+  igEndGroup()
+
 proc info_window*(level: Level, coord: Vec3f) =
   if igBegin("cube point"):
 
@@ -367,33 +396,11 @@ proc info_window*(level: Level, coord: Vec3f) =
     igColorEdit4 "color2", p2.color.arr
     igColorEdit4 "color3", p3.color.arr
 
-    var n0 = p0.normal.θφ
-    var d0 = vec2f( n0.θ.degrees, n0.φ.degrees )
-    igDragFloat3 "normal0##degrees", p0.normal.arr
-    igDragFloat2 "normal0##radians", d0.arr
+    igNormal "normal0", p0.normal
+    igNormal "normal1", p1.normal
+    igNormal "normal2", p2.normal
+    igNormal "normal3", p3.normal
 
-    #var n1 = p1.normal.radians
-    #var n2 = p2.normal.radians
-    #var n3 = p3.normal.radians
-    #igDragFloat2 "normal1", n1.arr
-    #igDragFloat2 "normal2", n2.arr
-    #igDragFloat2 "normal3", n3.arr
-
-    const radius = 16
-    const knob_radius = 3
-    let color = igGetStyle().colors[ImGuiCol.Text.int32].igGetColorU32
-    let knob_color = ImVec4(x: 0.9, y: 0.8, z: 0.0, w: 1.0).igGetColorU32
-    let dark = ImVec4(x: 0.4, y: 0.5, z: 0.5, w: 1.0 ).igGetColorU32
-    var pos: ImVec2
-    igGetCursorScreenPosNonUDT(pos.addr)
-    var draw_list = igGetWindowDrawList()
-    draw_list.addCircle ImVec2(x: pos.x + radius, y: pos.y + radius), radius, color
-    draw_list.addCircle ImVec2(x: pos.x + radius, y: pos.y + radius), knob_radius, dark
-    let r = radius * (n0.y / 90f.radians)
-    let nx = pos.x + radius + r * cos(n0.x)
-    let ny = pos.y + radius + r * sin(n0.x)
-    draw_list.addLine        ImVec2(x: pos.x + radius, y: pos.y + radius), ImVec2(x: nx, y: ny), knob_color
-    draw_list.addCircleFilled ImVec2(x: nx, y: ny), knob_radius, knob_color
 
   igEnd()
 
