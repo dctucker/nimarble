@@ -366,7 +366,25 @@ proc igNormal(name: string, normal: var Vec3f): bool {.discardable.} =
   let ny = pos.y + radius + r * sin(n0.x)
   draw_list.addLine        ImVec2(x: pos.x + radius, y: pos.y + radius), ImVec2(x: nx, y: ny), knob_color
   draw_list.addCircleFilled ImVec2(x: nx, y: ny), knob_radius, knob_color
-  igDummy ImVec2(x: radius * 2, y: radius * 2)
+  let size = ImVec2(x: radius * 2, y: radius * 2)
+  igInvisibleButton(cstring("##" & name), size)
+  #igDummy size
+
+  let io = igGetIO()
+  let mouse = vec2f( io.mousePos.x - (pos.x + radius), io.mousePos.y - (pos.y + radius) ) / radius
+
+  let is_hovered = igIsItemHovered()
+  let is_active  = igIsItemActive()
+  let dragging = igIsMouseDragging(ImGuiMouseButton.Left, 1.0)
+  let clicked  = igIsMouseClicked( ImGuiMouseButton.Left)
+  var dragged: bool
+  if (is_hovered or is_active) and (dragging or clicked):
+    dragged = true
+    let θ = arctan2(mouse.y, mouse.x)
+    let φ = 90f - arccos((mouse.length() * 0.5).clamp(0,1))
+    normal.θ = θ
+    normal.φ = φ
+    #echo θ.degrees, ",", φ.degrees
 
   igSameLine()
   igBeginGroup()
@@ -375,7 +393,7 @@ proc igNormal(name: string, normal: var Vec3f): bool {.discardable.} =
   igPushItemWidth(210 - radius * 2)
   let cartesian = igDragFloat3(degname, normal.arr, 0.01f, -1f, 1f)
   let spherical = igDragFloat2(radname, d0.arr    , 1f, -180f, 180f)
-  result = cartesian or spherical
+  result = cartesian or spherical or dragged
 
   if spherical:
     normal.θ = d0.x.radians
@@ -412,8 +430,7 @@ proc info_window*(level: var Level, coord: Vec3f) =
         level.calculate_vbos(i,j,p, p0)
         gonna_update = true
       igEndGroup()
-      if s mod 2 == 0:
-        igSameLine(300)
+      if s mod 2 == 0: igSameLine(300)
 
     igPopItemWidth()
 
