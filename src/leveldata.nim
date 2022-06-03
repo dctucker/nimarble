@@ -724,7 +724,7 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
 
   #if color_w == 4: c = vec4f(1,0,1,1)
 
-  const level_squash = 0.5
+  const level_squash = 1.0
   let na = vec3f(-1, level_squash * (y0 - y0), -1).normalize()
   let nc = vec3f(+1, level_squash * (y1 - y0), -1).normalize()
   let nb = vec3f(-1, level_squash * (y2 - y0), +1).normalize()
@@ -752,6 +752,12 @@ proc update_vbos*(level: Level) {.inline.} =
   # TODO update subset only for performance
   level.floor_plane.vert_vbo.update
   level.floor_plane.color_vbo.update
+  level.floor_plane.norm_vbo.update
+
+proc update_vert_vbo*(level: Level) {.inline.} =
+  level.floor_plane.vert_vbo.update
+
+proc update_normal_vbo*(level: Level) {.inline.} =
   level.floor_plane.norm_vbo.update
 
 proc update_color_vbo*(level: Level) {.inline.} =
@@ -794,11 +800,31 @@ proc calculate_color_vbo*(level: Level, i,j: int) =
       level.floor_colors[  color_offset + 2 ] = p.color.z
       level.floor_colors[  color_offset + 3 ] = p.color.w
 
-proc calculate_vbos*(level: Level, i,j: int) =
-  let color_span  = 4 * cube_index.len
-  let normal_span = 3 * cube_index.len
-  let vert_span   = 3 * cube_index.len
+proc calculate_vbos*(level: Level, i, j, n: int, p: CubePoint) =
+  const color_span  = 4 * cube_index.len
+  const normal_span = 3 * cube_index.len
+  const vert_span   = 3 * cube_index.len
 
+  let o = level.index_offset(i,j)
+  let vert_offset = o *   vert_span + 3*n + 1
+  if vert_offset >= level.floor_verts.len:
+    return
+  level.floor_verts[   vert_offset               ] = p.pos.y
+
+  let color_offset = o *  color_span + 4*n
+  if 0 < color_offset and color_offset < level.floor_colors.len:
+    level.floor_colors[  color_offset + 0 ] = p.color.x
+    level.floor_colors[  color_offset + 1 ] = p.color.y
+    level.floor_colors[  color_offset + 2 ] = p.color.z
+    level.floor_colors[  color_offset + 3 ] = p.color.w
+
+  let normal_offset = o * normal_span + 3*n
+  if 0 < normal_offset and normal_offset < level.floor_normals.len:
+    level.floor_normals[ normal_offset + 0 ] = p.normal.x
+    level.floor_normals[ normal_offset + 1 ] = p.normal.y
+    level.floor_normals[ normal_offset + 2 ] = p.normal.z
+
+proc calculate_vbos*(level: Level, i,j: int) =
   if not level.has_coord(i,j): return
 
   let o = level.index_offset(i,j) # (i-1) * floor_span + (j-7)
@@ -806,23 +832,7 @@ proc calculate_vbos*(level: Level, i,j: int) =
   for n in cube_index.low .. cube_index.high:
     let p = level.cube_point(i, j, n)
     if p.empty: continue
-    let vert_offset = o *   vert_span + 3*n + 1
-    if vert_offset >= level.floor_verts.len:
-      break
-    level.floor_verts[   vert_offset               ] = p.pos.y
-
-    let color_offset = o *  color_span + 4*n
-    if 0 < color_offset and color_offset < level.floor_colors.len:
-      level.floor_colors[  color_offset + 0 ] = p.color.x
-      level.floor_colors[  color_offset + 1 ] = p.color.y
-      level.floor_colors[  color_offset + 2 ] = p.color.z
-      level.floor_colors[  color_offset + 3 ] = p.color.w
-
-    let normal_offset = o * normal_span + 3*n
-    if 0 < normal_offset and normal_offset < level.floor_normals.len:
-      level.floor_normals[ normal_offset + 0 ] = p.normal.x
-      level.floor_normals[ normal_offset + 1 ] = p.normal.y
-      level.floor_normals[ normal_offset + 2 ] = p.normal.z
+    level.calculate_vbos(i,j,n, p)
 
 proc reload_colors*(level: var Level) =
   for i,j in level.coords:

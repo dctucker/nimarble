@@ -10,7 +10,7 @@ import nimgl/imgui/[impl_opengl, impl_glfw]
 #import zippy
 from scene import Camera, Light, pos, vel, acc
 import types
-from leveldata import sky, wave_height, xlat_coord, has_coord, cube_point
+from leveldata import sky, wave_height, xlat_coord, has_coord, cube_point, calculate_vbos, update_vbos
 import masks
 import assets
 
@@ -86,6 +86,7 @@ proc setup_fonts =
 
   const ascii = @[ 0x1.ImWchar, 0x7f.ImWchar ]
   const blocks = @[
+    0x03b8.ImWchar, 0x03c6.ImWchar,
     0x2264.ImWchar, 0x2265.ImWchar,
     0x2580.ImWchar, 0x2580.ImWchar,
     0x2584.ImWchar, 0x2584.ImWchar,
@@ -346,7 +347,7 @@ proc info_window*(mask: CliffMask) =
     igEndTable()
   igEnd()
 
-proc igNormal(name: string, normal: var Vec3f) =
+proc igNormal(name: string, normal: var Vec3f): bool {.discardable.} =
   var n0 = normal.θφ
   var d0 = vec2f( n0.θ.degrees, n0.φ.degrees )
 
@@ -369,38 +370,88 @@ proc igNormal(name: string, normal: var Vec3f) =
 
   igSameLine()
   igBeginGroup()
-  let degname = cstring name & "##deg"
-  let radname = cstring name & "##rad"
-  igDragFloat3 degname, normal.arr
-  igDragFloat2 radname, d0.arr
+  let degname = cstring name
+  let radname = cstring "θ,φ##" & name
+  igPushItemWidth(210 - radius * 2)
+  let cartesian = igDragFloat3(degname, normal.arr, 0.01f, -1f, 1f)
+  let spherical = igDragFloat2(radname, d0.arr    , 1f, -180f, 180f)
+  result = cartesian or spherical
+
+  if spherical:
+    normal.θ = d0.x.radians
+    normal.φ = d0.y.radians
+
+  igPopItemWidth()
   igEndGroup()
 
-proc info_window*(level: Level, coord: Vec3f) =
+template `|=`(a: var bool, b: bool) =
+  a = b or a
+
+proc info_window*(level: var Level, coord: Vec3f) =
   if igBegin("cube point"):
 
     let (i,j) = level.xlat_coord(coord.x.floor, coord.z.floor)
     if not level.has_coord( i,j ): igEnd() ; return
 
-    var p0 = level.cube_point(i, j, 23)
-    var p1 = level.cube_point(i, j, 24)
-    var p2 = level.cube_point(i, j, 25)
-    var p3 = level.cube_point(i, j, 26)
+    if level.map[i,j].cube.len == 0:
+      for w in 0 .. cube_index.high:
+        level.map[i,j].cube.add level.cube_point(i,j,w)
 
-    igDragFloat3 "pos0", p0.pos.arr
-    igDragFloat3 "pos1", p1.pos.arr
-    igDragFloat3 "pos2", p2.pos.arr
-    igDragFloat3 "pos3", p3.pos.arr
+    var p0 = level.map[i,j].cube[23]
+    var p1 = level.map[i,j].cube[24]
+    var p2 = level.map[i,j].cube[25]
+    var p3 = level.map[i,j].cube[26]
 
-    igColorEdit4 "color0", p0.color.arr
-    igColorEdit4 "color1", p1.color.arr
-    igColorEdit4 "color2", p2.color.arr
-    igColorEdit4 "color3", p3.color.arr
+    var gonna_update: bool
 
-    igNormal "normal0", p0.normal
-    igNormal "normal1", p1.normal
-    igNormal "normal2", p2.normal
-    igNormal "normal3", p3.normal
+    igPushItemWidth(210)
+    igBeginGroup()
+    var gonna_calculate: bool
 
+    gonna_calculate |= igDragFloat3("pos0", p0.pos.arr)
+    gonna_calculate |= igColorEdit4("color0", p0.color.arr)
+    gonna_calculate |= igNormal("normal0", p0.normal)
+    if gonna_calculate:
+      level.calculate_vbos(i,j,23, p0)
+      gonna_update = true
+    igEndGroup()
+
+    igSameLine(300)
+
+    igBeginGroup()
+    gonna_calculate |= igDragFloat3("pos1", p1.pos.arr)
+    gonna_calculate |= igColorEdit4("color1", p1.color.arr)
+    gonna_calculate |= igNormal("normal1", p1.normal)
+    if gonna_calculate:
+      level.calculate_vbos(i,j,24, p1)
+      gonna_update = true
+    igEndGroup()
+    igSeparator()
+
+    igBeginGroup()
+    gonna_calculate |= igDragFloat3("pos2", p2.pos.arr)
+    gonna_calculate |= igColorEdit4("color2", p2.color.arr)
+    gonna_calculate |= igNormal("normal2", p2.normal)
+    if gonna_calculate:
+      level.calculate_vbos(i,j,25, p2)
+      gonna_update = true
+    igEndGroup()
+
+    igSameLine(300)
+
+    igBeginGroup()
+    gonna_calculate |= igDragFloat3("pos3", p3.pos.arr)
+    gonna_calculate |= igColorEdit4("color3", p3.color.arr)
+    gonna_calculate |= igNormal("normal3", p3.normal)
+    if gonna_calculate:
+      level.calculate_vbos(i,j,26, p3)
+      gonna_update = true
+    igEndGroup()
+
+    igPopItemWidth()
+
+    if gonna_update:
+      level.update_vbos()
 
   igEnd()
 

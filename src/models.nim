@@ -45,7 +45,7 @@ let cube_verts* = @[
   vec3f( 1, 1, 1 ), #7
 ]
 
-let cube_index* = @[
+const cube_index* = @[
   0,
   0, 2, 4, 6, 6, 4,  # north
   4, 6, 5, 7, 7, 5,  # east

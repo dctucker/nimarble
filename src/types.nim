@@ -23,7 +23,7 @@ type
     facing*: Vec3f
   Fixture* = ref object of Piece
 
-  CubePoint* = object
+  CubePoint* = ref object
     pos*: Vec3f
     color*: Vec4f
     normal*: Vec3f
@@ -43,6 +43,7 @@ type
     height*: float
     masks*: set[CliffMask]
     fixture*: Fixture
+    cube*: seq[CubePoint]
 
   LevelMap* = ref object
     points*: seq[LevelPoint]

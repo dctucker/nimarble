@@ -900,7 +900,7 @@ proc draw*(editor: Editor) =
     if i < last_row:
       igNewLine()
 
-  editor.focused = igIsWindowFocused()
+  #editor.focused = igIsWindowFocused()
   let editor_window = igGetCurrentWindow()
   igEnd()
 
