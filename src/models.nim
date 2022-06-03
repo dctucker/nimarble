@@ -64,6 +64,7 @@ let cube_colors* = @[
   1, 1, 1, 1, 0,
   0, 0, 0, 0, 0,
 ]
+const top_points* = @[ 23, 24, 25, 26 ]
 assert cube_colors.len == cube_index.len
 
 #var cube_normals*: seq[Vec3f]

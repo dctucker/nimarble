@@ -936,7 +936,7 @@ proc floor_height*(level: Level, x,z: float): float =
     let (i,j) = level.xlat_coord(x,z)
     result = level.map[i,j].fixture.ramp_height()
   elif masks.has GR:
-    result += 4f
+    result += 1.5f
   elif (masks * {P1,P2,P3,P4}).has level.phase:
     result = 0f
 

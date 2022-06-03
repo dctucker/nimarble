@@ -397,62 +397,28 @@ proc info_window*(level: var Level, coord: Vec3f) =
       for w in 0 .. cube_index.high:
         level.map[i,j].cube.add level.cube_point(i,j,w)
 
-    var p0 = level.map[i,j].cube[23]
-    var p1 = level.map[i,j].cube[24]
-    var p2 = level.map[i,j].cube[25]
-    var p3 = level.map[i,j].cube[26]
-
     var gonna_update: bool
 
     igPushItemWidth(210)
-    igBeginGroup()
-    var gonna_calculate: bool
 
-    gonna_calculate |= igDragFloat3("pos0", p0.pos.arr)
-    gonna_calculate |= igColorEdit4("color0", p0.color.arr)
-    gonna_calculate |= igNormal("normal0", p0.normal)
-    if gonna_calculate:
-      level.calculate_vbos(i,j,23, p0)
-      gonna_update = true
-    igEndGroup()
-
-    igSameLine(300)
-
-    igBeginGroup()
-    gonna_calculate |= igDragFloat3("pos1", p1.pos.arr)
-    gonna_calculate |= igColorEdit4("color1", p1.color.arr)
-    gonna_calculate |= igNormal("normal1", p1.normal)
-    if gonna_calculate:
-      level.calculate_vbos(i,j,24, p1)
-      gonna_update = true
-    igEndGroup()
-    igSeparator()
-
-    igBeginGroup()
-    gonna_calculate |= igDragFloat3("pos2", p2.pos.arr)
-    gonna_calculate |= igColorEdit4("color2", p2.color.arr)
-    gonna_calculate |= igNormal("normal2", p2.normal)
-    if gonna_calculate:
-      level.calculate_vbos(i,j,25, p2)
-      gonna_update = true
-    igEndGroup()
-
-    igSameLine(300)
-
-    igBeginGroup()
-    gonna_calculate |= igDragFloat3("pos3", p3.pos.arr)
-    gonna_calculate |= igColorEdit4("color3", p3.color.arr)
-    gonna_calculate |= igNormal("normal3", p3.normal)
-    if gonna_calculate:
-      level.calculate_vbos(i,j,26, p3)
-      gonna_update = true
-    igEndGroup()
+    for s,p in top_points:
+      igBeginGroup()
+      var gonna_calculate: bool
+      var p0 = level.map[i,j].cube[p]
+      gonna_calculate |= igDragFloat3(cstring("pos"    & $s), p0.pos.arr)
+      gonna_calculate |= igColorEdit4(cstring("color"  & $s), p0.color.arr)
+      gonna_calculate |= igNormal(    "normal"         & $s , p0.normal)
+      if gonna_calculate:
+        level.calculate_vbos(i,j,p, p0)
+        gonna_update = true
+      igEndGroup()
+      if s mod 2 == 0:
+        igSameLine(300)
 
     igPopItemWidth()
 
     if gonna_update:
       level.update_vbos()
-
   igEnd()
 
 
