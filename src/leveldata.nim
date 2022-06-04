@@ -729,9 +729,10 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   let nc = vec3f(+1, level_squash * (y1 - y0), -1).normalize()
   let nb = vec3f(-1, level_squash * (y2 - y0), +1).normalize()
   let nd = vec3f(+1, level_squash * (y3 - y0), +1).normalize()
+
   surface_normal = normalize(
-    (nb - na).cross(nc - nb) +
-    (nc - nb).cross(nd - nc)
+    (nb - na).cross(nc - na) +
+    (nc - nb).cross(nd - nb)
   )
 
   if color_w == 1:
@@ -846,7 +847,7 @@ proc setup_floor(level: Level) =
   var lookup  = newTable[(cfloat,cfloat,cfloat), Ind]()
   var verts   = newSeqOfCap[cfloat]( 3 * dim )
   var index   = newSeqOfCap[Ind]( cube_index.len * dim )
-  var colors  = newSeqOfCap[cfloat]( 4 * cube_verts.len * dim )
+  var colors  = newSeqOfCap[cfloat]( 4 * cube_index.len * dim )
   var n = 0.Ind
   var x,z: float
   var y, y0, y1, y2, y3: float

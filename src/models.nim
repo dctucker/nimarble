@@ -26,8 +26,9 @@ proc toInds(ints: seq[int]): seq[Ind] =
   0---------4
   |\       /|
   | 2-----6 |
-  | |     | |
-  | |     | |
+  | |\   /| |
+  | |  8  | |
+  | |/   \| |
   | 3-----7 |
   |/       \|
   1---------5
@@ -43,6 +44,7 @@ let cube_verts* = @[
   vec3f( 1, 0, 1 ), #5
   vec3f( 1, 1, 0 ), #6
   vec3f( 1, 1, 1 ), #7
+  vec3f( 0.5, 1, 0.5 ), #8
 ]
 
 const cube_index* = @[
@@ -51,7 +53,8 @@ const cube_index* = @[
   4, 6, 5, 7, 7, 5,  # east
   5, 7, 1, 3, 3, 1,  # south
   1, 3, 0, 2,        # west
-  2, 6, 3, 7, 7,     # top
+  #2, 6, 3, 3, 6, 7,  # top, broken from 2 to 7
+  2, 3, 7, 7, 2, 6,  # top, broken from 3 to 6
   7, 5, 5, 4, 4,     # reset
 ]
 
@@ -61,10 +64,10 @@ let cube_colors* = @[
   4, 4, 4, 4, 0, 0,
   5, 5, 5, 5, 0, 0,
   2, 2, 2, 2,
-  1, 1, 1, 1, 0,
+  1, 1, 1, 1, 1, 1,
   0, 0, 0, 0, 0,
 ]
-const top_points* = @[ 23, 24, 25, 26 ]
+const top_points* = @[ 23, 24, 25, 26, 27, 28 ]
 assert cube_colors.len == cube_index.len
 
 #var cube_normals*: seq[Vec3f]
