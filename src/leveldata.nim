@@ -628,8 +628,8 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
     y3 = 0
 
   const margin = 0.98
-  let x = (j - level.origin.x).float + vert.x.float * margin
-  let z = (i - level.origin.z).float + vert.z.float * margin
+  var x = (j - level.origin.x).float + vert.x.float * margin
+  var z = (i - level.origin.z).float + vert.z.float * margin
   var y = level.data[level.offset(i+vert.z.int, j+vert.x.int)]
   var c = level.point_color(i, j)
   var m = level.mask[level.offset(i+vert.z.int, j+vert.x.int)]
@@ -706,6 +706,8 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
     elif vert.z == 0 and vert.x == 1: y = y1
     elif vert.z == 1 and vert.x == 0: y = y2
     elif vert.z == 1 and vert.x == 1: y = y3
+    elif vert.z==0.5 and vert.x==0.5:
+      y = y3
   else:
     y = base
 
