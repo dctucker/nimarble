@@ -11,7 +11,7 @@ import wrapper
 import types
 import masks
 
-from models import cube_normal, cube_verts, cube_colors, cube_index, wave_res, wave_nverts
+from models import cube_normal, cube_verts, cube_colors, cube_index, wave_res, wave_nverts, middle_points
 from scene import pos
 import assets
 
@@ -556,7 +556,7 @@ proc mask_color*(level: Level, masks: set[CliffMask]): Vec4f =
     of BI, BH: return vec4f( 0.4, 0.4, 0.4, 1.0 )
     of SD    : return vec4f( 0.5, 0.3, 0.0, 1.0 )
     of OI    : return vec4f( 0.9, 0.7, 0.5, 1.0 )
-    else     : return vec4f( 0.6, 0.6, 0.6, 1.0 )
+    else     : discard
       #return vec4f(((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), ((y.float-COLOR_H) * (1.0/COLOR_D)), 0.9)
   return default_color
 
@@ -707,7 +707,10 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
     elif vert.z == 1 and vert.x == 0: y = y2
     elif vert.z == 1 and vert.x == 1: y = y3
     elif vert.z==0.5 and vert.x==0.5:
-      y = y3
+      if y0 == y3:
+        y = y0
+      elif y1 == y2:
+        y = (y0 + y3) * 0.5
   else:
     y = base
 
@@ -813,6 +816,11 @@ proc calculate_vbos*(level: Level, i, j, n: int, p: CubePoint) =
   if vert_offset >= level.floor_verts.len:
     return
   level.floor_verts[   vert_offset               ] = p.pos.y
+  if n in middle_points:
+    for m in middle_points:
+      let v_offset = o *   vert_span + 3*m + 1
+      level.floor_verts[   v_offset               ] = p.pos.y
+
 
   let color_offset = o *  color_span + 4*n
   if 0 < color_offset and color_offset < level.floor_colors.len:
@@ -834,6 +842,10 @@ proc calculate_vbos*(level: Level, i,j: int) =
   if o <= 0: return
   for n in cube_index.low .. cube_index.high:
     let p = level.cube_point(i, j, n)
+    if level.map[i,j].cube.len == 0:
+      level.map[i,j].cube = newSeq[CubePoint](cube_index.len)
+    level.map[i,j].cube[n] = p
+
     if p.empty: continue
     level.calculate_vbos(i,j,n, p)
 

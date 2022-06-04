@@ -423,14 +423,32 @@ proc info_window*(level: var Level, coord: Vec3f) =
       igBeginGroup()
       var gonna_calculate: bool
       var p0 = level.map[i,j].cube[p]
-      gonna_calculate |= igDragFloat3(cstring("pos"    & $s), p0.pos.arr)
+      gonna_calculate |= igDragFloat3(cstring("pos"    & $s), p0.pos.arr    , 0.0625, -sky, +sky)
       gonna_calculate |= igColorEdit4(cstring("color"  & $s), p0.color.arr)
-      gonna_calculate |= igNormal(    "normal"         & $s , p0.normal)
+      let normal_edited = igNormal(    "normal"         & $s , p0.normal)
+      gonna_calculate |= normal_edited
       if gonna_calculate:
-        level.calculate_vbos(i,j,p, p0)
         gonna_update = true
+        level.calculate_vbos(i,j,p, p0)
+        if p in middle_points:
+          for m in middle_points:
+            var pm = level.map[i,j].cube[m]
+            pm.pos = p0.pos
+            level.calculate_vbos(i,j,m, pm)
+        let a = int(s div 3)
+        if normal_edited:
+          for b in 0..2:
+            let m = top_points[a*3+b]
+            var pm = level.map[i,j].cube[m]
+            pm.normal = p0.normal
+            level.calculate_vbos(i,j,m, pm)
+
+
       igEndGroup()
-      if s mod 2 == 0: igSameLine(300)
+      if s mod 3 == 2:
+        igSeparator()
+      else:
+        igSameLine(300f * ((s+1) mod 3).float)
 
     igPopItemWidth()
 

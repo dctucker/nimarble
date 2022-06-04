@@ -69,7 +69,13 @@ let cube_colors* = @[
   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
   0, 0, 0, 0, 0,
 ]
-const top_points* = @[ 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34 ]
+proc all_cube_index(n: int): seq[int] =
+  for o,i in cube_index.pairs:
+    if i == 8:
+      result.add o
+
+const top_points* = @[ 23, 25, 24, 26, 27, 28, 29, 30, 31, 33, 32, 34 ]
+const middle_points* = all_cube_index(8)
 assert cube_colors.len == cube_index.len
 
 #var cube_normals*: seq[Vec3f]
