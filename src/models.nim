@@ -56,7 +56,7 @@ const cube_index* = @[
   #2, 6, 3, 3, 6, 7,  # top, broken from 2 to 7
   #2, 3, 7, 7, 2, 6,  # top, broken from 3 to 6
   2, 3, 8, 2, 8, 6, 6, 8, 7, 7, 8, 3, # four triangles
-  7, 5, 5, 4, 4,     # reset
+  3, 7, 7, 5, 5, 4, 4,     # reset
 ]
 
 let cube_colors* = @[
@@ -67,7 +67,7 @@ let cube_colors* = @[
   2, 2, 2, 2,
   #1, 1, 1, 1, 1, 1,
   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-  0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0,
 ]
 proc all_cube_index(n: int): seq[int] =
   for o,i in cube_index.pairs:

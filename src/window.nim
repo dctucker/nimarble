@@ -86,6 +86,7 @@ proc setup_fonts =
 
   const ascii = @[ 0x1.ImWchar, 0x7f.ImWchar ]
   const blocks = @[
+    0x00b0.ImWchar, 0x00b0.ImWchar,
     0x03b8.ImWchar, 0x03c6.ImWchar,
     0x2264.ImWchar, 0x2265.ImWchar,
     0x2580.ImWchar, 0x2580.ImWchar,
@@ -390,9 +391,9 @@ proc igNormal(name: string, normal: var Vec3f): bool {.discardable.} =
   igBeginGroup()
   let degname = cstring name
   let radname = cstring "θ,φ##" & name
-  igPushItemWidth(210 - radius * 2)
-  let cartesian = igDragFloat3(degname, normal.arr, 0.01f, -1f, 1f)
-  let spherical = igDragFloat2(radname, d0.arr    , 1f, -180f, 180f)
+  igPushItemWidth(180 - radius * 2)
+  let cartesian = igDragFloat3(degname, normal.arr, 0.01f, -1f, 1f, "%.2f")
+  let spherical = igDragFloat2(radname, d0.arr    , 1f, -180f, 180f, "%3.0f°")
   result = cartesian or spherical or dragged
 
   if spherical:
@@ -417,15 +418,18 @@ proc info_window*(level: var Level, coord: Vec3f) =
 
     var gonna_update: bool
 
-    igPushItemWidth(210)
+    igPushItemWidth(150)
 
     for s,p in top_points:
       igBeginGroup()
       var gonna_calculate: bool
       var p0 = level.map[i,j].cube[p]
-      gonna_calculate |= igDragFloat3(cstring("pos"    & $s), p0.pos.arr    , 0.0625, -sky, +sky)
-      gonna_calculate |= igColorEdit4(cstring("color"  & $s), p0.color.arr)
-      let normal_edited = igNormal(    "normal"         & $s , p0.normal)
+      igDummy(ImVec2(x:0, y:0))
+      igSameLine(6)
+      gonna_calculate |= igColorEdit4(cstring("color##"  & $s), p0.color.arr, ImGuiColorEditFlags(ImGuiColorEditFlags.NoInputs.ord + ImGuiColorEditFlags.NoLabel.ord) )
+      igSameLine(40)
+      gonna_calculate |= igDragFloat3(cstring("p"    & $s), p0.pos.arr    , 0.0625, -sky, +sky, "%.2f")
+      let normal_edited = igNormal(      "N"         & $s , p0.normal)
       gonna_calculate |= normal_edited
       if gonna_calculate:
         gonna_update = true
@@ -448,7 +452,7 @@ proc info_window*(level: var Level, coord: Vec3f) =
       if s mod 3 == 2:
         igSeparator()
       else:
-        igSameLine(300f * ((s+1) mod 3).float)
+        igSameLine(235f * ((s+1) mod 3).float)
 
     igPopItemWidth()
 
