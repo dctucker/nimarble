@@ -55,7 +55,7 @@ const cube_index* = @[
   1, 3, 0, 2,        # west
   #2, 6, 3, 3, 6, 7,  # top, broken from 2 to 7
   #2, 3, 7, 7, 2, 6,  # top, broken from 3 to 6
-  2, 3, 8, 2, 8, 6, 6, 8, 7, 8, 3, 7, # four triangles
+  2, 3, 8, 2, 8, 6, 6, 8, 7, 7, 8, 3, # four triangles
   7, 5, 5, 4, 4,     # reset
 ]
 
@@ -74,7 +74,7 @@ proc all_cube_index(n: int): seq[int] =
     if i == 8:
       result.add o
 
-const top_points* = @[ 23, 25, 24, 26, 27, 28, 29, 30, 31, 33, 32, 34 ]
+const top_points* = @[ 23, 25, 24, 26, 27, 28, 29, 30, 31, 32, 33, 34 ]
 const middle_points* = all_cube_index(8)
 assert cube_colors.len == cube_index.len
 
