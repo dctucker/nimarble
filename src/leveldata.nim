@@ -709,6 +709,10 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
     elif vert.z==0.5 and vert.x==0.5:
       if (y0 == y2 and y1 == y3) or (y0 == y1 and y2 == y3):
         y = (y0 + y3) * 0.5
+      elif y0 == y1 and y1 == y2 and y2 != y3:
+        y = y0
+      elif y1 == y2 and y2 == y3 and y3 != y0:
+        y = y3
       elif y0 == y3:
         y = y0
       elif y1 == y2:
