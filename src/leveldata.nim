@@ -850,7 +850,7 @@ proc calculate_vbos*(level: var Level, i,j: int) =
   level.calculate_top_normals(i,j)
 
   for n in cube_index.low .. cube_index.high:
-    let p = level.cube_point(i, j, n)
+    let p = level.map[i,j].cube[n]
     if p.empty: continue
     level.calculate_vbos(i,j,n, p)
 
