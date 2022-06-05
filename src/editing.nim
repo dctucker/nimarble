@@ -316,7 +316,7 @@ proc brush_selection(editor: var Editor, i, j: int) =
 proc has_selection(editor: Editor): bool =
   result = editor.selection.x != editor.selection.z or editor.selection.y != editor.selection.w
 
-proc cursor(editor: var Editor, drow, dcol: int) =
+proc move_cursor(editor: var Editor, drow, dcol: int) =
   editor.input = ""
   if editor.brush:
     if editor.has_selection():
@@ -623,14 +623,14 @@ action:
   proc select_diag_left(editor: var Editor)  = editor.select_more(+1,-1)
   proc select_diag_right(editor: var Editor) = editor.select_more(-1,+1)
 
-  proc cursor_up(editor: var Editor)         = editor.cursor(-1, 0)
-  proc cursor_down(editor: var Editor)       = editor.cursor(+1, 0)
-  proc cursor_left(editor: var Editor)       = editor.cursor( 0,-1)
-  proc cursor_right(editor: var Editor)      = editor.cursor( 0,+1)
-  proc cursor_diag_up(editor: var Editor)    = editor.cursor(-1,-1)
-  proc cursor_diag_down(editor: var Editor)  = editor.cursor(+1,+1)
-  proc cursor_diag_left(editor: var Editor)  = editor.cursor(+1,-1)
-  proc cursor_diag_right(editor: var Editor) = editor.cursor(-1,+1)
+  proc cursor_up(editor: var Editor)         = editor.move_cursor(-1, 0)
+  proc cursor_down(editor: var Editor)       = editor.move_cursor(+1, 0)
+  proc cursor_left(editor: var Editor)       = editor.move_cursor( 0,-1)
+  proc cursor_right(editor: var Editor)      = editor.move_cursor( 0,+1)
+  proc cursor_diag_up(editor: var Editor)    = editor.move_cursor(-1,-1)
+  proc cursor_diag_down(editor: var Editor)  = editor.move_cursor(+1,+1)
+  proc cursor_diag_left(editor: var Editor)  = editor.move_cursor(+1,-1)
+  proc cursor_diag_right(editor: var Editor) = editor.move_cursor(-1,+1)
 
 let editor_keymap_command* = {
   GLFWKey.Y          : redo              ,

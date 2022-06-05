@@ -266,6 +266,19 @@ proc set_level*(game: var Game) =
   editor.level = game.level
   editor.name = editor.level.name
 
+proc init_cursor(game: var Game) =
+  editor.cursor = Cursor(
+    mesh: newMesh( game, cursor        , cursor_colors        , cursor_normals        , cursor_index   ),
+  )
+  var cursor = editor.cursor
+  var mesh = cursor.mesh
+  mesh.rot = quatf(0,0,0,1)
+  mesh.translate = vec3f(0,0.25,0)
+  mesh.scale = vec3f(1.125, 100, 1.125)
+  var mvp = game.proj * game.view.mat.translate(-game.camera.pan.pos) * game.player.mesh.model.mat
+  mesh.program = game.player.mesh.program
+  mesh.mvp = mesh.program.newMatrix(mvp, "MVP")
+
 proc init*(game: var Game) =
   game.init_player()
   var viewmat = game.view.mat
@@ -279,6 +292,8 @@ proc init*(game: var Game) =
   game.init_actors()
   game.init_fixtures()
   game.light.update()
+
+  game.init_cursor()
 
 proc respawn*(game: var Game) =
     game.player.dead = false

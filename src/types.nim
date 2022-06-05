@@ -242,6 +242,11 @@ type
     data*: seq[float]
     mask*: seq[CliffMask]
 
+  Cursor* = ref object
+    mesh*: Mesh
+    cube*: seq[CubePoint]
+    phase*: int
+
   Editor* = ref object
     visible*: bool
     level*: Level
@@ -255,6 +260,7 @@ type
     input*: string
     cursor_mask*: bool
     cursor_data*: bool
+    cursor*: Cursor
     brush*: bool
     dirty*: seq[(int,int)]
     stamp*: Stamp

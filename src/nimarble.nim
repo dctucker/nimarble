@@ -288,9 +288,37 @@ proc info_player =
     #igText("average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
   igEnd()
 
+proc compute_model(mesh: var Mesh) =
+  mesh.model.mat = mat4(1.0f)
+    .translate(mesh.pos * vec3f(1,level_squash,1))
+    .translate(mesh.translate)
+    .scale(mesh.scale) * mesh.rot.mat4f
+
+proc render*(game: var Game, mesh: var Mesh) =
+  mesh.mvp.mat = game.proj * game.view.mat.translate(-game.camera.pan.pos) * mesh.model.mat
+  mesh.render()
+
+proc render[T: Piece](piece: var T) =
+  var mesh = piece.mesh
+  mesh.compute_model()
+
+  game.render(mesh)
+
+proc render[T: Cursor](cursor: var T) =
+  cursor.mesh.compute_model()
+  cursor.mesh.wireframe = true
+  game.render cursor.mesh
+  cursor.mesh.wireframe = false
+  game.render cursor.mesh
+  cursor.phase.inc
+
+  var scale = 1.03125 + 0.125 * ((cursor.phase mod 40) - 20).abs.float / 20f
+  cursor.mesh.scale.xz = vec2f(scale)
+
 proc sync_editor =
   var player = game.player
   var mesh = player.mesh
+  var cursor = editor.cursor.mesh
   let coord = player.coord
   if not editor.focused:
     editor.col = editor.level.origin.x + coord.x.floor.int
@@ -298,7 +326,10 @@ proc sync_editor =
   else:
     mesh.pos.x = editor.col.float - editor.level.origin.x.float
     mesh.pos.z = editor.row.float - editor.level.origin.z.float
-  if app.show_editor: editor.draw()
+    cursor.pos = mesh.pos
+    editor.cursor.cube = editor.level.map[editor.row, editor.col].cube
+  if app.show_editor:
+    editor.draw()
 
 proc `or`*(f1, f2: ImGuiWindowFlags): ImGuiWindowFlags =
   return ImGuiWindowFlags( f1.ord or f2.ord )
@@ -373,22 +404,6 @@ proc cleanup(w: GLFWWindow) {.inline.} =
   glfwTerminate()
 
 proc god: bool = return game.god or editor.focused
-
-proc compute_model(mesh: var Mesh) =
-  mesh.model.mat = mat4(1.0f)
-    .translate(mesh.pos * vec3f(1,level_squash,1))
-    .translate(mesh.translate)
-    .scale(mesh.scale) * mesh.rot.mat4f
-
-proc render*(game: var Game, mesh: var Mesh) =
-  mesh.mvp.mat = game.proj * game.view.mat.translate(-game.camera.pan.pos) * mesh.model.mat
-  mesh.render()
-
-proc render[T: Piece](piece: var T) =
-  var mesh = piece.mesh
-  mesh.compute_model()
-
-  game.render(mesh)
 
 proc physics[T](game: var Game, pieces: var T, dt: float) =
   for actor in pieces.mitems:
@@ -706,6 +721,8 @@ proc main =
     for fixture in fixtures.mitems:
       fixture.mesh.wireframe = game.wireframe
       fixture.render()
+
+    editor.cursor.render()
 
     imgui_frame()
 

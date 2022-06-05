@@ -127,6 +127,19 @@ var ramp_colors*  = toCfloats( genRampColors(), 4 )
 var ramp_normals* = toCfloats( genRampNormals(), 3 )
 var ramp_index*   = genRampIndex()
 
+proc genCursorColors: seq[Vec4f] =
+  for color_w in cube_colors:
+    case color_w
+    of 3,4,5,2:
+      result.add vec4f(0.0, 0.0, 0.3, 0.25)
+    else:
+      result.add vec4f(0.0, 0.0, 0.25, 0)
+
+var cursor*         = toCfloats( genRampVerts(), 3 )
+var cursor_colors*  = toCfloats( genCursorColors(), 4 )
+var cursor_normals* = toCfloats( genRampNormals(), 3 )
+var cursor_index*   = genRampIndex()
+
 
 const player_radius* = 0.625f
 proc uvSphereVerts*(segments, rings: int): seq[cfloat] =
