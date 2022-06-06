@@ -8,6 +8,7 @@ import glm
 import strutils
 import std/sets
 
+import scene
 import leveldata
 import types
 import masks
@@ -103,6 +104,22 @@ proc update_selection_vbos(editor: var Editor) =
     for j in editor.selection.y - 1 .. editor.selection.w + 1:
       editor.level.calculate_vbos(i, j)
 
+proc update_selector(editor: var Editor) =
+  editor.selector.mesh.pos.xz = vec2f(
+    editor.selection.y.float - editor.level.origin.x.float,
+    editor.selection.x.float - editor.level.origin.z.float,
+  )
+  editor.selector.mesh.scale.xz = vec2f(
+    1 + editor.selection.w.float - editor.selection.y.float,
+    1 + editor.selection.z.float - editor.selection.x.float,
+  )
+  var max_height = 0f
+  for i,j in editor.coords(editor.selection):
+    let cur = editor.level.map[i,j].height
+    if cur > max_height: max_height = cur
+
+  editor.selector.mesh.pos.y  = max_height.float
+
 proc inc_dec(editor: var Editor, d: float) =
   if editor.cursor_in_selection():
     for i,j in editor.selection_coords():
@@ -114,6 +131,7 @@ proc inc_dec(editor: var Editor, d: float) =
       editor.level[i,j] = value
       editor.dirty.add (i,j)
     editor.update_selection_vbos()
+    editor.update_selector()
   else:
     let h = editor.get_data()
     if h == 0:
@@ -313,6 +331,8 @@ proc brush_selection(editor: var Editor, i, j: int) =
   editor.update_selection_vbos()
   editor.level.update_vbos()
 
+  editor.update_selector()
+
 proc has_selection(editor: Editor): bool =
   result = editor.selection.x != editor.selection.z or editor.selection.y != editor.selection.w
 
@@ -349,6 +369,10 @@ proc select_more(editor: var Editor, drow, dcol: int) =
     i = editor.row
     j = editor.col
 
+  template update_selector =
+    editor.update_selector()
+
+
   editor.brush = false
 
   if not editor.cursor_in_selection():
@@ -363,6 +387,7 @@ proc select_more(editor: var Editor, drow, dcol: int) =
       editor.selection.y += dcol.int32
       editor.selection.w += dcol.int32
       update_cursor
+      update_selector
       return
 
   update_ij
@@ -389,6 +414,8 @@ proc select_more(editor: var Editor, drow, dcol: int) =
     if j > sel.w: editor.selection.w = j.int32
     if i < sel.x: editor.selection.x = i.int32
     if i > sel.z: editor.selection.z = i.int32
+
+  update_selector
 
 action:
   proc select_all*(editor: var Editor) =
@@ -739,6 +766,7 @@ proc handle_key*(editor: var Editor, key: int32, mods: int32): bool =
         editor.dirty.add (editor.row + i, editor.col + j)
     if editor.has_selection():
       editor.update_selection_vbos()
+      editor.update_selector()
     editor.update_dirty_vbos()
     editor.level.update_vbos()
 

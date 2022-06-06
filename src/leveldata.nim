@@ -717,6 +717,8 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
         y = y0
       elif y1 == y2:
         y = (y0 + y3) * 0.5
+      else:
+        y = (y0 + y1 + y2 + y3) / 4f
   else:
     y = base
 

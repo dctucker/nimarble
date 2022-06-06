@@ -304,13 +304,18 @@ proc render[T: Piece](piece: var T) =
 
   game.render(mesh)
 
+proc render[T: Selector](selector: var T) =
+  selector.mesh.compute_model()
+  game.render selector.mesh
+
 proc render[T: Cursor](cursor: var T) =
   cursor.mesh.compute_model()
   cursor.mesh.wireframe = true
   game.render cursor.mesh
   cursor.mesh.wireframe = false
   game.render cursor.mesh
-  cursor.phase.inc
+  if editor.focused:
+    cursor.phase.inc
 
   var scale = 1.03125 + 0.125 * ((cursor.phase mod 40) - 20).abs.float / 20f
   cursor.mesh.scale.xz = vec2f(scale)
@@ -318,7 +323,6 @@ proc render[T: Cursor](cursor: var T) =
 proc sync_editor =
   var player = game.player
   var mesh = player.mesh
-  var cursor = editor.cursor.mesh
   let coord = player.coord
   if not editor.focused:
     editor.col = editor.level.origin.x + coord.x.floor.int
@@ -326,7 +330,7 @@ proc sync_editor =
   else:
     mesh.pos.x = editor.col.float - editor.level.origin.x.float
     mesh.pos.z = editor.row.float - editor.level.origin.z.float
-    cursor.pos = mesh.pos
+    editor.cursor.mesh.pos = mesh.pos
     editor.cursor.cube = editor.level.map[editor.row, editor.col].cube
   if app.show_editor:
     editor.draw()
@@ -365,6 +369,11 @@ proc draw_imgui =
     XX.info_window()
   if app.show_metrics:
     igShowMetricsWindow()
+
+  igBegin("selector")
+  igDragFloat3("pos", editor.selector.mesh.pos.arr, 1, -sky, sky)
+  igDragFloat3("scale", editor.selector.mesh.scale.arr, 1, -sky, sky)
+  igEnd()
 
   sync_editor()
   igPopFont()
@@ -659,7 +668,8 @@ proc physics(game: var Game) =
   game.maybe_complete()
 
 proc visible*(p: Player): bool =
-  return p.animation != Teleport
+  result = p.animation != Teleport
+  result = result and not editor.focused
 
 proc main =
   editor = Editor(cursor_data: true, cursor_mask: true, stamp: Stamp(width:0, height: 0))
@@ -723,6 +733,7 @@ proc main =
       fixture.render()
 
     editor.cursor.render()
+    editor.selector.render()
 
     imgui_frame()
 

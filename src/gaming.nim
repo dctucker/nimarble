@@ -275,7 +275,20 @@ proc init_cursor(game: var Game) =
   mesh.rot = quatf(0,0,0,1)
   mesh.translate = vec3f(0,0.25,0)
   mesh.scale = vec3f(1.125, 100, 1.125)
-  var mvp = game.proj * game.view.mat.translate(-game.camera.pan.pos) * game.player.mesh.model.mat
+  var mvp = game.proj * game.view.mat.translate(-game.camera.pan.pos) * mesh.model.mat
+  mesh.program = game.player.mesh.program
+  mesh.mvp = mesh.program.newMatrix(mvp, "MVP")
+
+proc init_selector(game: var Game) =
+  editor.selector = Selector(
+    mesh: newMesh( game, cursor        , cursor_colors        , cursor_normals        , cursor_index   ),
+  )
+  var selector = editor.selector
+  var mesh = selector.mesh
+  mesh.rot = quatf(0,0,0,1)
+  mesh.translate = vec3f( -0.5, 0.125, -0.5 )
+  mesh.scale = vec3f(1.0, 100, 1.0)
+  var mvp = game.proj * game.view.mat.translate(-game.camera.pan.pos) * mesh.model.mat
   mesh.program = game.player.mesh.program
   mesh.mvp = mesh.program.newMatrix(mvp, "MVP")
 
@@ -294,6 +307,7 @@ proc init*(game: var Game) =
   game.light.update()
 
   game.init_cursor()
+  game.init_selector()
 
 proc respawn*(game: var Game) =
     game.player.dead = false

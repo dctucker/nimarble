@@ -247,6 +247,9 @@ type
     cube*: seq[CubePoint]
     phase*: int
 
+  Selector* = ref object
+    mesh*: Mesh
+
   Editor* = ref object
     visible*: bool
     level*: Level
@@ -261,6 +264,7 @@ type
     cursor_mask*: bool
     cursor_data*: bool
     cursor*: Cursor
+    selector*: Selector
     brush*: bool
     dirty*: seq[(int,int)]
     stamp*: Stamp

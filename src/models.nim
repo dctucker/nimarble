@@ -132,8 +132,10 @@ proc genCursorColors: seq[Vec4f] =
     case color_w
     of 3,4,5,2:
       result.add vec4f(0.0, 0.0, 0.3, 0.25)
+    of 1:
+      result.add vec4f(0.0, 0.0, 0.25, 0.125)
     else:
-      result.add vec4f(0.0, 0.0, 0.25, 0)
+      result.add vec4f(0.0, 0.0, 0.0, 0)
 
 var cursor*         = toCfloats( genRampVerts(), 3 )
 var cursor_colors*  = toCfloats( genCursorColors(), 4 )
