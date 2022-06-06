@@ -273,15 +273,15 @@ proc init_cursor(game: var Game) =
   var cursor = editor.cursor
   var mesh = cursor.mesh
   mesh.rot = quatf(0,0,0,1)
-  mesh.translate = vec3f(0,0.25,0)
-  mesh.scale = vec3f(1.125, 100, 1.125)
+  mesh.translate = vec3f(-0.125,0.0625,-0.125)
+  mesh.scale = vec3f(1.25, 100, 1.25)
   var mvp = game.proj * game.view.mat.translate(-game.camera.pan.pos) * mesh.model.mat
   mesh.program = game.player.mesh.program
   mesh.mvp = mesh.program.newMatrix(mvp, "MVP")
 
 proc init_selector(game: var Game) =
   editor.selector = Selector(
-    mesh: newMesh( game, cursor        , cursor_colors        , cursor_normals        , cursor_index   ),
+    mesh: newMesh( game, selector        , selector_colors        , selector_normals        , selector_index   ),
   )
   var selector = editor.selector
   var mesh = selector.mesh

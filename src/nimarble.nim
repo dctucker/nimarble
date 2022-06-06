@@ -317,7 +317,7 @@ proc render[T: Cursor](cursor: var T) =
   if editor.focused:
     cursor.phase.inc
 
-  var scale = 1.03125 + 0.125 * ((cursor.phase mod 40) - 20).abs.float / 20f
+  var scale = 1.125 + 0.25 * ((cursor.phase mod 40) - 20).abs.float / 20f
   cursor.mesh.scale.xz = vec2f(scale)
 
 proc sync_editor =

@@ -56,7 +56,7 @@ const cube_index* = @[
   #2, 6, 3, 3, 6, 7,  # top, broken from 2 to 7
   #2, 3, 7, 7, 2, 6,  # top, broken from 3 to 6
   2, 3, 8, 2, 8, 6, 6, 8, 7, 7, 8, 3, # four triangles
-  3, 7, 7, 5, 5, 4, 4,     # reset
+  3, 1, 1, 5, 0, 4, 4,     # reset
 ]
 
 let cube_colors* = @[
@@ -67,7 +67,7 @@ let cube_colors* = @[
   2, 2, 2, 2,
   #1, 1, 1, 1, 1, 1,
   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-  0, 0, 0, 0, 0, 0, 0,
+  0, 0, 6, 6, 6, 6, 0,
 ]
 proc all_cube_index(n: int): seq[int] =
   for o,i in cube_index.pairs:
@@ -128,12 +128,16 @@ var ramp_normals* = toCfloats( genRampNormals(), 3 )
 var ramp_index*   = genRampIndex()
 
 proc genCursorColors: seq[Vec4f] =
-  for color_w in cube_colors:
+  for n, color_w in cube_colors.pairs:
     case color_w
     of 3,4,5,2:
-      result.add vec4f(0.0, 0.0, 0.3, 0.25)
-    of 1:
-      result.add vec4f(0.0, 0.0, 0.25, 0.125)
+      result.add vec4f(0.0, 0.0, 0.3, 0.125)
+    of 1,6:
+      let v = cube_verts[cube_index[n]]
+      if v.x <= 0.5 and v.z <= 0.5:
+        result.add vec4f(1.0, 1.0, 1.000, 0.375)
+      else:
+        result.add vec4f(0.0, 0.0, 0.25, 0.03125)
     else:
       result.add vec4f(0.0, 0.0, 0.0, 0)
 
@@ -141,6 +145,32 @@ var cursor*         = toCfloats( genRampVerts(), 3 )
 var cursor_colors*  = toCfloats( genCursorColors(), 4 )
 var cursor_normals* = toCfloats( genRampNormals(), 3 )
 var cursor_index*   = genRampIndex()
+
+proc genSelectorColors: seq[Vec4f] =
+  for color_w in cube_colors:
+    case color_w
+    of 3,4,5,2:
+      result.add vec4f(0.0, 0.0, 0.3, 0.25)
+    of 1,6:
+      result.add vec4f(0.0, 0.0, 0.25, 0.5)
+    else:
+      result.add vec4f(0.0, 0.0, 0.0, 0)
+
+proc genBrushSelectorColors: seq[Vec4f] =
+  for color_w in cube_colors:
+    case color_w
+    of 3,4,5,2:
+      result.add vec4f( 0.3, 0.0, 0.0, 0.25)
+    of 1,6:
+      result.add vec4f(0.25, 0.0, 0.0, 0.5)
+    else:
+      result.add vec4f( 0.0, 0.0, 0.0, 0)
+
+var selector*         = toCfloats( genRampVerts(), 3 )
+var selector_colors*  = toCfloats( genSelectorColors(), 4 )
+var brush_colors*  = toCfloats( genBrushSelectorColors(), 4 )
+var selector_normals* = toCfloats( genRampNormals(), 3 )
+var selector_index*   = genRampIndex()
 
 
 const player_radius* = 0.625f
@@ -400,7 +430,6 @@ var piston_index*        =          (    cylinderIndices(piston_segs)           
 #  v += 0.5f
 
 #[
-
    2 ___ 3
     /   \
  1 /     \ 4
@@ -409,7 +438,6 @@ var piston_index*        =          (    cylinderIndices(piston_segs)           
  8 \     / 5
     \___/
    7     6
-
 ]#
 var acid_verts*: seq[cfloat] = @[
    0.0f , 0.0f ,  0.0f ,

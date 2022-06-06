@@ -14,6 +14,9 @@ import types
 import masks
 from keymapper import action
 
+from models import brush_colors, selector_colors
+from wrapper import update
+
 const highlight_width = 16
 const line_height = 16
 const dark_color = ImVec4(x: 0.2, y: 0.2, z: 0.2, w: 1.0)
@@ -94,16 +97,6 @@ proc set_data(editor: var Editor, value: float) =
   editor.level[editor.row, editor.col] = value
   editor.dirty.add (editor.row, editor.col)
 
-proc update_dirty_vbos(editor: var Editor) =
-  for i,j in editor.dirty.items:
-    editor.level.calculate_vbos(i, j)
-  editor.dirty = @[]
-
-proc update_selection_vbos(editor: var Editor) =
-  for i in editor.selection.x - 1.. editor.selection.z + 1:
-    for j in editor.selection.y - 1 .. editor.selection.w + 1:
-      editor.level.calculate_vbos(i, j)
-
 proc update_selector(editor: var Editor) =
   editor.selector.mesh.pos.xz = vec2f(
     editor.selection.y.float - editor.level.origin.x.float,
@@ -119,6 +112,24 @@ proc update_selector(editor: var Editor) =
     if cur > max_height: max_height = cur
 
   editor.selector.mesh.pos.y  = max_height.float
+
+  if editor.brush:
+    editor.selector.mesh.color_vbo.data = addr brush_colors
+    editor.selector.mesh.color_vbo.update()
+  else:
+    editor.selector.mesh.color_vbo.data = addr selector_colors
+    editor.selector.mesh.color_vbo.update()
+
+proc update_dirty_vbos(editor: var Editor) =
+  for i,j in editor.dirty.items:
+    editor.level.calculate_vbos(i, j)
+  editor.dirty = @[]
+  editor.update_selector()
+
+proc update_selection_vbos(editor: var Editor) =
+  for i in editor.selection.x - 1.. editor.selection.z + 1:
+    for j in editor.selection.y - 1 .. editor.selection.w + 1:
+      editor.level.calculate_vbos(i, j)
 
 proc inc_dec(editor: var Editor, d: float) =
   if editor.cursor_in_selection():
@@ -269,6 +280,7 @@ proc select_one*(editor: var Editor) =
   editor.selection.y = editor.col.int32
   editor.selection.z = editor.row.int32
   editor.selection.w = editor.col.int32
+  editor.update_selector()
 
 action:
   proc do_select_one*(editor: var Editor) = editor.select_one()
@@ -426,6 +438,7 @@ action:
     editor.selection.y = y.int32 - 1
     editor.selection.z = z.int32 + 1
     editor.selection.w = w.int32 + 1
+    editor.update_selector()
 
   proc select_none*(editor: var Editor) =
     editor.brush = false
@@ -435,6 +448,7 @@ action:
     editor.brush = not editor.brush
     if editor.has_selection() and not editor.cursor_in_selection():
       editor.select_one()
+    editor.update_selector()
 
 proc delete_selection(editor: var Editor, data: var seq[float]) =
   for i,j in editor.selection_coords:
