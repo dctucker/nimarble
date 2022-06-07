@@ -1,5 +1,6 @@
 #version 330 core
 
+in vec2 UV;
 in vec4 fragmentColor;
 in vec3 Position_worldspace;
 in vec3 Normal_cameraspace;
@@ -14,6 +15,7 @@ uniform float LightPower;
 uniform vec3  LightColor;
 uniform float AmbientWeight;
 uniform vec3  SpecularColor;
+uniform sampler2D myTextureSampler;
 
 void main(){
 	// Material properties
@@ -50,6 +52,7 @@ void main(){
 	// Diffuse : "color" of the object
 	// Specular : reflective highlight, like a mirror
 	color = vec4(
+		texture( myTextureSampler, UV ).rgb +
 		MaterialAmbientColor  +
 		MaterialDiffuseColor  * LightColor * LightPower *        cosTheta * distance2i +
 		MaterialSpecularColor * LightColor * LightPower * pow(cosAlpha,5) * distance2i

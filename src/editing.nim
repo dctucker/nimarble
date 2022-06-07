@@ -384,16 +384,17 @@ proc select_more(editor: var Editor, drow, dcol: int) =
   template update_selector =
     editor.update_selector()
 
-
   editor.brush = false
 
   if not editor.cursor_in_selection():
+    echo "one"
     editor.select_one()
 
   if editor.cursor_in_selection():
     update_ij
     if (sel.y + 1 <= j and j <= sel.w - 1) or (sel.x + 1 <= i and i <= sel.z - 1):
       # pan
+      echo "pan"
       editor.selection.x += drow.int32
       editor.selection.z += drow.int32
       editor.selection.y += dcol.int32
@@ -406,6 +407,7 @@ proc select_more(editor: var Editor, drow, dcol: int) =
 
   if editor.in_selection(editor.row + drow, editor.col + dcol):
     # shrink
+    echo "shrink"
     update_cursor
 
     if j - sel.y < sel.w - j:
@@ -420,12 +422,13 @@ proc select_more(editor: var Editor, drow, dcol: int) =
 
   else:
     # grow
+    echo "grow"
     update_cursor
     update_ij
-    if j < sel.y: editor.selection.y = j.int32
     if j > sel.w: editor.selection.w = j.int32
-    if i < sel.x: editor.selection.x = i.int32
+    if j < sel.y: editor.selection.y = j.int32
     if i > sel.z: editor.selection.z = i.int32
+    if i < sel.x: editor.selection.x = i.int32
 
   update_selector
 

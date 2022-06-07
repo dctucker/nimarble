@@ -330,8 +330,9 @@ proc sync_editor =
   else:
     mesh.pos.x = editor.col.float - editor.level.origin.x.float
     mesh.pos.z = editor.row.float - editor.level.origin.z.float
-    editor.cursor.mesh.pos = mesh.pos
-    editor.cursor.cube = editor.level.map[editor.row, editor.col].cube
+    let point = editor.level.map[editor.row, editor.col]
+    editor.cursor.mesh.pos = vec3f( mesh.pos.x, point.height, mesh.pos.z )
+    editor.cursor.cube = point.cube
   if app.show_editor:
     editor.draw()
 
