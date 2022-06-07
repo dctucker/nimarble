@@ -72,17 +72,12 @@ proc setup_fonts =
   var ascii_ranges = ascii          & imwnull
   var full_ranges  = ascii & blocks & imwnull
 
+  #small_font = atlas.addFontFromFileTTF(terminus_fn, 14, nil, ranges[0].addr)
   small_font = atlas.addFontFromMemoryTTF(terminus_ttf, terminus_ttf_len, 14, nil, full_ranges[0].addr)
   let rect_id = atlas.addCustomRectFontGlyph(small_font, 0x25a0.ImWchar, 7, 15, 6+1)
 
-  #small_font.
-  #small_font = atlas.addFontFromFileTTF(terminus_fn, 14, nil, ranges[0].addr)
-  #assert small_font != nil
-  #assert small_font.isLoaded()
-  large_font = atlas.addFontFromMemoryTTF(terminus_ttf, terminus_ttf_len, 36, nil, ascii_ranges[0].addr)
   #large_font = atlas.addFontFromFileTTF(terminus_fn, 36)
-  #assert large_font != nil
-  #assert large_font.isLoaded()
+  large_font = atlas.addFontFromMemoryTTF(terminus_ttf, terminus_ttf_len, 36, nil, ascii_ranges[0].addr)
   atlas.build()
 
   atlas.add_custom_glyph rect_id
