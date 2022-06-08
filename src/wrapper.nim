@@ -9,6 +9,6 @@ include wrapper/[
   vbo,
   shader  ,
   program ,
-  matrix  ,
   uniform ,
+  texture ,
 ]

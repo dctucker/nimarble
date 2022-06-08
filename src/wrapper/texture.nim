@@ -1,7 +1,7 @@
 
 type
   Texture*[T] = object
-    id: uint32
+    id*: uint32
     width: int
     height: int
     data*: ptr seq[T]
@@ -29,3 +29,6 @@ proc newTexture*[T](data: ptr seq[T]): Texture[T] =
 
   glGenerateMipmap GL_TEXTURE_2D
 
+proc apply*(tex: Texture) =
+  glActiveTexture GL_TEXTURE0
+  glBindTexture GL_TEXTURE_2D, tex.id

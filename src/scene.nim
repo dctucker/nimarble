@@ -64,7 +64,8 @@ type
     scale*: Vec3f
     rot*: Quatf
     vao*: VAO
-    vert_vbo*, color_vbo*: VBO[cfloat]
+    texture*: Texture[cfloat]
+    vert_vbo*, color_vbo*, uv_vbo: VBO[cfloat]
     elem_vbo*: VBO[Ind]
     norm_vbo*: VBO[cfloat]
     model*: Matrix
@@ -111,6 +112,10 @@ proc render*(mesh: var Mesh) =
   apply mesh.vert_vbo  , 0
   apply mesh.color_vbo , 1
   apply mesh.norm_vbo  , 2
+  if mesh.uv_vbo.n_verts > 0:
+    apply mesh.uv_vbo  , 3
+  if mesh.texture.id != 0:
+    apply mesh.texture
 
   if mesh.wireframe:
     glDisable          GL_POLYGON_OFFSET_FILL
@@ -124,6 +129,9 @@ proc render*(mesh: var Mesh) =
     mesh.elem_vbo.draw_elem mesh.primitive
   else:
     mesh.vert_vbo.draw      mesh.primitive
-  glDisableVertexAttribArray 0
-  glDisableVertexAttribArray 1
+  #glDisableVertexAttribArray 0
+  #glDisableVertexAttribArray 1
+  #glDisableVertexAttribArray 2
+  #if mesh.uv_vbo.n_verts > 0:
+  #  glDisableVertexAttribArray 3
 
