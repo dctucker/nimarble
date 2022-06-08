@@ -15,6 +15,8 @@ var pixels = @[
 proc newTexture*[T](data: ptr seq[T]): Texture[T] =
   #result.data = data
   result.data = pixels.addr
+  result.height = 2
+  result.width = 2
   glGenTextures 1, result.id.addr
   glBindTexture GL_TEXTURE_2D, result.id
   glTexImage2D GL_TEXTURE_2D, 0.GLint, GL_RGB.GLint, result.width.GLsizei, result.height.GLsizei, 0.GLint, GL_RGB.GLEnum, EGL_FLOAT, result.data[][0].addr

@@ -19,7 +19,8 @@ uniform sampler2D myTextureSampler;
 
 void main(){
 	// Material properties
-	vec3 MaterialDiffuseColor = fragmentColor.rgb; //texture( myTextureSampler, UV ).rgb;
+	vec3 MaterialDiffuseColor = mix(fragmentColor.rgb, texture( myTextureSampler, UV ).rgb, 0.2);
+	//vec3 MaterialDiffuseColor = texture( myTextureSampler, UV ).rgb;
 	vec3 MaterialAmbientColor = AmbientWeight * MaterialDiffuseColor;
 	vec3 MaterialSpecularColor = SpecularColor;
 
@@ -52,7 +53,6 @@ void main(){
 	// Diffuse : "color" of the object
 	// Specular : reflective highlight, like a mirror
 	color = vec4(
-		texture( myTextureSampler, UV ).rgb +
 		MaterialAmbientColor  +
 		MaterialDiffuseColor  * LightColor * LightPower *        cosTheta * distance2i +
 		MaterialSpecularColor * LightColor * LightPower * pow(cosAlpha,5) * distance2i

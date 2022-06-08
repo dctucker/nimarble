@@ -318,7 +318,7 @@ proc setup_floor(level: var Level) =
 
       for w in 0 .. cube_index.high:
         let point = level.map[i,j].cube[w] #level.cube_point(i, j, w)
-        add_uv point.pos.x, point.pos.z
+        add_uv point.pos.x.fract, point.pos.z.fract
 
   level.floor_colors  = colors
   level.floor_verts   = verts

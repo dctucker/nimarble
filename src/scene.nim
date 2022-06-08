@@ -129,9 +129,10 @@ proc render*(mesh: var Mesh) =
     mesh.elem_vbo.draw_elem mesh.primitive
   else:
     mesh.vert_vbo.draw      mesh.primitive
-  #glDisableVertexAttribArray 0
-  #glDisableVertexAttribArray 1
-  #glDisableVertexAttribArray 2
-  #if mesh.uv_vbo.n_verts > 0:
-  #  glDisableVertexAttribArray 3
+
+  glDisableVertexAttribArray 0
+  glDisableVertexAttribArray 1
+  glDisableVertexAttribArray 2
+  if mesh.uv_vbo.n_verts > 0:
+    glDisableVertexAttribArray 3
 
