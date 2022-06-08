@@ -47,13 +47,15 @@ proc display_size*(): (int32, int32) =
   var videoMode = monitor.getVideoMode()
   return (videoMode.width, videoMode.height)
 
-include windows/stats
-include windows/game
-include windows/camera
-include windows/light
-include windows/pieces
-include windows/masks
-include windows/cube
-include windows/joystick
-include windows/menu
+include windows/[
+  stats    ,
+  game     ,
+  camera   ,
+  light    ,
+  pieces   ,
+  masks    ,
+  cube     ,
+  joystick ,
+  menu     ,
+]
 
