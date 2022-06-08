@@ -1,5 +1,5 @@
 import std/tables
-import macros
+import std/macros
 
 macro cliff_masks(body: untyped): untyped =
   body.expectKind nnkStmtList

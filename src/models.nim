@@ -20,24 +20,11 @@ proc toInds(ints: seq[int]): seq[Ind] =
   for i in ints:
     result.add i.Ind
 
-
-#[
-
-  0-----------4
-  |\         /|
-  | 2-------6 |
-  | | \   / | |
-  | |   8   | |
-  | | /   \ | |
-  | 3-------7 |
-  |/         \|
-  1-----------5
-
-]#
-
-include models/cube
-include models/sphere
-include models/cylinder
-include models/octagon
-include models/wave
+include models/[
+  cube     ,
+  sphere   ,
+  cylinder ,
+  octagon  ,
+  wave     ,
+]
 
