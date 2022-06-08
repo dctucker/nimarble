@@ -6,7 +6,6 @@ import std/sets
 import std/tables
 import std/algorithm
 
-import piston
 import wrapper
 import types
 import masks
@@ -43,6 +42,7 @@ proc cell_name*(i,j: int): string =
 
 
 include level/coords
+include level/piston
 include level/zones
 include level/actors
 include level/read

@@ -39,4 +39,3 @@ const piston_time_variations* = @[
     40, 10, 40, 10,
   ],
 ]
-#const piston_times = piston_time_variations[^1]
