@@ -1,4 +1,8 @@
 
+proc visible*(p: Player): bool =
+  result = p.animation != Teleport
+  result = result and not editor.focused
+
 proc info_player =
   igSetNextWindowSize(ImVec2(x:300f, y:400f))
   if igBegin("player"):

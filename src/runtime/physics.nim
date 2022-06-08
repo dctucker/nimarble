@@ -1,4 +1,10 @@
 
+proc god: bool = return game.god or editor.focused
+
+proc physics[T](game: var Game, pieces: var T, dt: float) =
+  for actor in pieces.mitems:
+    game.physics(actor, dt)
+
 proc apply_roll_rotation(player: var Player) =
   var mesh = player.mesh
   if (mesh.vel * vec3f(1,0,1)).length > 0:
