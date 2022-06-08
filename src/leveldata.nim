@@ -41,15 +41,17 @@ proc cell_name*(i,j: int): string =
   result &= $(i + 1)
 
 
-include level/coords
-include level/piston
-include level/zones
-include level/actors
-include level/read
-include level/write
-include level/color
-include level/model
-include level/game
+include level/[
+  coords ,
+  piston ,
+  zones  ,
+  actors ,
+  read   ,
+  write  ,
+  color  ,
+  model  ,
+  game   ,
+]
 
 var levels = @[
   Level(),

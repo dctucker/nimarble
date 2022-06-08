@@ -2,7 +2,7 @@
 proc main_menu*(app: Application) =
   igSetNextWindowPos  ImVec2(x:0.float32, y:0.float32)
   igSetNextWindowSize ImVec2(x:width.float32, y: 50.float32)
-  var b = false
+  #var b = false
   #if igBegin("toolbox"): #, b.addr, NoDecoration or MenuBar or Popup):
   assert igGetCurrentContext() != nil
   if igBeginMainMenuBar():

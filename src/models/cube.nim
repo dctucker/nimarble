@@ -1,18 +1,4 @@
 
-#[
-
-  0-----------4
-  |\         /|
-  | 2-------6 |
-  | | \   / | |
-  | |   8   | |
-  | | /   \ | |
-  | 3-------7 |
-  |/         \|
-  1-----------5
-
-]#
-
 let cube_verts* = @[
   vec3f( 0, 0, 0 ), #0
   vec3f( 0, 0, 1 ), #1
@@ -24,6 +10,16 @@ let cube_verts* = @[
   vec3f( 1, 1, 1 ), #7
   vec3f( 0.5, 1, 0.5 ), #8
 ]
+
+#[  0-----------4
+    |\         /|
+    | 2-------6 |
+    | | \   / | |
+    | |   8   | |
+    | | /   \ | |
+    | 3-------7 |
+    |/         \|
+    1-----------5  ]#
 
 const cube_index* = @[
   0,
@@ -78,10 +74,10 @@ proc cube_normal*(color_w: int): Vec3f =
   of 1: vec3f(  0,  1,  0 )
   else: vec3f(  0,  0,  0 )
 
-proc genCubeUvs: seq[Vec2f] =
-  for i in cube_index:
-    var vec = cube_verts[i]
-    result.add vec2f( vec.x, vec.z )
+#proc genCubeUvs: seq[Vec2f] =
+#  for i in cube_index:
+#    var vec = cube_verts[i]
+#    result.add vec2f( vec.x, vec.z )
 
 proc genRampVerts: seq[Vec3f] =
   const margin = 0.98

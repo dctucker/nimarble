@@ -35,7 +35,7 @@ proc animate_wave(game: Game, piece: var Fixture, dt: float) =
   piece.mesh.elem_vbo.offset = offset
   #piece.mesh.pos.x =  - (offset / (wave_ninds * wave_res)).float
 
-  let xm = (piece.origin.x mod wave_len).float
+  #let xm = (piece.origin.x mod wave_len).float
   piece.mesh.translate.x += 1f/wave_res
   if piece.mesh.translate.x > 0f:
     piece.mesh.translate.x -= wave_len

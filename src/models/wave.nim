@@ -1,23 +1,23 @@
 
-#[ cube under sine
-      2_____3
-      /|   /|
-     / |  / |
-   4/____/5 |
-    |  |_|__|
-    | 0  |  /1
-    |    | /
-    |____|/
-   6     7
-]#
 const wave_res* = 16
 const wave_len* = 12
 const wave_angles* = wave_res * wave_len
 const wave_nverts* = 12
 const wave_ninds*  = 12
 
+#[  cube under curve
+        2_____3
+        /|   /|
+       / |  / |
+     4/____/5 |
+      |  |_|__|
+      | 0  |  /1
+      |    | /
+      |____|/
+     6     7      ]#
+
 proc wave_func[T](t: T): T =
-  var y0, y1: float
+  #var y0, y1: float
   #[ sinusoidal
   result = sin(radians t + 180)
   #]#
@@ -89,10 +89,10 @@ proc gen_wave_colors: seq[Vec4f] {.compileTime.} =
       let a = vec3f(x0 * sx, y0 * sy, z0)
       let b = vec3f(x1 * sx, y1 * sy, z0)
       let c = vec3f(x0 * sx, y0 * sy, z1)
-      let d = vec3f(x1 * sx, y1 * sy, z1)
+      #let d = vec3f(x1 * sx, y1 * sy, z1)
 
       let n0 = -normalize (b - a).cross(c - a)
-      let n1 = -normalize (d - b).cross(c - b)
+      #let n1 = -normalize (d - b).cross(c - b)
       let v = n0.y
 
       result.add vec4f( 0.0, 0.6 * v, 0.6 * v, 1.0 )

@@ -1,18 +1,4 @@
 
-#for i, v in piston_verts.mpairs:
-#  if i mod 3 == 2: continue
-#  v += 0.5f
-
-#[
-   2 ___ 3
-    /   \
- 1 /     \ 4
-  |   0   |
-  |       |
- 8 \     / 5
-    \___/
-   7     6
-]#
 var acid_verts*: seq[cfloat] = @[
    0.0f , 0.0f ,  0.0f ,
   -0.8f , 0.1f , -0.5f ,
@@ -24,6 +10,16 @@ var acid_verts*: seq[cfloat] = @[
   -0.5f , 0.1f , +0.8f ,
   -0.8f , 0.1f , +0.5f ,
 ]
+
+#[    2 ___ 3
+       /   \
+    1 /     \ 4
+     |   0   |
+     |       |
+    8 \     / 5
+       \___/
+      7     6    ]#
+
 var acid_index*: seq[Ind] = @[
   1.Ind,
   2.Ind,

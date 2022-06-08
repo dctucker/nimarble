@@ -1,6 +1,5 @@
 {. warning[HoleEnumConv]:off .}
 
-#import nimprof
 import std/tables
 import nimgl/[glfw,opengl]
 import nimgl/imgui

@@ -6,20 +6,13 @@ type
     height: GLsizei
     data*: ptr seq[T]
 
-# Black/white checkerboard
-var pixels = @[
-  0.0f, 0.0f, 0.0f,   1.0f, 1.0f, 1.0f,
-  1.0f, 1.0f, 1.0f,   0.0f, 0.0f, 0.0f
-]
-
-proc newTexture*[T](data: ptr seq[T]): Texture[T] =
-  #result.data = data
-  result.data = pixels.addr
-  result.height = 2
-  result.width = 2
+proc newTexture*[T](n: int, data: ptr seq[T]): Texture[T] =
+  result.data = data
+  result.height = n.GLsizei
+  result.width = n.GLsizei
   glGenTextures 1, result.id.addr
   glBindTexture GL_TEXTURE_2D, result.id
-  glTexImage2D GL_TEXTURE_2D, 0.GLint, GL_RGB.GLint, result.width.GLsizei, result.height.GLsizei, 0.GLint, GL_RGB.GLEnum, EGL_FLOAT, result.data[][0].addr
+  glTexImage2D GL_TEXTURE_2D, 0.GLint, GL_RGB.GLint, result.width, result.height, 0.GLint, GL_RGB, EGL_FLOAT, result.data[][0].addr
 
   #glTexParameteri GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT  #GL_MIRRORED_REPEAT
   #glTexParameteri GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT  #GL_CLAMP_TO_BORDER #GL_CLAMP_TO_EDGE

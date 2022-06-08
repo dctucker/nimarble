@@ -18,9 +18,9 @@ proc tick_ramp(level: Level, zone: Zone, t: float) =
 
     # TODO this calculation is messy an inaccurate
     let next_height = level.map[i,j+1].height
-    let base_height = point.height * fixture.boost
+    #let base_height = point.height * fixture.boost
     height *= 1 + (fixture.boost - 1) * phase
-    let at = arctan(0.5 * (height - base_height))
+    #let at = arctan(0.5 * (height - base_height))
     mesh.pos.y = height
 
     let rotz = (1 - phase) * arctan(point.height - next_height)

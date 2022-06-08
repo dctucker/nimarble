@@ -14,10 +14,10 @@ iterator offsets(editor: Editor, rect: Vec4i): int =
   for i,j in editor.coords(rect):
     yield editor.offset(i,j)
 
-iterator offsets(editor: Editor): int =
-  #let all = vec4i( x: 0, y: 0, z: editor.level.height - 1, w: editor.level.width - 1)
-  let all = vec4i( 0.int32, 0.int32, editor.level.height.int32 - 1, editor.level.width.int32 - 1)
-  for o in editor.offsets(all): yield o
+#iterator offsets(editor: Editor): int =
+#  #let all = vec4i( x: 0, y: 0, z: editor.level.height - 1, w: editor.level.width - 1)
+#  let all = vec4i( 0.int32, 0.int32, editor.level.height.int32 - 1, editor.level.width.int32 - 1)
+#  for o in editor.offsets(all): yield o
 
 iterator selection_coords(editor: Editor): (int,int) =
   for i,j in editor.coords(editor.selection): yield (i,j)
@@ -26,8 +26,8 @@ iterator cut_coords(editor: Editor): (int,int) =
 
 iterator selection_offsets(editor: Editor): int =
   for o in editor.offsets(editor.selection): yield o
-iterator cut_offsets(editor: Editor): int =
-  for o in editor.offsets(editor.cut): yield o
+#iterator cut_offsets(editor: Editor): int =
+#  for o in editor.offsets(editor.cut): yield o
 
 proc invalidate[T:Ordinal](editor: var Editor, i,j: T) =
   add(editor.dirty, (i.int,j.int))

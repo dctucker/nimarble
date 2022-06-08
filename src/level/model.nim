@@ -14,7 +14,7 @@ proc add_color(colors: var seq[cfloat], c: Vec4f) =
 proc cube_point*(level: Level, i,j, w: int): CubePoint =
   let vert = cube_verts[ cube_index[w] ]
 
-  let m0 = level.map[i+0, j+0].cliffs
+  #let m0 = level.map[i+0, j+0].cliffs
   let m1 = level.map[i+0, j+1].cliffs
   let m2 = level.map[i+1, j+0].cliffs
   let m3 = level.map[i+1, j+1].cliffs
@@ -39,13 +39,13 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   var c = level.point_color(i, j)
   var m = level.mask[level.offset(i+vert.z.int, j+vert.x.int)]
 
-  let surface_normals = @[
-    vec3f(-1, -1, -1) * -y0,
-    vec3f(+1, -1, -1) * -y1,
-    vec3f(-1, -1, +1) * -y2,
-    vec3f(+1, -1, +1) * -y3,
-  ]
-  var surface_normal: Vec3f # = surface_normals[0] + surface_normals[1] + surface_normals[2] + surface_normals[3]
+  #let surface_normals = @[
+  #  vec3f(-1, -1, -1) * -y0,
+  #  vec3f(+1, -1, -1) * -y1,
+  #  vec3f(-1, -1, +1) * -y2,
+  #  vec3f(+1, -1, +1) * -y3,
+  #]
+  #var surface_normal: Vec3f # = surface_normals[0] + surface_normals[1] + surface_normals[2] + surface_normals[3]
   var normal: Vec3f         # = surface_normals[0] + surface_normals[1] + surface_normals[2] + surface_normals[3]
 
   var base: float = -1
@@ -258,24 +258,24 @@ proc reload_colors*(level: var Level) =
 
 proc setup_floor(level: var Level) =
   let dim = level.height * level.width
-  var cx: Vec4f
+  #var cx: Vec4f
   var normals = newSeqOfCap[cfloat]( dim )
-  var lookup  = newTable[(cfloat,cfloat,cfloat), Ind]()
+  #var lookup  = newTable[(cfloat,cfloat,cfloat), Ind]()
   var verts   = newSeqOfCap[cfloat]( 3 * dim )
   var index   = newSeqOfCap[Ind]( cube_index.len * dim )
   var colors  = newSeqOfCap[cfloat]( 4 * cube_index.len * dim )
   var uvs     = newSeqOfCap[cfloat]( 2 * cube_index.len * dim )
   var n = 0.Ind
   var x,z: float
-  var y, y0, y1, y2, y3: float
-  var m, m0, m1, m2, m3: CliffMask
-  var c, c0, c1, c2, c3: Vec4f
-  var v00, v01, v02, v03: Vec3f
-  var v10, v11, v12, v13: Vec3f
-  var v20, v21, v22, v23: Vec3f
-  var v30, v31, v32, v33: Vec3f
-  var surface_normal: Vec3f
-  var normal: Vec3f
+  var y: float      #var y0, y1, y2, y3: float
+  #var m: CliffMask  #var m0, m1, m2, m3: CliffMask
+  #var c: Vec4f      #var c0, c1, c2, c3: Vec4f
+  #var v00, v01, v02, v03: Vec3f
+  #var v10, v11, v12, v13: Vec3f
+  #var v20, v21, v22, v23: Vec3f
+  #var v30, v31, v32, v33: Vec3f
+  #var surface_normal: Vec3f
+  #var normal: Vec3f
 
   proc add_uv(x,y: cfloat) =
     uvs.add x
@@ -285,8 +285,8 @@ proc setup_floor(level: var Level) =
     index.add n
     inc n
 
-  proc add_index(nn: Ind) =
-    index.add nn
+  #proc add_index(nn: Ind) =
+  #  index.add nn
 
   proc add_point(x,y,z: cfloat, c: Vec4f) =
     verts.add x
@@ -306,18 +306,18 @@ proc setup_floor(level: var Level) =
       for w in 0 .. cube_index.high:
         var point = level.cube_point(i, j, w)
 
-        const margin = 0.98
+        #const margin = 0.98
         add_point point.pos.x, point.pos.y, point.pos.z, point.color
         level.map[i,j].cube[w] = point
 
       level.calculate_top_normals(i,j)
 
       for w in 0 .. cube_index.high:
-        let point = level.map[i,j].cube[w] #level.cube_point(i, j, w)
-        normals.add_normal level.map[i,j].cube[w].normal
+        let point = level.map[i,j].cube[w]
+        normals.add_normal point.normal
 
       for w in 0 .. cube_index.high:
-        let point = level.map[i,j].cube[w] #level.cube_point(i, j, w)
+        let point = level.map[i,j].cube[w]
         add_uv point.pos.x.fract, point.pos.z.fract
 
   level.floor_colors  = colors

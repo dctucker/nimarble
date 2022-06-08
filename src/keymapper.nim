@@ -16,7 +16,7 @@ macro action*(procdefs: untyped): untyped =
     of nnkPostfix: procdef[0][1]
     of nnkIdent  : procdef[0]
     else:  procdef[0]
-    let identnode = newIdentNode($name & "_handler")
+    #let identnode = newIdentNode($name & "_handler")
     let params = procdef.params
     let stmtlist = procdef[6]
     result.add newLetStmt(postfix(name, "*"),

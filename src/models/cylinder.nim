@@ -64,9 +64,9 @@ proc cylinderColors*(segments: int, color: Vec3f): seq[Vec4f] =
 
   for j in 0 .. segments:
     let
-      u = (j / segments).float32
+      #u = (j / segments).float32
       beta = (j / segments) * 2 * PI
-      x = cos(45f.radians + beta).float32 * 0.5f + 0.5f
+      #x = cos(45f.radians + beta).float32 * 0.5f + 0.5f
       y = sin(beta).float32 * 0.5f + 0.5f
 
     let contrast = 0.6

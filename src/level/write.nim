@@ -64,7 +64,3 @@ proc write_new_level* =
       level.data[i * width + j] = 20
   level.save()
 
-
-proc toString(x: float): string =
-  x.formatFloat(ffDecimal,3)
-
