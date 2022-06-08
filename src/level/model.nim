@@ -159,6 +159,7 @@ proc update_vbos*(level: Level) {.inline.} =
   level.floor_plane.vert_vbo.update
   level.floor_plane.color_vbo.update
   level.floor_plane.norm_vbo.update
+  level.floor_plane.uv_vbo.update
 
 proc update_vert_vbo*(level: Level) {.inline.} =
   level.floor_plane.vert_vbo.update
@@ -263,6 +264,7 @@ proc setup_floor(level: var Level) =
   var verts   = newSeqOfCap[cfloat]( 3 * dim )
   var index   = newSeqOfCap[Ind]( cube_index.len * dim )
   var colors  = newSeqOfCap[cfloat]( 4 * cube_index.len * dim )
+  var uvs     = newSeqOfCap[cfloat]( 2 * cube_index.len * dim )
   var n = 0.Ind
   var x,z: float
   var y, y0, y1, y2, y3: float
@@ -275,9 +277,14 @@ proc setup_floor(level: var Level) =
   var surface_normal: Vec3f
   var normal: Vec3f
 
+  proc add_uv(x,y: cfloat) =
+    uvs.add x
+    uvs.add y
+
   proc add_index =
     index.add n
     inc n
+
   proc add_index(nn: Ind) =
     index.add nn
 
@@ -306,12 +313,17 @@ proc setup_floor(level: var Level) =
       level.calculate_top_normals(i,j)
 
       for w in 0 .. cube_index.high:
-        let point = level.cube_point(i, j, w)
+        let point = level.map[i,j].cube[w] #level.cube_point(i, j, w)
         normals.add_normal level.map[i,j].cube[w].normal
 
-  level.floor_colors = colors
-  level.floor_verts = verts
-  level.floor_index = index
+      for w in 0 .. cube_index.high:
+        let point = level.map[i,j].cube[w] #level.cube_point(i, j, w)
+        add_uv point.pos.x, point.pos.z
+
+  level.floor_colors  = colors
+  level.floor_verts   = verts
+  level.floor_index   = index
   level.floor_normals = normals
+  level.floor_uvs     = uvs
   #echo "Index length: ", index.len
 

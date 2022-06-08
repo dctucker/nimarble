@@ -78,6 +78,11 @@ proc cube_normal*(color_w: int): Vec3f =
   of 1: vec3f(  0,  1,  0 )
   else: vec3f(  0,  0,  0 )
 
+proc genCubeUvs: seq[Vec2f] =
+  for i in cube_index:
+    var vec = cube_verts[i]
+    result.add vec2f( vec.x, vec.z )
+
 proc genRampVerts: seq[Vec3f] =
   const margin = 0.98
   for i in cube_index:

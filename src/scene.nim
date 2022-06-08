@@ -65,7 +65,7 @@ type
     rot*: Quatf
     vao*: VAO
     texture*: Texture[cfloat]
-    vert_vbo*, color_vbo*, uv_vbo: VBO[cfloat]
+    vert_vbo*, color_vbo*, uv_vbo*: VBO[cfloat]
     elem_vbo*: VBO[Ind]
     norm_vbo*: VBO[cfloat]
     model*: Matrix
