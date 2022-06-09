@@ -20,7 +20,7 @@ uniform sampler2DArray myTextureSampler;
 void main(){
 	vec4 textureColor = texture( myTextureSampler, UV );
 	// Material properties
-	vec3 MaterialDiffuseColor = mix(fragmentColor.rgb, textureColor.rgb, 0.75);
+	vec3 MaterialDiffuseColor = mix(fragmentColor.rgb, textureColor.rgb, textureColor.a);
 	//vec3 MaterialDiffuseColor = texture( myTextureSampler, UV ).rgb;
 	vec3 MaterialAmbientColor = AmbientWeight * MaterialDiffuseColor;
 	vec3 MaterialSpecularColor = SpecularColor;

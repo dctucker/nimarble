@@ -44,11 +44,11 @@ proc newTextureArray*[T](n: int, layers: int, data: ptr seq[T]): TextureArray[T]
   result.layers = layers.GLsizei
   glGenTextures 1, result.id.addr
   glBindTexture GL_TEXTURE_2D_ARRAY, result.id
-  glTexImage3D GL_TEXTURE_2D_ARRAY, 0.GLint, GL_RGB.GLint, result.width, result.height,
-    layers.GLsizei, 0.GLint, GL_RGB, EGL_FLOAT, result.data[][0].addr
+  glTexImage3D GL_TEXTURE_2D_ARRAY, 0.GLint, GL_RGBA.GLint, result.width, result.height,
+    layers.GLsizei, 0.GLint, GL_RGBA, EGL_FLOAT, result.data[][0].addr
 
   for i in 0..<layers:
-    glTexSubImage3D GL_TEXTURE_2D_ARRAY, 0.GLint, 0.GLint, 0.GLint, i.GLint, result.width, result.height, 1.GLsizei, GL_RGB, EGL_FLOAT, result.data[][3*n*n*i].addr
+    glTexSubImage3D GL_TEXTURE_2D_ARRAY, 0.GLint, 0.GLint, 0.GLint, i.GLint, result.width, result.height, 1.GLsizei, GL_RGBA, EGL_FLOAT, result.data[][4*n*n*i].addr
 
   #glTexParameteri GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT  #GL_MIRRORED_REPEAT
   #glTexParameteri GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT  #GL_CLAMP_TO_BORDER #GL_CLAMP_TO_EDGE

@@ -45,5 +45,6 @@ proc toCfloat(img: Image): seq[cfloat] =
       result.add c.r.float / 255f
       result.add c.g.float / 255f
       result.add c.b.float / 255f
+      result.add c.a.float / 255f
 
 var floor_textures* = readImage("assets/textures/masks.png").toCfloat()
