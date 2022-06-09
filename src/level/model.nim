@@ -159,6 +159,8 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
     normal = vec3f(0, 1, 0)
 
   tile = level.point_texture(i, j)
+  if color_w in {2,4,3,5}:
+    tile = 0
   uv = vec3f(x, z, tile.cfloat)
 
   return CubePoint(
@@ -187,6 +189,8 @@ proc update_color_vbo*(level: Level) {.inline.} =
 proc update_index_vbo*(level: Level) {.inline.} =
   level.floor_plane.elem_vbo.update
 
+proc update_uv_vbo*(level: Level) {.inline.} =
+  level.floor_plane.elem_vbo.update
 
 proc calculate_color_vbo*(level: Level, i,j: int) =
   let color_span  = 4 * cube_index.len
@@ -221,6 +225,7 @@ proc calculate_vbos*(level: var Level, i, j, n: int, p: CubePoint) =
   const color_span  = 4 * cube_index.len
   const normal_span = 3 * cube_index.len
   const vert_span   = 3 * cube_index.len
+  const uv_span     = 3 * cube_index.len
 
   let o = level.index_offset(i,j)
   let vert_offset = o *   vert_span + 3*n + 1
@@ -244,6 +249,12 @@ proc calculate_vbos*(level: var Level, i, j, n: int, p: CubePoint) =
     level.floor_normals[ normal_offset + 0 ] = p.normal.x
     level.floor_normals[ normal_offset + 1 ] = p.normal.y
     level.floor_normals[ normal_offset + 2 ] = p.normal.z
+
+  let uv_offset = o * uv_span + 3*n
+  if 0 < uv_offset and uv_offset < level.floor_uvs.len:
+    level.floor_normals[ uv_offset + 0 ] = p.uv.x
+    level.floor_normals[ uv_offset + 1 ] = p.uv.y
+    level.floor_normals[ uv_offset + 2 ] = p.uv.z
 
 proc calculate_vbos*(level: var Level, i,j: int) =
   if not level.has_coord(i,j): return

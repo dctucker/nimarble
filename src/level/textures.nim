@@ -13,8 +13,6 @@ proc point_texture(level: Level, i,j: int): int =
   if y == EE: return
 
   let masks = level.map[i,j].masks
-  if {P1,P2,P3,P4} * masks != {}:
-    return P1.ord
   if IC in masks: return IC.ord
   if CU in masks: return CU.ord
   if SD in masks: return SD.ord
@@ -22,5 +20,7 @@ proc point_texture(level: Level, i,j: int): int =
   if BH in masks: return BH.ord
   if OI in masks: return OI.ord
   if MI in masks: return MI.ord
+  if {P1,P2,P3,P4} * masks != {}:
+    return P1.ord
 
   return level.mask_texture(masks)
