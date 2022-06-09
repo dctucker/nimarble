@@ -3,6 +3,11 @@ proc add_uv(uvs: var seq[cfloat], uv: Vec2f) =
   uvs.add uv.x
   uvs.add uv.y
 
+proc add_uv(uvs: var seq[cfloat], uv: Vec3f) =
+  uvs.add uv.x
+  uvs.add uv.y
+  uvs.add uv.z
+
 proc add_normal(normals: var seq[cfloat], n: Vec3f) =
   let nn = n.normalize()
   normals.add nn.x
@@ -50,7 +55,8 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   #]
   #var surface_normal: Vec3f # = surface_normals[0] + surface_normals[1] + surface_normals[2] + surface_normals[3]
   var normal: Vec3f         # = surface_normals[0] + surface_normals[1] + surface_normals[2] + surface_normals[3]
-  var uv: Vec2f
+  var uv: Vec3f
+  var tile: int
 
   var base: float = -1
 
@@ -152,7 +158,7 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   if normal.y.classify == fcNaN:
     normal = vec3f(0, 1, 0)
 
-  uv = vec2f(x, z)
+  uv = vec3f(x, z, tile.float)
 
   return CubePoint(
     pos    : vec3f(x, y, z),

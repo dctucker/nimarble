@@ -18,7 +18,7 @@ type
     pos*: Vec3f
     color*: Vec4f
     normal*: Vec3f
-    uv*: Vec2f
+    uv*: Vec3f
 
   Zone* = ref object
     case kind*: CliffMask

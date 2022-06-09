@@ -39,6 +39,4 @@ proc genBox(n: int): seq[Vec3f] =
 
 const box_size* = 16
 const box = genBox(box_size)
-echo box
 var box_texture* = toCfloats( box, 3 )
-echo box_texture
