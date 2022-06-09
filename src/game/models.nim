@@ -31,7 +31,7 @@ proc init_floor_plane*(game: var Game) =
     color_vbo : newVBO(4, addr game.level.floor_colors),
     norm_vbo  : newVBO(3, addr game.level.floor_normals),
     uv_vbo    : newVBO(3, addr game.level.floor_uvs),
-    texture   : newTexture[cfloat](box_size, addr box_texture),
+    textures  : newTextureArray[cfloat](box_size, 1, addr box_texture),
     elem_vbo  : newElemVBO(addr game.level.floor_index),
     program   : game.player.mesh.program,
   )

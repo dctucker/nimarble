@@ -64,7 +64,7 @@ type
     scale*: Vec3f
     rot*: Quatf
     vao*: VAO
-    texture*: Texture[cfloat]
+    textures*: TextureArray[cfloat]
     vert_vbo*, color_vbo*, uv_vbo*: VBO[cfloat]
     elem_vbo*: VBO[Ind]
     norm_vbo*: VBO[cfloat]
@@ -114,8 +114,8 @@ proc render*(mesh: var Mesh) =
   apply mesh.norm_vbo  , 2
   if mesh.uv_vbo.n_verts > 0:
     apply mesh.uv_vbo  , 3
-  if mesh.texture.id != 0:
-    apply mesh.texture
+  if mesh.textures.id != 0:
+    apply mesh.textures
 
   if mesh.wireframe:
     glDisable          GL_POLYGON_OFFSET_FILL
