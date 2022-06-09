@@ -1,6 +1,6 @@
 #version 330 core
 
-in vec2 UV;
+in vec3 UV;
 in vec4 fragmentColor;
 in vec3 Position_worldspace;
 in vec3 Normal_cameraspace;
@@ -15,11 +15,12 @@ uniform float LightPower;
 uniform vec3  LightColor;
 uniform float AmbientWeight;
 uniform vec3  SpecularColor;
-uniform sampler2D myTextureSampler;
+uniform sampler2DArray myTextureSampler;
 
 void main(){
+	vec4 textureColor = texture( myTextureSampler, UV );
 	// Material properties
-	vec3 MaterialDiffuseColor = mix(fragmentColor.rgb, texture( myTextureSampler, UV ).rgb, 0.2);
+	vec3 MaterialDiffuseColor = mix(fragmentColor.rgb, textureColor.rgb, 0.2);
 	//vec3 MaterialDiffuseColor = texture( myTextureSampler, UV ).rgb;
 	vec3 MaterialAmbientColor = AmbientWeight * MaterialDiffuseColor;
 	vec3 MaterialSpecularColor = SpecularColor;

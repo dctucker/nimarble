@@ -158,6 +158,7 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   if normal.y.classify == fcNaN:
     normal = vec3f(0, 1, 0)
 
+  tile = 1
   uv = vec3f(x, z, tile.float)
 
   return CubePoint(
