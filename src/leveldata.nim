@@ -42,15 +42,16 @@ proc cell_name*(i,j: int): string =
 
 
 include level/[
-  coords ,
-  piston ,
-  zones  ,
-  actors ,
-  read   ,
-  write  ,
-  color  ,
-  model  ,
-  game   ,
+  coords    ,
+  piston    ,
+  zones     ,
+  actors    ,
+  read      ,
+  write     ,
+  color     ,
+  textures  ,
+  model     ,
+  game      ,
 ]
 
 var levels = @[
