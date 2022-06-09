@@ -1,3 +1,5 @@
+import sequtils
+
 const level_dir* = "assets/levels"
 
 const level_data_sources = @[
@@ -33,3 +35,15 @@ const terminus_ttf_asset = staticRead("../" & terminus_fn)
 #var terminus_ttf_asset = assetfile.getAsset(terminus_fn)
 let terminus_ttf_len* = terminus_ttf_asset.len.int32
 var terminus_ttf* = terminus_ttf_asset.cstring # [0].addr
+
+import pixie
+#const floor_png = staticRead "assets/textures/masks.png"
+proc toCfloat(img: Image): seq[cfloat] =
+  for i in 0 ..< img.height:
+    for j in 0 ..< img.width:
+      var c = img[j,i]
+      result.add c.r.float / 255f
+      result.add c.g.float / 255f
+      result.add c.b.float / 255f
+
+var floor_textures* = readImage("assets/textures/masks.png").toCfloat()

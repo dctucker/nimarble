@@ -158,7 +158,7 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   if normal.y.classify == fcNaN:
     normal = vec3f(0, 1, 0)
 
-  tile = 1
+  tile = 0
   uv = vec3f(x, z, tile.float)
 
   return CubePoint(
@@ -334,5 +334,6 @@ proc setup_floor(level: var Level) =
   level.floor_index   = index
   level.floor_normals = normals
   level.floor_uvs     = uvs
+  level.floor_textures= floor_textures
   #echo "Index length: ", index.len
 

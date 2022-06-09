@@ -71,6 +71,7 @@ type
     floor_verts*   : seq[cfloat]
     floor_normals* : seq[cfloat]
     floor_uvs*     : seq[cfloat]
+    floor_textures*: seq[cfloat]
     floor_plane*   : Mesh
     actors*       : ActorSet
     fixtures*     : seq[Fixture]
