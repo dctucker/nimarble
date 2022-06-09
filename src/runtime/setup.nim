@@ -2,12 +2,13 @@
 proc setup_glfw(): GLFWWindow =
   doAssert glfwInit()
 
-  glfwWindowHint(GLFWContextVersionMajor, 3)
-  glfwWindowHint(GLFWContextVersionMinor, 3)
-  glfwWindowHint(GLFWOpenglForwardCompat, GLFW_TRUE)
-  glfwWindowHint(GLFWOpenglProfile, GLFW_OPENGL_CORE_PROFILE)
-  glfwWindowHint(GLFWResizable, GLFW_FALSE)
-  glfwWindowHint(GLFWTransparentFramebuffer, GLFW_FALSE);
+  glfwWindowHint GLFWContextVersionMajor, 3
+  glfwWindowHint GLFWContextVersionMinor, 3
+  glfwWindowHint GLFWOpenglForwardCompat, GLFW_TRUE
+  glfwWindowHint GLFWOpenglProfile, GLFW_OPENGL_CORE_PROFILE
+  glfwWindowHint GLFWResizable, GLFW_FALSE
+  glfwWindowHint GLFWTransparentFramebuffer, GLFW_FALSE
+  glfwWindowHint GLFWSamples, 4
 
   #(width, height) = display_size()
   let w = glfwCreateWindow(width, height, "Nimarble", nil, nil)
@@ -48,6 +49,8 @@ proc setup_opengl() =
   #glEnable    GL_CULL_FACE
   #glCullFace  GL_BACK
   #glFrontFace GL_CW
+
+  glEnable GL_MULTISAMPLE
 
 proc cleanup(w: GLFWWindow) {.inline.} =
   w.destroyWindow

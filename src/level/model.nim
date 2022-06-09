@@ -1,4 +1,8 @@
 
+proc add_uv(uvs: var seq[cfloat], uv: Vec2f) =
+  uvs.add uv.x
+  uvs.add uv.y
+
 proc add_normal(normals: var seq[cfloat], n: Vec3f) =
   let nn = n.normalize()
   normals.add nn.x
@@ -32,9 +36,8 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
     y2 = 0
     y3 = 0
 
-  const margin = 0.98
-  var x = (j - level.origin.x).float + vert.x.float * margin
-  var z = (i - level.origin.z).float + vert.z.float * margin
+  var x = (j - level.origin.x).float + vert.x.float
+  var z = (i - level.origin.z).float + vert.z.float
   var y = level.data[level.offset(i+vert.z.int, j+vert.x.int)]
   var c = level.point_color(i, j)
   var m = level.mask[level.offset(i+vert.z.int, j+vert.x.int)]
@@ -47,6 +50,7 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   #]
   #var surface_normal: Vec3f # = surface_normals[0] + surface_normals[1] + surface_normals[2] + surface_normals[3]
   var normal: Vec3f         # = surface_normals[0] + surface_normals[1] + surface_normals[2] + surface_normals[3]
+  var uv: Vec2f
 
   var base: float = -1
 
@@ -148,10 +152,13 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   if normal.y.classify == fcNaN:
     normal = vec3f(0, 1, 0)
 
+  uv = vec2f(x, z)
+
   return CubePoint(
     pos    : vec3f(x, y, z),
     color  : c,
     normal : normal,
+    uv     : uv,
   )
 
 proc update_vbos*(level: Level) {.inline.} =
@@ -277,10 +284,6 @@ proc setup_floor(level: var Level) =
   #var surface_normal: Vec3f
   #var normal: Vec3f
 
-  proc add_uv(x,y: cfloat) =
-    uvs.add x
-    uvs.add y
-
   proc add_index =
     index.add n
     inc n
@@ -306,7 +309,6 @@ proc setup_floor(level: var Level) =
       for w in 0 .. cube_index.high:
         var point = level.cube_point(i, j, w)
 
-        #const margin = 0.98
         add_point point.pos.x, point.pos.y, point.pos.z, point.color
         level.map[i,j].cube[w] = point
 
@@ -318,7 +320,7 @@ proc setup_floor(level: var Level) =
 
       for w in 0 .. cube_index.high:
         let point = level.map[i,j].cube[w]
-        add_uv point.pos.x.fract, point.pos.z.fract
+        uvs.add_uv point.uv
 
   level.floor_colors  = colors
   level.floor_verts   = verts
