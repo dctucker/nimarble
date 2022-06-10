@@ -1,16 +1,8 @@
+include ../models/meshes
 
 proc init_player*(game: var Game) =
   if game.player.mesh == nil:
-    game.player.mesh = Mesh(
-      primitive : GL_TRIANGLE_STRIP,
-      vao: newVAO(),
-      vert_vbo : newVBO(3, addr sphere),
-      color_vbo: newVBO(4, addr sphere_colors),
-      norm_vbo : newVBO(3, addr sphere_normals),
-      elem_vbo : newElemVBO( addr sphere_index),
-      program: newProgram(player_frags, player_verts, player_geoms),
-      translate: vec3f(0,player_radius,0)
-    )
+    game.player.mesh = newPlayerMesh()
   if game.level != nil:
     game.reset_player()
 
@@ -24,41 +16,12 @@ proc init_floor_plane*(game: var Game) =
   if game.level.floor_plane != nil:
     return
   load_level game.level_number
-  game.level.floor_plane = Mesh(
-    primitive : GL_TRIANGLE_STRIP,
-    vao: newVAO(),
-    vert_vbo  : newVBO(3, addr game.level.floor_verts),
-    color_vbo : newVBO(4, addr game.level.floor_colors),
-    norm_vbo  : newVBO(3, addr game.level.floor_normals),
-    uv_vbo    : newVBO(3, addr game.level.floor_uvs),
-    textures  : newTextureArray[cfloat](32, 64, addr game.level.floor_textures),
-    elem_vbo  : newElemVBO(addr game.level.floor_index),
-    program   : game.player.mesh.program,
-  )
+  game.level.floor_plane = game.newFloorMesh()
+  game.level.floor_plane.program = game.player.mesh.program
   var modelmat = mat4(1.0f).scale(1f, level_squash, 1f)
   game.level.floor_plane.model = game.player.mesh.program.newMatrix(modelmat, "M")
   var mvp = game.proj * game.view.mat.translate(-game.camera.pan.pos) * game.level.floor_plane.model.mat
   game.level.floor_plane.mvp = game.level.floor_plane.program.newMatrix(mvp, "MVP")
-
-proc newMesh(game: var Game, verts, colors, norms: var seq[cfloat], elems: var seq[Ind]): Mesh =
-  var modelmat = mat4f(1)
-  result = Mesh(
-    primitive : GL_TRIANGLE_STRIP,
-    vao       : newVAO(),
-    vert_vbo  : newVBO(3, addr verts),
-    color_vbo : newVBO(4, addr colors),
-    norm_vbo  : newVBO(3, addr norms),
-    elem_vbo  : newElemVBO(addr elems),
-    program   : game.player.mesh.program,
-    model     : game.player.mesh.program.newMatrix(modelmat, "M"),
-    scale     : vec3f(1,1,1)
-  )
-  result.reset()
-
-var shared_wave_verts: VBO[cfloat]
-var shared_wave_colors: VBO[cfloat]
-var shared_wave_norms: VBO[cfloat]
-var shared_wave_index: VBO[Ind]
 
 proc newMesh(game: var Game, piece: Piece): Mesh =
   case piece.kind
@@ -66,54 +29,29 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
     result = newMesh( game, sphere      , enemy_colors       , sphere_normals      , sphere_index )
     result.translate.y = player_radius
   of EY: result = newMesh( game, yum         , yum_colors         , sphere_normals      , sphere_index )
-  of EA: result = newMesh( game, acid_verts  , acid_colors        , acid_normals        , acid_index   )
+  of EA:
+    result = newMesh( game, acid_verts  , acid_colors        , acid_normals        , acid_index   )
+    result.primitive = GL_TRIANGLE_FAN
+
   of EP:
     result = newMesh( game, piston_verts, piston_colors      , piston_normals      , piston_index )
     result.rot = quatf(vec3f(1, 0, 0).normalize, 90f.radians)
     result.scale = vec3f(1f, 2f, 1f)
     result.pos = vec3f(0.5, -1.96875, 0.5)
   of GR:
-    var verts   = single_rail
-    var colors  = single_rail_colors
-    var normals = single_rail_normals
-    var index   = single_rail_index
+    result = newRailMesh()
     var modelmat = mat4f(1)
-    result = Mesh(
-      primitive : GL_TRIANGLE_STRIP,
-      vao       : newVAO(),
-      vert_vbo  : newVBO(3, addr verts),
-      color_vbo : newVBO(4, addr colors),
-      norm_vbo  : newVBO(3, addr normals),
-      elem_vbo  : newElemVBO(addr index),
-      program   : game.player.mesh.program,
-      model     : game.player.mesh.program.newMatrix(modelmat, "M"),
-      rot       : quatf(vec3f(1, 0, 0).normalize, 90f.radians),
-      scale     : vec3f(1,1,1),
-    )
+    result.program   = game.player.mesh.program
+    result.model     = game.player.mesh.program.newMatrix(modelmat, "M")
     result.translate = vec3f(0.5, 0.0, 0.5)
 
   of SW:
-    # wavelength is 12 units of 16 pixels each
-    if shared_wave_verts.n_verts == 0:
-      echo "init shared wave vbos"
-      shared_wave_verts  = newVBO(3, addr wave_verts)
-      shared_wave_colors = newVBO(4, addr wave_colors)
-      shared_wave_norms  = newVBO(3, addr wave_normals)
-      shared_wave_index  = newElemVBO(addr wave_index)
-    var modelmat = mat4f(1)
-    result = Mesh(
-      primitive : GL_TRIANGLE_STRIP,
-      vao       : newVAO(),
-      vert_vbo  : shared_wave_verts,
-      color_vbo : shared_wave_colors,
-      norm_vbo  : shared_wave_norms,
-      elem_vbo  : shared_wave_index,
-      program   : game.player.mesh.program,
-      model     : game.player.mesh.program.newMatrix(modelmat, "M"),
-      scale     : vec3f(1f/wave_res,3,1),
-    )
     let xm = (piece.origin.x mod wave_len).float
     let offset = cint xm * wave_ninds * wave_res
+    result = newWaveMesh()
+    result.program = game.player.mesh.program
+    var modelmat = mat4f(1)
+    result.model = game.player.mesh.program.newMatrix(modelmat, "M")
     result.elem_vbo.offset = offset
     result.elem_vbo.n_verts = wave_res * wave_ninds - 1
     result.translate.x = -xm
@@ -161,7 +99,7 @@ proc init_actors*(game: var Game) =
 
 proc init_cursor(game: var Game) =
   editor.cursor = Cursor(
-    mesh: newMesh( game, cursor        , cursor_colors        , cursor_normals        , cursor_index   ),
+    mesh: game.newCursorMesh()
   )
   var cursor = editor.cursor
   var mesh = cursor.mesh
@@ -174,7 +112,7 @@ proc init_cursor(game: var Game) =
 
 proc init_selector(game: var Game) =
   editor.selector = Selector(
-    mesh: newMesh( game, selector        , selector_colors        , selector_normals        , selector_index   ),
+    mesh: game.newSelectorMesh()
   )
   var selector = editor.selector
   var mesh = selector.mesh
