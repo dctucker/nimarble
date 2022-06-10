@@ -252,9 +252,9 @@ proc calculate_vbos*(level: var Level, i, j, n: int, p: CubePoint) =
 
   let uv_offset = o * uv_span + 3*n
   if 0 < uv_offset and uv_offset < level.floor_uvs.len:
-    level.floor_normals[ uv_offset + 0 ] = p.uv.x
-    level.floor_normals[ uv_offset + 1 ] = p.uv.y
-    level.floor_normals[ uv_offset + 2 ] = p.uv.z
+    level.floor_uvs[ uv_offset + 0 ] = p.uv.x
+    level.floor_uvs[ uv_offset + 1 ] = p.uv.y
+    level.floor_uvs[ uv_offset + 2 ] = p.uv.z
 
 proc calculate_vbos*(level: var Level, i,j: int) =
   if not level.has_coord(i,j): return
@@ -321,7 +321,8 @@ proc setup_floor(level: var Level) =
 
   for i in  1..<level.height - 1:
     for j in 1..<level.width - 1:
-      if j + 4 < i or j + 4 > i + floor_span: continue
+      if j < i - 4: continue
+      if j > i + floor_span - 4: continue
 
       level.map[i,j].cube = newSeq[CubePoint](cube_index.len)
       for w in 0 .. cube_index.high:
