@@ -27,8 +27,8 @@ proc mask_color*(level: Level, masks: set[CliffMask]): Vec4f =
     of P4    : return vec4f( 0.3, 0.2, 0.1, 0.9 )
     of IC    : return vec4f( 0.0, 0.7, 0.7, 0.9 )
     of CU    : return vec4f( 0.8, 0.6, 0.3, 0.9 )
-    of SW    : return vec4f( 0.1, 0.6, 0.6, 1.0 )
-    of MI    : return vec4f( 0.25, 0.25, 0.25, 1.0 )
+    of SW    : return wave_color
+    #of MI    : return vec4f( 0.25, 0.25, 0.25, 1.0 )
     of EP    : return vec4f( 0.5, 0.5, 0.5, 1.0 )
     of RI, RH: return vec4f( 0.2, 0.4, 0.5, 1.0 )
     of BI, BH: return vec4f( 0.4, 0.4, 0.4, 1.0 )

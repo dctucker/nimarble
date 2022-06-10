@@ -1,3 +1,4 @@
+import ../models
 
 #[
 x ~= -offset
@@ -24,7 +25,6 @@ f0123456789abcdef0123456789abcde| offset = 31
     (piece.origin.x mod wave_len) = offset / (wave_ninds * wave_res)
 ]#
 
-import ../models
 proc animate_wave(game: Game, piece: var Fixture, dt: float) =
   let max_offset = cint wave_res * wave_ninds * wave_len
 

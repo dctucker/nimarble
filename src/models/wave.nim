@@ -64,13 +64,14 @@ proc gen_wave_verts: seq[Vec3f] {.compileTime.} =
       result.add vec3f(x0,  0, z1)
       result.add vec3f(x1,  0, z1)
 
+const wave_color* = vec4f( 0.267, 0.6, 0.46, 1.0 )
 proc gen_wave_colors: seq[Vec4f] {.compileTime.} =
   for a in 0 ..< wave_len:
     for b in 0 ..< wave_res:
-      result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
-      result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
-      result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
-      result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+      result.add wave_color
+      result.add wave_color
+      result.add wave_color
+      result.add wave_color
 
       let x = a * wave_res + b
       let x0 = (x + 0).float
@@ -95,15 +96,15 @@ proc gen_wave_colors: seq[Vec4f] {.compileTime.} =
       #let n1 = -normalize (d - b).cross(c - b)
       let v = n0.y
 
-      result.add vec4f( 0.0, 0.6 * v, 0.6 * v, 1.0 )
-      result.add vec4f( 0.0, 0.6 * v, 0.6 * v, 1.0 )
-      result.add vec4f( 0.0, 0.6 * v, 0.6 * v, 1.0 )
-      result.add vec4f( 0.0, 0.6 * v, 0.6 * v, 1.0 )
+      result.add vec4f( wave_color.rgb * v, 1.0 )
+      result.add vec4f( wave_color.rgb * v, 1.0 )
+      result.add vec4f( wave_color.rgb * v, 1.0 )
+      result.add vec4f( wave_color.rgb * v, 1.0 )
 
-      result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
-      result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
-      result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
-      result.add vec4f( 0.1, 0.6, 0.6, 1.0 )
+      result.add wave_color
+      result.add wave_color
+      result.add wave_color
+      result.add wave_color
 
 proc gen_wave_normals: seq[Vec3f] {.compileTime.} =
   for a in 0 ..< wave_len:

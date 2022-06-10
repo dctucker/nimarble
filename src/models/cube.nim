@@ -1,3 +1,4 @@
+import ../masks
 
 let cube_verts* = @[
   vec3f( 0, 0, 0 ), #0
@@ -35,10 +36,10 @@ const cube_index* = @[
 
 let cube_colors* = @[
   0,
-  3, 3, 3, 3, 0, 0,
-  4, 4, 4, 4, 0, 0,
-  5, 5, 5, 5, 0, 0,
-  2, 2, 2, 2,
+  3, 3, 3, 3, 0, 0,  # north
+  4, 4, 4, 4, 0, 0,  # east
+  5, 5, 5, 5, 0, 0,  # south
+  2, 2, 2, 2,        # west
   #1, 1, 1, 1, 1, 1,
   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
   0, 0, 6, 6, 6, 6, 0,
@@ -72,7 +73,7 @@ proc cube_normal*(color_w: int): Vec3f =
   of 5: vec3f(  0,  0, +1 )
   of 2: vec3f( -1,  0,  0 )
   of 1: vec3f(  0,  1,  0 )
-  else: vec3f(  0,  0,  0 )
+  else: vec3f(  0, -1,  0 )
 
 #proc genCubeUvs: seq[Vec2f] =
 #  for i in cube_index:
@@ -80,10 +81,26 @@ proc cube_normal*(color_w: int): Vec3f =
 #    result.add vec2f( vec.x, vec.z )
 
 proc genRampVerts: seq[Vec3f] =
-  const margin = 0.98
+  const margin = 1#0.98
   for i in cube_index:
     var vec = cube_verts[i]
     result.add vec3f( vec.x * margin, vec.y - 1.0, vec.z * margin)
+
+proc genRampUvs: seq[Vec3f] =
+  for w,v in cube_index.pairs:
+    var color_w = cube_colors[w]
+    var vec = cube_verts[v]
+    case color_w
+    of 3: # north
+      result.add vec3f( 1-vec.x, 1-vec.y, RH.ord + 1)
+    of 4: # east
+      result.add vec3f( vec.z, 1-vec.y, RI.ord + 1)
+    of 5: # south
+      result.add vec3f( vec.x, 1-vec.y, RH.ord + 1)
+    of 2: # west
+      result.add vec3f( 1-vec.z, 1-vec.y, RI.ord + 1)
+    else:
+      result.add vec3f( vec.x, vec.z, XX.ord + 1 )
 
 proc genRampNormals: seq[Vec3f] =
   for color_w in cube_colors:
@@ -93,7 +110,7 @@ proc genRampColors: seq[Vec4f] =
   for color_w in cube_colors:
     case color_w
     of 3,4,5,2:
-      result.add vec4f(0.0, 0.5, 0.5, 1)
+      result.add vec4f(0.0, 0.73, 0.67, 1)
     else:
       result.add vec4f(0.5, 0.5, 0.5, 1)
 
@@ -104,6 +121,7 @@ proc genRampIndex: seq[Ind] =
 var ramp*         = toCfloats( genRampVerts(), 3 )
 var ramp_colors*  = toCfloats( genRampColors(), 4 )
 var ramp_normals* = toCfloats( genRampNormals(), 3 )
+var ramp_uvs*     = toCfloats( genRampUvs(), 3 )
 var ramp_index*   = genRampIndex()
 
 proc genCursorColors: seq[Vec4f] =

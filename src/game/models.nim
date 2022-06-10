@@ -59,8 +59,9 @@ proc newMesh(game: var Game, piece: Piece): Mesh =
     #result.translate.z = (piece.origin.x mod 2).float * 0.125 # ugly debug
 
   of RI, RH:
-    result = newMesh( game, ramp        , ramp_colors        , ramp_normals        , ramp_index   )
+    result = game.newRampMesh()
     result.translate = vec3f(0,0,0)
+    result.textures = game.level.floor_plane.textures
 
   else:
     result = newMesh( game, sphere      , sphere_normals     , sphere_normals      , sphere_index )

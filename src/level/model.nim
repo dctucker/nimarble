@@ -160,7 +160,7 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
 
   tile = level.point_texture(i, j) + 1
   if color_w in {2,4,3,5}:
-    tile = 0
+    tile = HH.ord
   uv = vec3f(x, z, tile.cfloat)
 
   return CubePoint(

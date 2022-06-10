@@ -10,7 +10,7 @@ import wrapper
 import types
 import masks
 
-from models import cube_normal, cube_verts, cube_colors, cube_index, wave_res, wave_nverts, middle_points, top_points
+from models import cube_normal, cube_verts, cube_colors, cube_index, wave_res, wave_nverts, middle_points, top_points, wave_color
 from scene import pos
 import assets
 

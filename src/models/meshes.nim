@@ -11,6 +11,9 @@ proc newPlayerMesh: Mesh =
     translate: vec3f(0,player_radius,0)
   )
 
+proc newFloorTextures[T](game: var Game): TextureArray[T] =
+  return newTextureArray[T](32, 64, addr game.level.floor_textures)
+
 proc newFloorMesh(game: var Game): Mesh =
   Mesh(
     primitive : GL_TRIANGLE_STRIP,
@@ -19,7 +22,7 @@ proc newFloorMesh(game: var Game): Mesh =
     color_vbo : newVBO(4, addr game.level.floor_colors),
     norm_vbo  : newVBO(3, addr game.level.floor_normals),
     uv_vbo    : newVBO(3, addr game.level.floor_uvs),
-    textures  : newTextureArray[cfloat](32, 64, addr game.level.floor_textures),
+    textures  : newFloorTextures[cfloat](game),
     elem_vbo  : newElemVBO(addr game.level.floor_index),
   )
 
@@ -85,7 +88,6 @@ proc newCursorMesh(game: var Game): Mesh =
     cursor_index   ,
   )
 
-
 proc newSelectorMesh(game: var Game): Mesh =
   newMesh( game      ,
     selector         ,
@@ -93,3 +95,12 @@ proc newSelectorMesh(game: var Game): Mesh =
     selector_normals ,
     selector_index   ,
   )
+proc newRampMesh(game: var Game): Mesh =
+  result = newMesh( game   ,
+    ramp          ,
+    ramp_colors   ,
+    ramp_normals  ,
+    ramp_index    ,
+  )
+  result.uv_vbo = newVBO(3, addr ramp_uvs)
+  #result.textures = newFloorTextures[cfloat](game)
