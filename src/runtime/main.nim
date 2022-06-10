@@ -44,8 +44,8 @@ proc main =
 
     floor_plane.wireframe = game.wireframe
     game.render floor_plane
-    floor_plane.wireframe = true
-    game.render floor_plane
+    #floor_plane.wireframe = true
+    #game.render floor_plane
 
     player.mesh.compute_model()
     if player.visible:

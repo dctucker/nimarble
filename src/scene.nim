@@ -116,6 +116,8 @@ proc render*(mesh: var Mesh) =
     apply mesh.uv_vbo  , 3
   if mesh.textures.id != 0:
     apply mesh.textures
+  else:
+    glDisable GL_TEXTURE_2D_ARRAY
 
   if mesh.wireframe:
     glDisable          GL_POLYGON_OFFSET_FILL

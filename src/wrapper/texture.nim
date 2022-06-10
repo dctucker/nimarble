@@ -61,6 +61,10 @@ proc newTextureArray*[T](n: int, layers: int, data: ptr seq[T]): TextureArray[T]
   glGenerateMipmap GL_TEXTURE_2D_ARRAY
 
 proc apply*(tex: TextureArray) =
+  glEnable GL_TEXTURE_2D_ARRAY
   glActiveTexture GL_TEXTURE0
   glBindTexture GL_TEXTURE_2D_ARRAY, tex.id
+
+proc disable*(text: TextureArray) =
+  glDisable GL_TEXTURE_2D_ARRAY
 
