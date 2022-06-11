@@ -112,7 +112,7 @@ proc genRampColors: seq[Vec4f] =
     of 3,4,5,2:
       result.add vec4f(0.0, 0.73, 0.67, 1)
     else:
-      result.add vec4f(0.5, 0.5, 0.5, 1)
+      result.add vec4f(0.733, 0.733, 0.733, 1)
 
 proc genRampIndex: seq[Ind] =
   for i,j in cube_index.pairs:

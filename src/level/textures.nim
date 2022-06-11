@@ -2,6 +2,7 @@
 const default_texture = 0
 
 proc mask_texture*(level: Level, masks: set[CliffMask]): int =
+  if TU in masks: return TU.ord
   for mask in masks:
     if mask.cliff(): continue
     return mask.ord

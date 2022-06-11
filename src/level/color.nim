@@ -1,4 +1,4 @@
-const default_color = vec4f(0.5, 0.5, 0.5, 1.0)
+const default_color = vec4f(0.6, 0.6, 0.6, 1.0)
 
 proc cliff_color(level: Level, mask: CliffMask): Vec4f =
   case mask:
@@ -15,7 +15,7 @@ proc mask_color*(level: Level, masks: set[CliffMask]): Vec4f =
   for mask in masks:
     case mask:
     of GG:
-      return vec4f( 1, 1, 1, 1 )
+      return vec4f( 0.6, 0.6, 0.6, 1.0 )
     of TU, IN, OU:
       return vec4f( level.color.x * 0.5, level.color.y * 0.5, level.color.z * 0.5, 1.0 )
     #of S1: return vec4f( 0.0, 0.0, 0.5, 0.8 )

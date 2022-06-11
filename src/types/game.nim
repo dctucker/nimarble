@@ -83,34 +83,3 @@ type
     animate_next_step* : bool
     recent_input*      : GLFWKey
 
-proc newGame*: Game =
-  Game(
-    state: ATTRACT,
-    level_number: 1,
-    player: Player(),
-    light: newLight(
-      #[
-      pos            = vec3f( 0, 200, 200 ),
-      color          = vec3f(1,1,1),
-      specular       = vec3f(1.0, 0.825, 0.75) * 0.375,
-      ambient        = 0.875f,
-      power          = 20000f,
-      ]#
-      pos            = vec3f( -25, 116, 126 ),
-      color          = vec3f(1,1,1),
-      specular       = vec3f(1.0, 0.825, 0.75) * 0.375,
-      ambient        = 0.75f,
-      power          = 20000f,
-    ),
-    camera: Camera(
-      fov: 30f,
-      distance: 30f,
-    ),
-    paused : false,
-    mouse_mode : MouseAcc,
-    following : true,
-    frame_step : false,
-    goal : false,
-    wireframe : false,
-  )
-

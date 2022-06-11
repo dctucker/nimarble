@@ -151,6 +151,7 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   if y == 0:
     y = base - margin * vert.y
 
+  # hide tiles on the ground
   if level.map[i,j].height == 0: c = vec4f(0,0,0,0)
   if level.map[i+1,j].height == 0 or level.map[i,j+1].height == 0 or level.map[i+1,j+1].height == 0:
     c = vec4f(0,0,0,0)
