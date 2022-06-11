@@ -65,7 +65,7 @@ proc point_color(level: Level, i,j: int): Vec4f =
   let masks = level.map[i,j].masks
   if IC in masks: return vec4f( 0.0, 0.7, 0.7, 0.8 )
   if CU in masks: return vec4f( 0.8, 0.6, 0.3, 0.8 )
-  if SD in masks: return vec4f( 0.5, 0.3, 0.0, 0.8 )
+  if SD in masks: return vec4f( 0.5, 0.3, 0.0, 1.0 )
   if {BI,BH} * masks != {}:
     return vec4f( 0.4, 0.4, 0.4, 1.0 )
   if OI in masks: return vec4f( 0.8, 0.6, 0.4, 0.8 )

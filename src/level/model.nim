@@ -33,6 +33,7 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   var y1 = level.map[i+0, j+1].height + vert.y.float * (1-margin)
   var y2 = level.map[i+1, j+0].height + vert.y.float * (1-margin)
   var y3 = level.map[i+1, j+1].height + vert.y.float * (1-margin)
+  var yc: float = 0
 
   let masks = level.map[i,j].masks
 
@@ -60,7 +61,7 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   var tile: int
   var color_w = cube_colors[w]
 
-  var base: float = -1
+  var base: float = -2
 
   if RH in masks:
     y = 0 ; y0 = 0 ; y1 = 0 ; y2 = 0 ; y3 = 0
@@ -119,23 +120,24 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
       y1 = y0
       y3 = y2
 
+    if (y0 == y2 and y1 == y3) or (y0 == y1 and y2 == y3):
+      yc = (y0 + y3) * 0.5
+    elif y0 == y1 and y1 == y2 and y2 != y3:
+      yc = y0
+    elif y1 == y2 and y2 == y3 and y3 != y0:
+      yc = y3
+    elif y0 == y3:
+      yc = y0
+    elif y1 == y2:
+      yc = (y0 + y3) * 0.5
+    else:
+      yc = (y0 + y1 + y2 + y3) / 4f
+
     if   vert.z == 0 and vert.x == 0: y = y0
     elif vert.z == 0 and vert.x == 1: y = y1
     elif vert.z == 1 and vert.x == 0: y = y2
     elif vert.z == 1 and vert.x == 1: y = y3
-    elif vert.z==0.5 and vert.x==0.5:
-      if (y0 == y2 and y1 == y3) or (y0 == y1 and y2 == y3):
-        y = (y0 + y3) * 0.5
-      elif y0 == y1 and y1 == y2 and y2 != y3:
-        y = y0
-      elif y1 == y2 and y2 == y3 and y3 != y0:
-        y = y3
-      elif y0 == y3:
-        y = y0
-      elif y1 == y2:
-        y = (y0 + y3) * 0.5
-      else:
-        y = (y0 + y1 + y2 + y3) / 4f
+    elif vert.z==0.5 and vert.x==0.5: y = yc
 
   else:
     y = base + margin * vert.y
@@ -149,7 +151,8 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   if y == 0:
     y = base - margin * vert.y
 
-  if level.map[i,j].height == 0:
+  if level.map[i,j].height == 0: c = vec4f(0,0,0,0)
+  if level.map[i+1,j].height == 0 or level.map[i,j+1].height == 0 or level.map[i+1,j+1].height == 0:
     c = vec4f(0,0,0,0)
 
   if RH in masks or RI in masks:
