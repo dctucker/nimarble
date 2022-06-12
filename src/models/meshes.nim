@@ -1,3 +1,4 @@
+import std/tables
 import ../assets
 
 proc newPlayerMesh: Mesh =
@@ -12,8 +13,15 @@ proc newPlayerMesh: Mesh =
     translate: vec3f(0,player_radius,0)
   )
 
+var floor_textures = newSeq[ptr seq[cfloat]]()
+floor_textures.add addr mask_textures["XX"]
+for m in CliffMask.low .. CliffMask.high:
+  let mask = $CliffMask(m)
+  let tex = addr mask_textures[mask]
+  floor_textures.add tex
+
 proc newFloorTextures[T](game: var Game): TextureArray[T] =
-  return newTextureArray[T](32, 64, addr game.level.floor_textures)
+  return newTextureArray[T](32, 64, floor_textures)
 
 proc newFloorMesh(game: var Game): Mesh =
   Mesh(

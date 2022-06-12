@@ -351,6 +351,5 @@ proc setup_floor(level: var Level) =
   level.floor_index   = index
   level.floor_normals = normals
   level.floor_uvs     = uvs
-  level.floor_textures= floor_textures
   #echo "Index length: ", index.len
 

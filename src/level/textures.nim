@@ -6,6 +6,7 @@ proc mask_texture*(level: Level, masks: set[CliffMask]): int =
   for mask in masks:
     if mask.cliff(): continue
     return mask.ord
+  return IH.ord
 
 proc point_texture(level: Level, i,j: int): int =
   let k = level.width * i + j

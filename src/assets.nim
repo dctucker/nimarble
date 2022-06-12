@@ -1,4 +1,7 @@
+import os
+import std/tables
 import sequtils
+import macros
 
 const level_dir* = "assets/levels"
 
@@ -47,21 +50,16 @@ proc toCfloat(img: Image): seq[cfloat] =
       result.add c.b.float / 255f
       result.add c.a.float / 255f
 
-var floor_textures* = readImage("assets/textures/masks.png").toCfloat()
+#var floor_textures* = readImage("assets/textures/masks.png").toCfloat()
 #var skybox_textures* = readImage("assets/textures/skybox.png").toCfloat()
 
-const nz_src = staticRead("../assets/textures/nz.png")
-const pz_src = staticRead("../assets/textures/pz.png")
-const ny_src = staticRead("../assets/textures/ny.png")
-const py_src = staticRead("../assets/textures/py.png")
-const nx_src = staticRead("../assets/textures/nx.png")
-const px_src = staticRead("../assets/textures/px.png")
-var nz = nz_src.decodeImage().toCfloat()
-var pz = pz_src.decodeImage().toCfloat()
-var ny = ny_src.decodeImage().toCfloat()
-var py = py_src.decodeImage().toCfloat()
-var nx = nx_src.decodeImage().toCfloat()
-var px = px_src.decodeImage().toCfloat()
+const skybox_src = asset_table("assets/textures/skybox")
+var nz = skybox_src["nz"].decodeImage().toCfloat()
+var pz = skybox_src["pz"].decodeImage().toCfloat()
+var ny = skybox_src["ny"].decodeImage().toCfloat()
+var py = skybox_src["py"].decodeImage().toCfloat()
+var nx = skybox_src["nx"].decodeImage().toCfloat()
+var px = skybox_src["px"].decodeImage().toCfloat()
 
 var skybox_textures* = @[
   addr px,
@@ -71,3 +69,11 @@ var skybox_textures* = @[
   addr pz,
   addr nz,
 ]
+
+const mask_textures_src = asset_table("assets/textures/masks")
+
+var mask_textures* = newTable[string, seq[cfloat]]()
+for k,v in mask_textures_src.pairs:
+  var image = v.decodeImage().toCfloat()
+  mask_textures[k] = image
+

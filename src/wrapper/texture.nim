@@ -35,20 +35,27 @@ type
     width: GLsizei
     height: GLsizei
     layers*: GLsizei
-    data*: ptr seq[T]
+    textures*: seq[ptr seq[T]]
 
-proc newTextureArray*[T](n: int, layers: int, data: ptr seq[T]): TextureArray[T] =
-  result.data = data
+proc add*[T](ta: var TextureArray[T], n: int, data: ptr seq[T]) =
+  let wh = n.GLsizei
+  let i = ta.textures.len
+  ta.textures.add data
+  glBindTexture GL_TEXTURE_2D_ARRAY, ta.id
+  glTexSubImage3D GL_TEXTURE_2D_ARRAY, 0.GLint, 0.GLint, 0.GLint, i.GLint, wh, wh,
+    1.GLsizei, GL_RGBA, EGL_FLOAT, data[][0].addr
+
+proc newTextureArray*[T](n: int, layers: int, textures: seq[ptr seq[T]]): TextureArray[T] =
   result.height = n.GLsizei
   result.width = n.GLsizei
   result.layers = layers.GLsizei
   glGenTextures 1, result.id.addr
   glBindTexture GL_TEXTURE_2D_ARRAY, result.id
   glTexImage3D GL_TEXTURE_2D_ARRAY, 0.GLint, GL_RGBA.GLint, result.width, result.height,
-    layers.GLsizei, 0.GLint, GL_RGBA, EGL_FLOAT, result.data[][0].addr
+    layers.GLsizei, 0.GLint, GL_RGBA, EGL_FLOAT, nil
 
-  for i in 0..<layers:
-    glTexSubImage3D GL_TEXTURE_2D_ARRAY, 0.GLint, 0.GLint, 0.GLint, i.GLint, result.width, result.height, 1.GLsizei, GL_RGBA, EGL_FLOAT, result.data[][4*n*n*i].addr
+  for i in 0..<textures.len:
+    result.add n, textures[i]
 
   glTexParameteri GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR.ord
   glTexParameteri GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR.ord

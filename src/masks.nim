@@ -156,4 +156,3 @@ proc hazard*(kind: CliffMask): bool {.inline.} =
 
 proc phase*(kind: CliffMask): bool =
   return P1 <= kind and kind <= P4
-
