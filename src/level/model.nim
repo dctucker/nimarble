@@ -151,31 +151,29 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   if y == 0:
     y = base - margin * vert.y
 
+  result = CubePoint()
   # hide tiles on the ground
-  if level.map[i,j].height == 0: c = vec4f(0,0,0,0)
+  if level.map[i,j].height == 0:
+    return
   if level.map[i+1,j].height == 0 or level.map[i,j+1].height == 0 or level.map[i+1,j+1].height == 0:
-    c = vec4f(0,0,0,0)
+    return
 
   if RH in masks or RI in masks:
     c = level.mask_color({RI})
 
   if color_w != 1:
-    normal = cube_normal(color_w)
+    result.normal = cube_normal(color_w)
 
   if normal.y.classify == fcNaN:
-    normal = vec3f(0, 1, 0)
+    result.normal = vec3f(0, 1, 0)
 
   tile = level.point_texture(i, j) + 1
   if color_w in {2,4,3,5}:
     tile = HH.ord
-  uv = vec3f(x, z, tile.cfloat)
+  result.uv = vec3f(x, z, tile.cfloat)
 
-  return CubePoint(
-    pos    : vec3f(x, y, z),
-    color  : c,
-    normal : normal,
-    uv     : uv,
-  )
+  result.pos = vec3f(x, y, z)
+  result.color = c
 
 proc update_vbos*(level: Level) {.inline.} =
   # TODO update subset only for performance
