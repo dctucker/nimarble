@@ -50,12 +50,18 @@ proc toCfloat(img: Image): seq[cfloat] =
 var floor_textures* = readImage("assets/textures/masks.png").toCfloat()
 #var skybox_textures* = readImage("assets/textures/skybox.png").toCfloat()
 
-var nz = readImage("assets/textures/nz.png").toCfloat()
-var pz = readImage("assets/textures/pz.png").toCfloat()
-var ny = readImage("assets/textures/ny.png").toCfloat()
-var py = readImage("assets/textures/py.png").toCfloat()
-var nx = readImage("assets/textures/nx.png").toCfloat()
-var px = readImage("assets/textures/px.png").toCfloat()
+const nz_src = staticRead("../assets/textures/nz.png")
+const pz_src = staticRead("../assets/textures/pz.png")
+const ny_src = staticRead("../assets/textures/ny.png")
+const py_src = staticRead("../assets/textures/py.png")
+const nx_src = staticRead("../assets/textures/nx.png")
+const px_src = staticRead("../assets/textures/px.png")
+var nz = nz_src.decodeImage().toCfloat()
+var pz = pz_src.decodeImage().toCfloat()
+var ny = ny_src.decodeImage().toCfloat()
+var py = py_src.decodeImage().toCfloat()
+var nx = nx_src.decodeImage().toCfloat()
+var px = px_src.decodeImage().toCfloat()
 
 var skybox_textures* = @[
   addr px,
