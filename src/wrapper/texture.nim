@@ -50,11 +50,6 @@ proc newTextureArray*[T](n: int, layers: int, data: ptr seq[T]): TextureArray[T]
   for i in 0..<layers:
     glTexSubImage3D GL_TEXTURE_2D_ARRAY, 0.GLint, 0.GLint, 0.GLint, i.GLint, result.width, result.height, 1.GLsizei, GL_RGBA, EGL_FLOAT, result.data[][4*n*n*i].addr
 
-  #glTexParameteri GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT  #GL_MIRRORED_REPEAT
-  #glTexParameteri GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT  #GL_CLAMP_TO_BORDER #GL_CLAMP_TO_EDGE
-  #var color = vec4f( 1.0f, 0.0f, 0.0f, 1.0f )
-  #glTexParameterfv GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, color
-
   glTexParameteri GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR.ord
   glTexParameteri GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR.ord
 

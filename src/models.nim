@@ -16,9 +16,9 @@ proc toCfloats(vecs: seq[Vec3f], dim: int = 3): seq[cfloat] =
     if dim >= 2: result.add vec.y
     if dim >= 3: result.add vec.z
 
-#proc toInds(ints: seq[int]): seq[Ind] =
-#  for i in ints:
-#    result.add i.Ind
+proc toInds(ints: seq[int]): seq[Ind] =
+  for i in ints:
+    result.add i.Ind
 
 include models/[
   cube     ,

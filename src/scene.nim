@@ -149,10 +149,12 @@ type
     projection*: Matrix
     program*: Program
     vao*: VAO
+    idx*: VBO[Ind]
     vbo*: VBO[cfloat]
     cubemap*: CubeMap[cfloat]
 
 proc render*(skybox: SkyBox) =
+  glDepthFunc  GL_LEQUAL
   skybox.program.use()
   skybox.projection.update
   skybox.view.update
@@ -165,9 +167,11 @@ proc render*(skybox: SkyBox) =
   #apply skybox.vbo, 2
   #apply skybox.vbo, 3
   apply skybox.cubemap
-  skybox.vbo.draw GL_TRIANGLES
+  skybox.idx.draw_elem GL_TRIANGLES
+  #skybox.vbo.draw GL_TRIANGLES
   #glDrawArrays GL_TRIANGLES, 0, 36
   glDepthMask true
-  glDisable      GL_TEXTURE_CUBEMAP
+  glDepthFunc  GL_LESS
+  glDisable    GL_TEXTURE_CUBEMAP
 
   glBindVertexArray 0

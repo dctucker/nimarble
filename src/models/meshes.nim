@@ -112,6 +112,7 @@ proc newSkyBox(game: Game): SkyBox =
   var modelmat = mat4f(1)#.scale(sky)
   result = SkyBox(
     vao: newVAO(),
+    idx: newElemVBO(addr skybox_index),
     vbo: newVBO(3, addr skybox_verts),
     cubemap: newCubeMap[cfloat](1500, skybox_textures),
     program: newProgram(sky_frag, sky_vert, sky_geom),

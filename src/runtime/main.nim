@@ -42,7 +42,6 @@ proc main =
     game.camera.physics(dt)
 
     glClear            GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
-    game.render skybox
 
     floor_plane.wireframe = game.wireframe
     game.render floor_plane
@@ -62,9 +61,10 @@ proc main =
       fixture.mesh.wireframe = game.wireframe
       fixture.render()
 
+    game.render skybox
+
     editor.cursor.render()
     editor.selector.render()
-
 
     imgui_frame()
 
