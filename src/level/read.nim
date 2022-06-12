@@ -98,7 +98,7 @@ proc find_last*(level: Level): (int,int) =
 proc load_masks*(level: var Level, zones: ZoneSet, i,j: int) =
   level.map[i,j].masks = {}
   let o = i*level.width + j
-  if o > level.mask.len: return
+  if (0 > o) or (o > level.mask.len): return
   let mask = level.mask[o]
   if mask != XX:
     if not mask.zone():

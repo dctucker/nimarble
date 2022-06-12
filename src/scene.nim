@@ -163,13 +163,8 @@ proc render*(skybox: SkyBox) =
   glDepthMask false
   apply skybox.vao
   apply skybox.vbo, 0
-  #apply skybox.vbo, 1
-  #apply skybox.vbo, 2
-  #apply skybox.vbo, 3
   apply skybox.cubemap
   skybox.idx.draw_elem GL_TRIANGLE_STRIP
-  #skybox.vbo.draw GL_TRIANGLES
-  #glDrawArrays GL_TRIANGLES, 0, 36
   glDepthMask true
   glDepthFunc  GL_LESS
   glDisable    GL_TEXTURE_CUBEMAP
