@@ -1,3 +1,4 @@
+import ../assets
 
 proc newPlayerMesh: Mesh =
   Mesh(
@@ -104,3 +105,19 @@ proc newRampMesh(game: var Game): Mesh =
   )
   result.uv_vbo = newVBO(3, addr ramp_uvs)
   #result.textures = newFloorTextures[cfloat](game)
+
+proc newSkyBox(game: Game): SkyBox =
+  var viewmat = game.view.mat
+  var projmat = game.proj
+  var modelmat = mat4f(1)#.scale(sky)
+  result = SkyBox(
+    vao: newVAO(),
+    vbo: newVBO(3, addr skybox_verts),
+    cubemap: newCubeMap[cfloat](1500, skybox_textures),
+    program: newProgram(sky_frag, sky_vert, sky_geom),
+    #program: game.player.mesh.program,
+  )
+  result.model = result.program.newMatrix(modelmat, "model")
+  result.view = result.program.newMatrix(viewmat, "view")
+  result.projection = result.program.newMatrix(projmat, "projection")
+

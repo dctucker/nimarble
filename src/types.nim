@@ -6,7 +6,7 @@ import std/sets
 import std/tables
 import masks
 import wrapper
-from scene import Mesh, Light, newLight, Camera, Pan
+from scene import Mesh, Light, newLight, Camera, Pan, SkyBox
 
 include types/[
   level    ,

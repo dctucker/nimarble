@@ -8,7 +8,7 @@ proc main =
   setup_imgui(w)
 
   game.init()
-  game.light.update()
+  #game.light.update()
 
 
   # main loop
@@ -16,6 +16,7 @@ proc main =
     var level = game.level
     var player = game.player
     var floor_plane = level.floor_plane
+    var skybox = game.skybox
     var actors = level.actors
     var fixtures = level.fixtures
     time = glfwGetTime()
@@ -41,6 +42,7 @@ proc main =
     game.camera.physics(dt)
 
     glClear            GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
+    game.render skybox
 
     floor_plane.wireframe = game.wireframe
     game.render floor_plane
@@ -62,6 +64,7 @@ proc main =
 
     editor.cursor.render()
     editor.selector.render()
+
 
     imgui_frame()
 

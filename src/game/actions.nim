@@ -24,6 +24,7 @@ proc set_level*(game: var Game) =
 
 proc init*(game: var Game) =
   game.init_player()
+  game.skybox = game.newSkyBox()
   var viewmat = game.view.mat
   game.view = game.player.mesh.program.newMatrix(viewmat, "V")
 

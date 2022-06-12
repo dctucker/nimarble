@@ -68,3 +68,31 @@ proc apply*(tex: TextureArray) =
 proc disable*(text: TextureArray) =
   glDisable GL_TEXTURE_2D_ARRAY
 
+
+type CubeMap*[T] = object
+  id*: uint32
+  width: GLsizei
+  height: GLsizei
+  sides*: seq[ptr seq[T]]
+
+proc newCubeMap*[T](n: int, sides: seq[ptr seq[T]]): CubeMap[T] =
+  result.sides = sides
+  result.width = n.GLsizei
+  result.height = n.GLsizei
+  glActiveTexture GL_TEXTURE0
+  glEnable GL_TEXTURE_CUBE_MAP
+  glGenTextures 1, result.id.addr
+  glBindTexture GL_TEXTURE_CUBEMAP, result.id
+  for i,side in sides.pairs:
+    let s = GLenum GL_TEXTURE_CUBE_MAP_POSITIVE_X.ord + i
+    glTexImage2D s, 0.GLint, GL_RGB.GLint, result.width, result.height, 0.GLsizei, GL_RGBA.GLenum, EGL_FLOAT, side[][0].addr
+  glTexParameteri GL_TEXTURE_CUBEMAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR.GLint
+  glTexParameteri GL_TEXTURE_CUBEMAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR.GLint
+  glTexParameteri GL_TEXTURE_CUBEMAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE.GLint
+  glTexParameteri GL_TEXTURE_CUBEMAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE.GLint
+  glTexParameteri GL_TEXTURE_CUBEMAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE.GLint
+
+proc apply*(tex: CubeMap) =
+  glActiveTexture GL_TEXTURE0
+  glEnable      GL_TEXTURE_CUBEMAP
+  glBindTexture GL_TEXTURE_CUBEMAP, tex.id

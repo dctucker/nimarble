@@ -67,6 +67,7 @@ type
     hourglass*: float
     level_number*: int32
     level*: Level
+    skybox*: SkyBox
     player*: Player
     proj*: Mat4f
     view*: Matrix

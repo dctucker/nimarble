@@ -106,9 +106,10 @@ proc physics*(camera: var Camera, dt: float) {.inline.} =
       camera.pan.vel.z = clamp(camera.pan.vel.z, -camera.maxvel, +camera.maxvel)
 
 proc render*(mesh: var Mesh) =
+  mesh.program.use()
   mesh.mvp.update
   mesh.model.update
-  mesh.program.use()
+  apply mesh.vao
   apply mesh.vert_vbo  , 0
   apply mesh.color_vbo , 1
   apply mesh.norm_vbo  , 2
@@ -138,3 +139,35 @@ proc render*(mesh: var Mesh) =
   if mesh.uv_vbo.n_verts > 0:
     glDisableVertexAttribArray 3
 
+  glBindVertexArray 0
+
+
+type
+  SkyBox* = ref object
+    model*: Matrix
+    view*: Matrix
+    projection*: Matrix
+    program*: Program
+    vao*: VAO
+    vbo*: VBO[cfloat]
+    cubemap*: CubeMap[cfloat]
+
+proc render*(skybox: SkyBox) =
+  skybox.program.use()
+  skybox.projection.update
+  skybox.view.update
+  skybox.model.update
+
+  glDepthMask false
+  apply skybox.vao
+  apply skybox.vbo, 0
+  #apply skybox.vbo, 1
+  #apply skybox.vbo, 2
+  #apply skybox.vbo, 3
+  apply skybox.cubemap
+  skybox.vbo.draw GL_TRIANGLES
+  #glDrawArrays GL_TRIANGLES, 0, 36
+  glDepthMask true
+  glDisable      GL_TEXTURE_CUBEMAP
+
+  glBindVertexArray 0

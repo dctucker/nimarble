@@ -53,6 +53,7 @@ void main(){
 	// Ambient : simulates indirect lighting
 	// Diffuse : "color" of the object
 	// Specular : reflective highlight, like a mirror
+
 	color = vec4(
 		MaterialAmbientColor  +
 		MaterialDiffuseColor  * LightColor * LightPower *        cosTheta * distance2i +

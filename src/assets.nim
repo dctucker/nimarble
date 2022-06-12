@@ -48,3 +48,20 @@ proc toCfloat(img: Image): seq[cfloat] =
       result.add c.a.float / 255f
 
 var floor_textures* = readImage("assets/textures/masks.png").toCfloat()
+#var skybox_textures* = readImage("assets/textures/skybox.png").toCfloat()
+
+var nz = readImage("assets/textures/nz.png").toCfloat()
+var pz = readImage("assets/textures/pz.png").toCfloat()
+var ny = readImage("assets/textures/ny.png").toCfloat()
+var py = readImage("assets/textures/py.png").toCfloat()
+var nx = readImage("assets/textures/nx.png").toCfloat()
+var px = readImage("assets/textures/px.png").toCfloat()
+
+var skybox_textures* = @[
+  addr px,
+  addr nx,
+  addr py,
+  addr ny,
+  addr pz,
+  addr nz,
+]

@@ -31,3 +31,9 @@ proc render[T: Cursor](cursor: var T) =
   var scale = 1.125 + 0.25 * ((cursor.phase mod 40) - 20).abs.float / 20f
   cursor.mesh.scale.xz = vec2f(scale)
 
+proc render*(game: var Game, skybox: var SkyBox) =
+  skybox.projection.mat = game.proj
+  skybox.view.mat = game.view.mat.translate(vec3f(0, game.level.origin.y.float/2 - sky * 0.125, 0))
+  skybox.model.mat = mat4f(1).scale(sky * 0.375)
+  skybox.render()
+

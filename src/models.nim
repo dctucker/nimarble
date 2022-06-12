@@ -26,6 +26,7 @@ include models/[
   cylinder ,
   octagon  ,
   wave     ,
+  skybox   ,
 ]
 
 proc genBox(n: int): seq[Vec3f] =
