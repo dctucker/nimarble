@@ -153,9 +153,10 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
 
   result = CubePoint()
   # hide tiles on the ground
-  if level.map[i,j].height == 0:
-    return
-  if level.map[i+1,j].height == 0 or level.map[i,j+1].height == 0 or level.map[i+1,j+1].height == 0:
+  if level.map[i+0,j+0].height == 0 or
+     level.map[i+1,j+0].height == 0 or
+     level.map[i+0,j+1].height == 0 or
+     level.map[i+1,j+1].height == 0:
     return
 
   if RH in masks or RI in masks:
@@ -172,8 +173,8 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
     tile = HH.ord
   result.uv = vec3f(x, z, tile.cfloat)
 
-  result.pos = vec3f(x, y, z)
   result.color = c
+  result.pos = vec3f(x, y, z)
 
 proc update_vbos*(level: Level) {.inline.} =
   # TODO update subset only for performance
@@ -205,7 +206,7 @@ proc calculate_color_vbo*(level: Level, i,j: int) =
   if o <= 0: return
   for n in cube_index.low .. cube_index.high:
     let p = level.cube_point(i, j, n)
-    if p.empty: continue
+    #if p.empty: continue
 
     let color_offset = o *  color_span + 4*n
     if 0 < color_offset and color_offset < level.floor_colors.len:
@@ -237,10 +238,12 @@ proc calculate_vbos*(level: var Level, i, j, n: int, p: CubePoint) =
   if vert_offset >= level.floor_verts.len:
     return
   level.floor_verts[   vert_offset               ] = p.pos.y
-  if n in middle_points:
-    for m in middle_points:
-      let v_offset = o *   vert_span + 3*m + 1
-      level.floor_verts[   v_offset               ] = p.pos.y
+  #if n in middle_points:
+  #  for m in middle_points:
+  let v_offset = o *   vert_span + 3*n
+  level.floor_verts[   v_offset + 0           ] = p.pos.x
+  level.floor_verts[   v_offset + 1           ] = p.pos.y
+  level.floor_verts[   v_offset + 2           ] = p.pos.z
 
   let color_offset = o *  color_span + 4*n
   if 0 < color_offset and color_offset < level.floor_colors.len:
@@ -277,7 +280,7 @@ proc calculate_vbos*(level: var Level, i,j: int) =
 
   for n in cube_index.low .. cube_index.high:
     let p = level.map[i,j].cube[n]
-    if p.empty: continue
+    #if p.empty: continue
     level.calculate_vbos(i,j,n, p)
 
 proc reload_colors*(level: var Level) =
@@ -294,7 +297,7 @@ proc setup_floor(level: var Level) =
   var verts   = newSeqOfCap[cfloat]( 3 * dim )
   var index   = newSeqOfCap[Ind]( cube_index.len * dim )
   var colors  = newSeqOfCap[cfloat]( 4 * cube_index.len * dim )
-  var uvs     = newSeqOfCap[cfloat]( 2 * cube_index.len * dim )
+  var uvs     = newSeqOfCap[cfloat]( 3 * cube_index.len * dim )
   var n = 0.Ind
   var x,z: float
   var y: float      #var y0, y1, y2, y3: float

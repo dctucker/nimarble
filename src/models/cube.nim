@@ -100,7 +100,7 @@ proc genRampUvs: seq[Vec3f] =
     of 2: # west
       result.add vec3f( 1-vec.z, 1-vec.y, RI.ord + 1)
     else:
-      result.add vec3f( vec.x, vec.z, XX.ord + 1 )
+      result.add vec3f( vec.x, vec.z, IH.ord + 1 )
 
 proc genRampNormals: seq[Vec3f] =
   for color_w in cube_colors:
@@ -112,7 +112,7 @@ proc genRampColors: seq[Vec4f] =
     of 3,4,5,2:
       result.add vec4f(0.0, 0.73, 0.67, 1)
     else:
-      result.add vec4f(0.733, 0.733, 0.733, 1)
+      result.add vec4f(0.6, 0.6, 0.6, 1)
 
 proc genRampIndex: seq[Ind] =
   for i,j in cube_index.pairs:

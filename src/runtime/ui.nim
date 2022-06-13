@@ -50,11 +50,6 @@ proc draw_imgui =
   if app.show_metrics:
     igShowMetricsWindow()
 
-  igBegin("selector")
-  igDragFloat3("pos", editor.selector.mesh.pos.arr, 1, -sky, sky)
-  igDragFloat3("scale", editor.selector.mesh.scale.arr, 1, -sky, sky)
-  igEnd()
-
   sync_editor()
   igPopFont()
 

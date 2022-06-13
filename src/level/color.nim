@@ -16,7 +16,7 @@ proc mask_color*(level: Level, masks: set[CliffMask]): Vec4f =
     case mask:
     of GG:
       return vec4f( 0.6, 0.6, 0.6, 1.0 )
-    of TU, IN, OU:
+    of TU:
       return vec4f( level.color.x * 0.5, level.color.y * 0.5, level.color.z * 0.5, 1.0 )
     #of S1: return vec4f( 0.0, 0.0, 0.5, 0.8 )
     #of EM: return vec4f( 0.1, 0.1, 0.1, 1.0 )
