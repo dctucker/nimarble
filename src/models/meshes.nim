@@ -20,8 +20,13 @@ for m in CliffMask.low .. CliffMask.high:
   let tex = addr mask_textures[mask]
   floor_textures.add tex
 
+let wall_uv_z* = floor_textures.len
+
 proc newFloorTextures[T](game: var Game): TextureArray[T] =
-  return newTextureArray[T](32, 64, floor_textures)
+  result = newTextureArray[T](32, 64, floor_textures)
+  result.add 32, addr wall_textures["4"]
+
+  glGenerateMipmap GL_TEXTURE_2D_ARRAY
 
 proc newFloorMesh(game: var Game): Mesh =
   Mesh(

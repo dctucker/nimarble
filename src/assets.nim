@@ -71,9 +71,14 @@ var skybox_textures* = @[
 ]
 
 const mask_textures_src = asset_table("assets/textures/masks")
-
 var mask_textures* = newTable[string, seq[cfloat]]()
 for k,v in mask_textures_src.pairs:
   var image = v.decodeImage().toCfloat()
   mask_textures[k] = image
+
+const wall_textures_src = asset_table("assets/textures/walls")
+var wall_textures* = newTable[string, seq[cfloat]]()
+for k,v in wall_textures_src.pairs:
+  var image = v.decodeImage().toCfloat()
+  wall_textures[k] = image
 
