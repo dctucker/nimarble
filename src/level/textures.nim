@@ -26,3 +26,18 @@ proc point_texture(level: Level, i,j: int): int =
     return P1.ord
 
   return level.mask_texture(masks)
+
+proc point_uv*(level: Level, i,j,w: int): Vec3f =
+  let masks = level.map[i,j].masks
+  let color_w = cube_colors[w]
+  let vert = cube_verts[ cube_index[w] ]
+  let tile = level.point_texture(i, j) + 1
+  result = vec3f(vert.x, vert.z, tile.cfloat)
+
+  if color_w in {2,4,3,5}:
+    result.z = cfloat CliffMask.high.ord + 2
+    if color_w in {2,4}:
+      result.x = vert.z
+    result.y = vert.y
+
+

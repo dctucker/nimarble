@@ -90,3 +90,18 @@ proc point_color(level: Level, i,j: int): Vec4f =
 #      result[index+2] = c.z
 #      result[index+3] = c.w
 
+proc point_color(level: Level, i,j,w: int): Vec4f =
+  result = level.point_color(i,j)
+
+  let masks = level.map[i,j].masks
+  let color_w = cube_colors[w]
+  if RH in masks or RI in masks:
+    result = level.mask_color({RI})
+  if color_w in {2,4,3,5}:
+    result = default_color
+
+  #result = case color_w
+  #of 2, 4: level.cliff_color(JJ)
+  #of 3, 5: level.cliff_color(VV)
+  #else   : result
+

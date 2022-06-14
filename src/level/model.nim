@@ -114,13 +114,10 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   var x = (j - level.origin.x).float + vert.x.float * margin
   var y = level.cube_point_y(i,j,w)
   var z = (i - level.origin.z).float + vert.z.float * margin
-  var c = level.point_color(i, j)
   var m = level.mask[level.offset(i+vert.z.int, j+vert.x.int)]
-
-  var tile: int
   var color_w = cube_colors[w]
-
   result = CubePoint()
+
   # hide tiles on the ground
   if level.map[i+0,j+0].height == 0 or
      level.map[i+1,j+0].height == 0 or
@@ -128,34 +125,14 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
      level.map[i+1,j+1].height == 0:
     return
 
-  let masks = level.map[i,j].masks
-  if RH in masks or RI in masks:
-    c = level.mask_color({RI})
-
   if color_w != 1:
     result.normal = cube_normal(color_w)
-
   if result.normal.y.classify == fcNaN:
     result.normal = vec3f(0, 1, 0)
 
-  tile = level.point_texture(i, j) + 1
-  result.uv = vec3f(vert.x, vert.z, tile.cfloat)
-
-  #c = case color_w
-  #of 2, 4: level.cliff_color(JJ)
-  #of 3, 5: level.cliff_color(VV)
-  #else   : c
-
-  if color_w in {2,4,3,5}:
-    tile = CliffMask.high.ord + 2
-    c = default_color
-    if color_w in {2,4}:
-      result.uv.x = vert.z
-    result.uv.y = vert.y
-    result.uv.z = tile.cfloat
-
-  result.color = c
-  result.pos = vec3f(x, y, z)
+  result.uv    = level.point_uv(i, j, w)
+  result.color = level.point_color(i, j, w)
+  result.pos   = vec3f(x, y, z)
 
 proc update_vbos*(level: Level) {.inline.} =
   # TODO update subset only for performance
