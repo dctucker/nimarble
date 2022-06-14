@@ -22,22 +22,23 @@ for m in CliffMask.low .. CliffMask.high:
 
 let wall_uv_z* = floor_textures.len
 
-proc newFloorTextures[T](game: var Game): TextureArray[T] =
+proc newFloorTextures[T](level: var Level): TextureArray[T] =
   result = newTextureArray[T](32, 64, floor_textures)
-  result.add 32, addr wall_textures["4"]
+  if wall_textures.hasKey level.name:
+    result.add 32, addr wall_textures[level.name]
 
   glGenerateMipmap GL_TEXTURE_2D_ARRAY
 
-proc newFloorMesh(game: var Game): Mesh =
+proc newFloorMesh(level: var Level): Mesh =
   Mesh(
     primitive : GL_TRIANGLE_STRIP,
     vao: newVAO(),
-    vert_vbo  : newVBO(3, addr game.level.floor_verts),
-    color_vbo : newVBO(4, addr game.level.floor_colors),
-    norm_vbo  : newVBO(3, addr game.level.floor_normals),
-    uv_vbo    : newVBO(3, addr game.level.floor_uvs),
-    textures  : newFloorTextures[cfloat](game),
-    elem_vbo  : newElemVBO(addr game.level.floor_index),
+    vert_vbo  : newVBO(3, addr level.floor_verts),
+    color_vbo : newVBO(4, addr level.floor_colors),
+    norm_vbo  : newVBO(3, addr level.floor_normals),
+    uv_vbo    : newVBO(3, addr level.floor_uvs),
+    textures  : newFloorTextures[cfloat](level),
+    elem_vbo  : newElemVBO(addr level.floor_index),
   )
 
 var shared_wave_verts: VBO[cfloat]

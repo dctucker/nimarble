@@ -38,10 +38,7 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   let masks = level.map[i,j].masks
 
   if masks.has level.phase:
-    y0 = 0
-    y1 = 0
-    y2 = 0
-    y3 = 0
+    y0 = 0 ; y1 = 0 ; y2 = 0 ; y3 = 0
 
   var x = (j - level.origin.x).float + vert.x.float * margin
   var z = (i - level.origin.z).float + vert.z.float * margin
@@ -49,15 +46,6 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   var c = level.point_color(i, j)
   var m = level.mask[level.offset(i+vert.z.int, j+vert.x.int)]
 
-  #let surface_normals = @[
-  #  vec3f(-1, -1, -1) * -y0,
-  #  vec3f(+1, -1, -1) * -y1,
-  #  vec3f(-1, -1, +1) * -y2,
-  #  vec3f(+1, -1, +1) * -y3,
-  #]
-  #var surface_normal: Vec3f # = surface_normals[0] + surface_normals[1] + surface_normals[2] + surface_normals[3]
-  var normal: Vec3f         # = surface_normals[0] + surface_normals[1] + surface_normals[2] + surface_normals[3]
-  var uv: Vec3f
   var tile: int
   var color_w = cube_colors[w]
 
@@ -76,30 +64,26 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
     else:
       base = y0 - 1.5
 
-  if vert.y == 1:
-
+  if vert.y == 0:
+    y = base + margin * vert.y
+    #c = vec4f(0,0,0,0)
+  else:
     if m.has JJ:
       y0 = y1
       y2 = y3
-
     if m.has VV:
       y0 = y2
       y1 = y3
-
     if m1.has LL:
       y1 = y0
-
     if m3.has LL:
       y1 = y0
       y3 = y2
-
     if m2.has AA:
       y2 = y0
       y3 = y1
-
     if m3.has AA:
       y3 = y1
-
     if m1.has(VV) and m2.has JJ:
       y0 = y3
 
@@ -116,40 +100,23 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
     if   (y1 - y3) >= too_high: y1 = y3
     elif (y3 - y1) >= too_high: y3 = y1
 
-    if not level.map[i+0,j].masks.has(RH) and level.map[i+0,j+1].masks.has RH:
+    if not level.map[i+0,j+0].masks.has(RH) and level.map[i+0,j+1].masks.has RH:
       y1 = y0
       y3 = y2
 
-    if (y0 == y2 and y1 == y3) or (y0 == y1 and y2 == y3):
-      yc = (y0 + y3) * 0.5
-    elif y0 == y1 and y1 == y2 and y2 != y3:
-      yc = y0
-    elif y1 == y2 and y2 == y3 and y3 != y0:
-      yc = y3
-    elif y0 == y3:
-      yc = y0
-    elif y1 == y2:
-      yc = (y0 + y3) * 0.5
-    else:
-      yc = (y0 + y1 + y2 + y3) / 4f
+    if (y0 == y2 and y1 == y3) or
+       (y0 == y1 and y2 == y3)               : yc = (y0 + y3) * 0.5
+    elif y0 == y1 and y1 == y2 and y2 != y3  : yc = y0
+    elif y1 == y2 and y2 == y3 and y3 != y0  : yc = y3
+    elif y0 == y3                            : yc = y0
+    elif y1 == y2                            : yc = (y0 + y3) * 0.5
+    else                                     : yc = (y0 + y1 + y2 + y3) / 4f
 
     if   vert.z == 0 and vert.x == 0: y = y0
     elif vert.z == 0 and vert.x == 1: y = y1
     elif vert.z == 1 and vert.x == 0: y = y2
     elif vert.z == 1 and vert.x == 1: y = y3
     elif vert.z==0.5 and vert.x==0.5: y = yc
-
-  else:
-    y = base + margin * vert.y
-    #c = vec4f(0,0,0,0)
-
-  c = case color_w
-  of 2, 4: level.cliff_color(JJ)
-  of 3, 5: level.cliff_color(VV)
-  else   : c
-
-  if y == 0:
-    y = base - margin * vert.y
 
   result = CubePoint()
   # hide tiles on the ground
@@ -165,15 +132,20 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   if color_w != 1:
     result.normal = cube_normal(color_w)
 
-  if normal.y.classify == fcNaN:
+  if result.normal.y.classify == fcNaN:
     result.normal = vec3f(0, 1, 0)
 
   tile = level.point_texture(i, j) + 1
   result.uv = vec3f(x, z, tile.cfloat)
 
+  #c = case color_w
+  #of 2, 4: level.cliff_color(JJ)
+  #of 3, 5: level.cliff_color(VV)
+  #else   : c
+
   if color_w in {2,4,3,5}:
-    tile = EY.ord + 2
-    c = vec4f(0.0,0.0,0.0,1)
+    tile = CliffMask.high.ord + 2
+    c = default_color
     if color_w in {2,4}:
       result.uv.x = z
     result.uv.y = y

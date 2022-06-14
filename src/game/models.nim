@@ -16,7 +16,7 @@ proc init_floor_plane*(game: var Game) =
   if game.level.floor_plane != nil:
     return
   load_level game.level_number
-  game.level.floor_plane = game.newFloorMesh()
+  game.level.floor_plane = game.level.newFloorMesh()
   game.level.floor_plane.program = game.player.mesh.program
   var modelmat = mat4(1.0f).scale(1f, level_squash, 1f)
   game.level.floor_plane.model = game.player.mesh.program.newMatrix(modelmat, "M")
