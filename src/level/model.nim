@@ -20,14 +20,16 @@ proc add_color(colors: var seq[cfloat], c: Vec4f) =
   colors.add c.z
   colors.add c.w
 
-proc cube_point*(level: Level, i,j, w: int): CubePoint =
-  const margin = 2047/2048f
+const margin = 2047/2048f
+proc cube_point_y*(level: Level, i,j,w: int): float =
   let vert = cube_verts[ cube_index[w] ]
+  result = level.data[level.offset(i+vert.z.int, j+vert.x.int)] + vert.y.float * (1-margin)
 
   #let m0 = level.map[i+0, j+0].cliffs
   let m1 = level.map[i+0, j+1].cliffs
   let m2 = level.map[i+1, j+0].cliffs
   let m3 = level.map[i+1, j+1].cliffs
+  var m = level.mask[level.offset(i+vert.z.int, j+vert.x.int)]
 
   var y0 = level.map[i+0, j+0].height + vert.y.float * (1-margin)
   var y1 = level.map[i+0, j+1].height + vert.y.float * (1-margin)
@@ -39,33 +41,22 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
 
   if masks.has level.phase:
     y0 = 0 ; y1 = 0 ; y2 = 0 ; y3 = 0
-
-  var x = (j - level.origin.x).float + vert.x.float * margin
-  var z = (i - level.origin.z).float + vert.z.float * margin
-  var y = level.data[level.offset(i+vert.z.int, j+vert.x.int)] + vert.y.float * (1-margin)
-  var c = level.point_color(i, j)
-  var m = level.mask[level.offset(i+vert.z.int, j+vert.x.int)]
-
-  var tile: int
-  var color_w = cube_colors[w]
+  if RH in masks:
+    result = 0 ; y0 = 0 ; y1 = 0 ; y2 = 0 ; y3 = 0
 
   var base: float = -2
-
-  if RH in masks:
-    y = 0 ; y0 = 0 ; y1 = 0 ; y2 = 0 ; y3 = 0
-
   if y0 != 0 and y3 != 0 and (
     FL in masks or
     RH in masks or
     RI in masks
   ):
-    if y != 0:
-      base = y - 1.5
+    if result != 0:
+      base = result - 1.5
     else:
       base = y0 - 1.5
 
   if vert.y == 0:
-    y = base + margin * vert.y
+    result = base + margin * vert.y
     #c = vec4f(0,0,0,0)
   else:
     if m.has JJ:
@@ -90,15 +81,15 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
     #if y0 == 0 or y1 == 0 or y2 == 0 or y3 == 0:
     #  y0 = base ; y1 = base ; y2 = base ; y3 = base
 
-    const too_high = 5
-    if   (y0 - y1) >= too_high: y0 = y1
-    elif (y1 - y0) >= too_high: y1 = y0
-    if   (y0 - y2) >= too_high: y0 = y2
-    elif (y2 - y0) >= too_high: y2 = y0
-    if   (y2 - y3) >= too_high: y2 = y3
-    elif (y3 - y2) >= too_high: y3 = y2
-    if   (y1 - y3) >= too_high: y1 = y3
-    elif (y3 - y1) >= too_high: y3 = y1
+    const too_high = 4
+    if   (y0 - y1) > too_high: y0 = y1
+    elif (y1 - y0) > too_high: y1 = y0
+    if   (y0 - y2) > too_high: y0 = y2
+    elif (y2 - y0) > too_high: y2 = y0
+    if   (y2 - y3) > too_high: y2 = y3
+    elif (y3 - y2) > too_high: y3 = y2
+    if   (y1 - y3) > too_high: y1 = y3
+    elif (y3 - y1) > too_high: y3 = y1
 
     if not level.map[i+0,j+0].masks.has(RH) and level.map[i+0,j+1].masks.has RH:
       y1 = y0
@@ -112,11 +103,22 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
     elif y1 == y2                            : yc = (y0 + y3) * 0.5
     else                                     : yc = (y0 + y1 + y2 + y3) / 4f
 
-    if   vert.z == 0 and vert.x == 0: y = y0
-    elif vert.z == 0 and vert.x == 1: y = y1
-    elif vert.z == 1 and vert.x == 0: y = y2
-    elif vert.z == 1 and vert.x == 1: y = y3
-    elif vert.z==0.5 and vert.x==0.5: y = yc
+    if   vert.z == 0 and vert.x == 0: result = y0
+    elif vert.z == 0 and vert.x == 1: result = y1
+    elif vert.z == 1 and vert.x == 0: result = y2
+    elif vert.z == 1 and vert.x == 1: result = y3
+    elif vert.z==0.5 and vert.x==0.5: result = yc
+
+proc cube_point*(level: Level, i,j, w: int): CubePoint =
+  let vert = cube_verts[ cube_index[w] ]
+  var x = (j - level.origin.x).float + vert.x.float * margin
+  var y = level.cube_point_y(i,j,w)
+  var z = (i - level.origin.z).float + vert.z.float * margin
+  var c = level.point_color(i, j)
+  var m = level.mask[level.offset(i+vert.z.int, j+vert.x.int)]
+
+  var tile: int
+  var color_w = cube_colors[w]
 
   result = CubePoint()
   # hide tiles on the ground
@@ -126,6 +128,7 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
      level.map[i+1,j+1].height == 0:
     return
 
+  let masks = level.map[i,j].masks
   if RH in masks or RI in masks:
     c = level.mask_color({RI})
 
@@ -136,7 +139,7 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
     result.normal = vec3f(0, 1, 0)
 
   tile = level.point_texture(i, j) + 1
-  result.uv = vec3f(x, z, tile.cfloat)
+  result.uv = vec3f(vert.x, vert.z, tile.cfloat)
 
   #c = case color_w
   #of 2, 4: level.cliff_color(JJ)
@@ -147,8 +150,8 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
     tile = CliffMask.high.ord + 2
     c = default_color
     if color_w in {2,4}:
-      result.uv.x = z
-    result.uv.y = y
+      result.uv.x = vert.z
+    result.uv.y = vert.y
     result.uv.z = tile.cfloat
 
   result.color = c
