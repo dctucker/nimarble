@@ -92,16 +92,11 @@ proc genRampUvs: seq[Vec3f] =
     var color_w = cube_colors[w]
     var vec = cube_verts[v]
     case color_w
-    of 3: # north
-      result.add vec3f( 1-vec.x, 1-vec.y, RH.ord + 1)
-    of 4: # east
-      result.add vec3f( vec.z, 1-vec.y, RI.ord + 1)
-    of 5: # south
-      result.add vec3f( vec.x, 1-vec.y, RH.ord + 1)
-    of 2: # west
-      result.add vec3f( 1-vec.z, 1-vec.y, RI.ord + 1)
-    else:
-      result.add vec3f( vec.x, vec.z, IH.ord + 1 )
+    of 3: result.add vec3f( 1-vec.x, 1-vec.y, RH.ord + 1 ) # north
+    of 4: result.add vec3f(   vec.z, 1-vec.y, RI.ord + 1 ) # east
+    of 5: result.add vec3f(   vec.x, 1-vec.y, RH.ord + 1 ) # south
+    of 2: result.add vec3f( 1-vec.z, 1-vec.y, RI.ord + 1 ) # west
+    else: result.add vec3f(   vec.x,   vec.z, IH.ord + 1 ) # top
 
 proc genRampNormals: seq[Vec3f] =
   for color_w in cube_colors:

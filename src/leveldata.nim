@@ -48,6 +48,7 @@ include level/[
   actors    ,
   read      ,
   write     ,
+  height    ,
   color     ,
   textures  ,
   model     ,

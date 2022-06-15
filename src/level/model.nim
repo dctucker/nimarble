@@ -1,112 +1,4 @@
 
-proc add_uv(uvs: var seq[cfloat], uv: Vec2f) =
-  uvs.add uv.x
-  uvs.add uv.y
-
-proc add_uv(uvs: var seq[cfloat], uv: Vec3f) =
-  uvs.add uv.x
-  uvs.add uv.y
-  uvs.add uv.z
-
-proc add_normal(normals: var seq[cfloat], n: Vec3f) =
-  let nn = n.normalize()
-  normals.add nn.x
-  normals.add nn.y
-  normals.add nn.z
-
-proc add_color(colors: var seq[cfloat], c: Vec4f) =
-  colors.add c.x
-  colors.add c.y
-  colors.add c.z
-  colors.add c.w
-
-const margin = 2047/2048f
-proc cube_point_y*(level: Level, i,j,w: int): float =
-  let vert = cube_verts[ cube_index[w] ]
-  result = level.data[level.offset(i+vert.z.int, j+vert.x.int)] + vert.y.float * (1-margin)
-
-  let m0 = level.map[i+0, j+0].cliffs
-  let m1 = level.map[i+0, j+1].cliffs
-  let m2 = level.map[i+1, j+0].cliffs
-  let m3 = level.map[i+1, j+1].cliffs
-  var m = level.mask[level.offset(i+vert.z.int, j+vert.x.int)]
-
-  var y0 = level.map[i+0, j+0].height + vert.y.float * (1-margin)
-  var y1 = level.map[i+0, j+1].height + vert.y.float * (1-margin)
-  var y2 = level.map[i+1, j+0].height + vert.y.float * (1-margin)
-  var y3 = level.map[i+1, j+1].height + vert.y.float * (1-margin)
-  var yc: float = 0
-
-  let masks = level.map[i,j].masks
-
-  if masks.has level.phase:
-    y0 = 0 ; y1 = 0 ; y2 = 0 ; y3 = 0
-  if RH in masks:
-    result = 0 ; y0 = 0 ; y1 = 0 ; y2 = 0 ; y3 = 0
-
-  var base: float = -2
-
-  #if y0 != 0 and y3 != 0 and masks.has FL:
-  base = result - 1.5
-
-  const too_high = 4
-  if   (y0 - y1) > too_high: y0 = y1 ; base = -2
-  elif (y1 - y0) > too_high: y1 = y0 ; base = -2
-  if   (y0 - y2) > too_high: y0 = y2 ; base = -2
-  elif (y2 - y0) > too_high: y2 = y0 ; base = -2
-  if   (y2 - y3) > too_high: y2 = y3 ; base = -2
-  elif (y3 - y2) > too_high: y3 = y2 ; base = -2
-  if   (y1 - y3) > too_high: y1 = y3 ; base = -2
-  elif (y3 - y1) > too_high: y3 = y1 ; base = -2
-
-  if m.has JJ:
-    y0 = y1
-    y2 = y3
-    base = -2
-  if m.has VV:
-    y0 = y2
-    y1 = y3
-    base = -2
-  if m1.has LL:
-    y1 = y0
-    base = -2
-  if m3.has LL:
-    y1 = y0
-    y3 = y2
-    base = -2
-  if m2.has AA:
-    y2 = y0
-    y3 = y1
-    base = -2
-  if m3.has AA:
-    y3 = y1
-    base = -2
-  if m1.has(VV) and m2.has JJ:
-    y0 = y3
-    base = -2
-
-  #if y0 == 0 or y1 == 0 or y2 == 0 or y3 == 0:
-  #  y0 = base ; y1 = base ; y2 = base ; y3 = base
-
-  if not level.map[i+0,j+0].masks.has(RH) and level.map[i+0,j+1].masks.has RH:
-    y1 = y0
-    y3 = y2
-
-  if (y0 == y2 and y1 == y3) or
-     (y0 == y1 and y2 == y3)               : yc = (y0 + y3) * 0.5
-  elif y0 == y1 and y1 == y2 and y2 != y3  : yc = y0
-  elif y1 == y2 and y2 == y3 and y3 != y0  : yc = y3
-  elif y0 == y3                            : yc = y0
-  elif y1 == y2                            : yc = (y0 + y3) * 0.5
-  else                                     : yc = (y0 + y1 + y2 + y3) / 4f
-
-  if vert.y == 0:                   result = base + margin * vert.y
-  elif vert.z == 0 and vert.x == 0: result = y0
-  elif vert.z == 0 and vert.x == 1: result = y1
-  elif vert.z == 1 and vert.x == 0: result = y2
-  elif vert.z == 1 and vert.x == 1: result = y3
-  elif vert.z==0.5 and vert.x==0.5: result = yc
-
 proc cube_point*(level: Level, i,j, w: int): CubePoint =
   let vert = cube_verts[ cube_index[w] ]
   var x = (j - level.origin.x).float + vert.x.float * margin
@@ -138,20 +30,11 @@ proc update_vbos*(level: Level) {.inline.} =
   level.floor_plane.norm_vbo.update
   level.floor_plane.uv_vbo.update
 
-proc update_vert_vbo*(level: Level) {.inline.} =
-  level.floor_plane.vert_vbo.update
-
-proc update_normal_vbo*(level: Level) {.inline.} =
-  level.floor_plane.norm_vbo.update
-
-proc update_color_vbo*(level: Level) {.inline.} =
-  level.floor_plane.color_vbo.update
-
-proc update_index_vbo*(level: Level) {.inline.} =
-  level.floor_plane.elem_vbo.update
-
-proc update_uv_vbo*(level: Level) {.inline.} =
-  level.floor_plane.elem_vbo.update
+proc update_vert_vbo*(level: Level)   {.inline.} = level.floor_plane.vert_vbo.update
+proc update_normal_vbo*(level: Level) {.inline.} = level.floor_plane.norm_vbo.update
+proc update_color_vbo*(level: Level)  {.inline.} = level.floor_plane.color_vbo.update
+proc update_index_vbo*(level: Level)  {.inline.} = level.floor_plane.elem_vbo.update
+proc update_uv_vbo*(level: Level)     {.inline.} = level.floor_plane.elem_vbo.update
 
 proc calculate_color_vbo*(level: Level, i,j: int) =
   let color_span  = 4 * cube_index.len
@@ -243,12 +126,30 @@ proc reload_colors*(level: var Level) =
     level.calculate_color_vbo(i,j)
   level.update_color_vbo()
 
+proc add_uv(uvs: var seq[cfloat], uv: Vec2f) =
+  uvs.add uv.x
+  uvs.add uv.y
+
+proc add_uv(uvs: var seq[cfloat], uv: Vec3f) =
+  uvs.add uv.x
+  uvs.add uv.y
+  uvs.add uv.z
+
+proc add_normal(normals: var seq[cfloat], n: Vec3f) =
+  let nn = n.normalize()
+  normals.add nn.x
+  normals.add nn.y
+  normals.add nn.z
+
+proc add_color(colors: var seq[cfloat], c: Vec4f) =
+  colors.add c.x
+  colors.add c.y
+  colors.add c.z
+  colors.add c.w
 
 proc setup_floor(level: var Level) =
   let dim = level.height * level.width
-  #var cx: Vec4f
   var normals = newSeqOfCap[cfloat]( dim )
-  #var lookup  = newTable[(cfloat,cfloat,cfloat), Ind]()
   var verts   = newSeqOfCap[cfloat]( 3 * dim )
   var index   = newSeqOfCap[Ind]( cube_index.len * dim )
   var colors  = newSeqOfCap[cfloat]( 4 * cube_index.len * dim )
@@ -256,31 +157,18 @@ proc setup_floor(level: var Level) =
   var n = 0.Ind
   var x,z: float
   var y: float      #var y0, y1, y2, y3: float
-  #var m: CliffMask  #var m0, m1, m2, m3: CliffMask
-  #var c: Vec4f      #var c0, c1, c2, c3: Vec4f
-  #var v00, v01, v02, v03: Vec3f
-  #var v10, v11, v12, v13: Vec3f
-  #var v20, v21, v22, v23: Vec3f
-  #var v30, v31, v32, v33: Vec3f
-  #var surface_normal: Vec3f
-  #var normal: Vec3f
 
   proc add_index =
     index.add n
     inc n
-
-  #proc add_index(nn: Ind) =
-  #  index.add nn
 
   proc add_point(x,y,z: cfloat, c: Vec4f) =
     verts.add x
     verts.add y
     verts.add z
 
-    #echo "n: ", $n, ", x: ", $x, ", y: ", $y, ", z: ", $z
     add_index()
     colors.add_color c
-    #normals.add_normal normal
 
   for i in  1..<level.height - 1:
     for j in 1..<level.width - 1:
@@ -309,5 +197,4 @@ proc setup_floor(level: var Level) =
   level.floor_index   = index
   level.floor_normals = normals
   level.floor_uvs     = uvs
-  #echo "Index length: ", index.len
 
