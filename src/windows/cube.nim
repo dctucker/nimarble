@@ -77,10 +77,10 @@ proc info_window*(level: var Level, coord: Vec3f) =
       var p0 = level.map[i,j].cube[p]
       igDummy(ImVec2(x:0, y:0))
       igSameLine(6)
-      gonna_calculate |= igColorEdit4(cstring("color##"  & $s), p0.color.arr, ImGuiColorEditFlags(ImGuiColorEditFlags.NoInputs.ord + ImGuiColorEditFlags.NoLabel.ord) )
+      gonna_calculate |= igColorEdit4(cstring("color##"  & $p), p0.color.arr, ImGuiColorEditFlags(ImGuiColorEditFlags.NoInputs.ord + ImGuiColorEditFlags.NoLabel.ord) )
       igSameLine(40)
-      gonna_calculate |= igDragFloat3(cstring("p"    & $s), p0.pos.arr    , 0.0625, -sky, +sky, "%.2f")
-      let normal_edited = igNormal(      "N"         & $s , p0.normal)
+      gonna_calculate |= igDragFloat3(cstring("p"    & $p), p0.pos.arr    , 0.0625, -sky, +sky, "%.2f")
+      let normal_edited = igNormal(      "N"         & $p , p0.normal)
       gonna_calculate |= normal_edited
       if gonna_calculate:
         gonna_update = true
@@ -97,7 +97,31 @@ proc info_window*(level: var Level, coord: Vec3f) =
             var pm = level.map[i,j].cube[m]
             pm.normal = p0.normal
             level.calculate_vbos(i,j,m, pm)
+      igEndGroup()
+      if s mod 3 == 2:
+        igSeparator()
+      else:
+        igSameLine(235f * ((s+1) mod 3).float)
 
+    for s,p in side_points:
+      igBeginGroup()
+      var gonna_calculate: bool
+      var p0 = level.map[i,j].cube[p]
+      igDummy(ImVec2(x:0, y:0))
+      igSameLine(6)
+      gonna_calculate |= igColorEdit4(cstring("color##side"  & $p), p0.color.arr, ImGuiColorEditFlags(ImGuiColorEditFlags.NoInputs.ord + ImGuiColorEditFlags.NoLabel.ord) )
+      igSameLine(40)
+      gonna_calculate |= igDragFloat3(cstring("p"    & $p), p0.pos.arr    , 0.0625, -sky, +sky, "%.2f")
+      let normal_edited = igNormal(      "N"         & $p , p0.normal)
+      gonna_calculate |= normal_edited
+      if gonna_calculate:
+        gonna_update = true
+        level.calculate_vbos(i,j,p, p0)
+        if p in middle_points:
+          for m in middle_points:
+            var pm = level.map[i,j].cube[m]
+            pm.pos = p0.pos
+            level.calculate_vbos(i,j,m, pm)
 
       igEndGroup()
       if s mod 3 == 2:

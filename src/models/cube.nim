@@ -46,10 +46,11 @@ let cube_colors* = @[
 ]
 proc all_cube_index(n: int): seq[int] =
   for o,i in cube_index.pairs:
-    if i == 8:
+    if i == n:
       result.add o
 
 const top_points* = @[ 23, 25, 24, 26, 27, 28, 29, 30, 31, 32, 33, 34 ]
+const side_points* = @[ 7, 8, 9, 10, 13, 14, 15, 16 ]
 const middle_points* = all_cube_index(8)
 assert cube_colors.len == cube_index.len
 

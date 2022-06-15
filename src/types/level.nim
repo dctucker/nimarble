@@ -97,9 +97,17 @@ proc newLevelMap*(w,h: int): LevelMap =
 proc `add`*(point: var LevelPoint, mask: CliffMask) =
   point.masks.incl mask
 
-proc cliffs*(point: LevelPoint): CliffMask =
-  for cliff in point.masks * CLIFFS:
+proc cliffs*(mask: CliffMask): CliffMask =
+  result = XX
+  if mask in CLIFFS:
+    return mask
+
+proc cliffs*(masks: set[CliffMask]): CliffMask =
+  for cliff in masks * CLIFFS:
     result += cliff
+
+proc cliffs*(point: LevelPoint): CliffMask =
+  return point.masks.cliffs()
 
 proc `[]`*[T:Ordinal](map: var LevelMap, i,j: T): var LevelPoint =
   let o = i * map.width + j
