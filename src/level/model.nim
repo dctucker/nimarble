@@ -45,69 +45,62 @@ proc cube_point_y*(level: Level, i,j,w: int): float =
     result = 0 ; y0 = 0 ; y1 = 0 ; y2 = 0 ; y3 = 0
 
   var base: float = -2
-  if y0 != 0 and y3 != 0 and (
-    FL in masks or
-    RH in masks or
-    RI in masks
-  ):
-    if result != 0:
-      base = result - 1.5
-    else:
-      base = y0 - 1.5
+
+  if y0 != 0 and y3 != 0 and masks.has FL:
+    base = result - 1.5
+
+  if m.has JJ:
+    y0 = y1
+    y2 = y3
+  if m.has VV:
+    y0 = y2
+    y1 = y3
+  if m1.has LL:
+    y1 = y0
+  if m3.has LL:
+    y1 = y0
+    y3 = y2
+  if m2.has AA:
+    y2 = y0
+    y3 = y1
+  if m3.has AA:
+    y3 = y1
+  if m1.has(VV) and m2.has JJ:
+    y0 = y3
+
+  #if y0 == 0 or y1 == 0 or y2 == 0 or y3 == 0:
+  #  y0 = base ; y1 = base ; y2 = base ; y3 = base
+
+  const too_high = 4
+  if   (y0 - y1) > too_high: y0 = y1
+  elif (y1 - y0) > too_high: y1 = y0
+  if   (y0 - y2) > too_high: y0 = y2
+  elif (y2 - y0) > too_high: y2 = y0
+  if   (y2 - y3) > too_high: y2 = y3
+  elif (y3 - y2) > too_high: y3 = y2
+  if   (y1 - y3) > too_high: y1 = y3
+  elif (y3 - y1) > too_high: y3 = y1
+
+  if not level.map[i+0,j+0].masks.has(RH) and level.map[i+0,j+1].masks.has RH:
+    y1 = y0
+    y3 = y2
+
+  if (y0 == y2 and y1 == y3) or
+     (y0 == y1 and y2 == y3)               : yc = (y0 + y3) * 0.5
+  elif y0 == y1 and y1 == y2 and y2 != y3  : yc = y0
+  elif y1 == y2 and y2 == y3 and y3 != y0  : yc = y3
+  elif y0 == y3                            : yc = y0
+  elif y1 == y2                            : yc = (y0 + y3) * 0.5
+  else                                     : yc = (y0 + y1 + y2 + y3) / 4f
 
   if vert.y == 0:
     result = base + margin * vert.y
     #c = vec4f(0,0,0,0)
-  else:
-    if m.has JJ:
-      y0 = y1
-      y2 = y3
-    if m.has VV:
-      y0 = y2
-      y1 = y3
-    if m1.has LL:
-      y1 = y0
-    if m3.has LL:
-      y1 = y0
-      y3 = y2
-    if m2.has AA:
-      y2 = y0
-      y3 = y1
-    if m3.has AA:
-      y3 = y1
-    if m1.has(VV) and m2.has JJ:
-      y0 = y3
-
-    #if y0 == 0 or y1 == 0 or y2 == 0 or y3 == 0:
-    #  y0 = base ; y1 = base ; y2 = base ; y3 = base
-
-    const too_high = 4
-    if   (y0 - y1) > too_high: y0 = y1
-    elif (y1 - y0) > too_high: y1 = y0
-    if   (y0 - y2) > too_high: y0 = y2
-    elif (y2 - y0) > too_high: y2 = y0
-    if   (y2 - y3) > too_high: y2 = y3
-    elif (y3 - y2) > too_high: y3 = y2
-    if   (y1 - y3) > too_high: y1 = y3
-    elif (y3 - y1) > too_high: y3 = y1
-
-    if not level.map[i+0,j+0].masks.has(RH) and level.map[i+0,j+1].masks.has RH:
-      y1 = y0
-      y3 = y2
-
-    if (y0 == y2 and y1 == y3) or
-       (y0 == y1 and y2 == y3)               : yc = (y0 + y3) * 0.5
-    elif y0 == y1 and y1 == y2 and y2 != y3  : yc = y0
-    elif y1 == y2 and y2 == y3 and y3 != y0  : yc = y3
-    elif y0 == y3                            : yc = y0
-    elif y1 == y2                            : yc = (y0 + y3) * 0.5
-    else                                     : yc = (y0 + y1 + y2 + y3) / 4f
-
-    if   vert.z == 0 and vert.x == 0: result = y0
-    elif vert.z == 0 and vert.x == 1: result = y1
-    elif vert.z == 1 and vert.x == 0: result = y2
-    elif vert.z == 1 and vert.x == 1: result = y3
-    elif vert.z==0.5 and vert.x==0.5: result = yc
+  elif vert.z == 0 and vert.x == 0: result = y0
+  elif vert.z == 0 and vert.x == 1: result = y1
+  elif vert.z == 1 and vert.x == 0: result = y2
+  elif vert.z == 1 and vert.x == 1: result = y3
+  elif vert.z==0.5 and vert.x==0.5: result = yc
 
 proc cube_point*(level: Level, i,j, w: int): CubePoint =
   let vert = cube_verts[ cube_index[w] ]
@@ -117,6 +110,7 @@ proc cube_point*(level: Level, i,j, w: int): CubePoint =
   var m = level.mask[level.offset(i+vert.z.int, j+vert.x.int)]
   var color_w = cube_colors[w]
   result = CubePoint()
+
 
   # hide tiles on the ground
   if level.map[i+0,j+0].height == 0 or

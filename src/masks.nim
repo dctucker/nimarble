@@ -128,6 +128,12 @@ proc name*(mask: CliffMask): string =
 proc cliff*(a: CliffMask): bool =
   return XX.ord < a.ord and a.ord <= IH.ord
 
+proc cliff*(a: set[CliffMask]): bool =
+  result = false
+  for m in a.items:
+    if m.cliff():
+      return true
+
 proc has*(masks: set[CliffMask], mask: CliffMask): bool {.inline.} =
   return mask in masks
 
